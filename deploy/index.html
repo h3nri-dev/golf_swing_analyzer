@@ -75,26 +75,28 @@ button { cursor:pointer; border:none; background:none; color:var(--text-primary)
 input, select { font-family:inherit; }
 
 /* Header */
-header { height: var(--header-height); background: var(--bg-secondary); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; position: sticky; top: 0; z-index: 50; }
-.logo { font-size: 16px; font-weight: 700; }
+header { height: var(--header-height); background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(22,27,34,0.95) 100%); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 8px; position: sticky; top: 0; z-index: 50; backdrop-filter: blur(8px); }
+.logo { font-size: 16px; font-weight: 700; white-space: nowrap; }
 .logo span { background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.header-tagline { font-size:11px; color:var(--text-muted); margin-left:12px; letter-spacing:0.3px; }
-.header-spacer { flex:1; }
-.header-btn { width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); background:var(--bg-card); border:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text-muted); text-decoration:none; cursor:pointer; }
-.header-btn:hover { background:var(--bg-hover); color:var(--text-primary); }
+.header-tagline { font-size:11px; color:var(--text-muted); margin-left:4px; letter-spacing:0.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.header-spacer { flex:1; min-width:8px; }
+.header-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+.header-btn { width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius); background:var(--bg-card); border:1px solid var(--border); font-size:14px; font-weight:700; color:var(--text-muted); text-decoration:none; cursor:pointer; transition:all var(--transition); }
+.header-btn:hover { background:var(--bg-hover); color:var(--text-primary); border-color:var(--text-muted); }
 .copy-toast { position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-60px); background:var(--accent-green); color:#000; padding:8px 18px; border-radius:var(--radius); font-size:13px; font-weight:600; z-index:9999; opacity:0; transition:opacity 0.3s, transform 0.3s; pointer-events:none; }
 .copy-toast.visible { opacity:1; transform:translateX(-50%) translateY(0); }
 
 /* Buttons */
-.btn { padding:7px 16px; border-radius:var(--radius); font-size:13px; font-weight:500; transition:all var(--transition); display:inline-flex; align-items:center; gap:6px; height:36px; }
-.btn-primary { background:var(--accent-green); color:#000; font-weight:600; }
-.btn-primary:hover { background:#3cc972; }
+.btn { padding:7px 16px; border-radius:var(--radius); font-size:13px; font-weight:500; transition:all var(--transition); display:inline-flex; align-items:center; gap:6px; height:36px; white-space:nowrap; }
+.btn-primary { background:var(--accent-green); color:#000; font-weight:600; box-shadow:0 1px 3px rgba(74,222,128,0.2); }
+.btn-primary:hover { background:#3cc972; box-shadow:0 2px 8px rgba(74,222,128,0.3); }
 .btn-secondary { background:var(--bg-card); border:1px solid var(--border); }
 .btn-secondary:hover { background:var(--bg-hover); border-color:var(--text-muted); }
 .btn-danger { background:transparent; border:1px solid var(--accent-red); color:var(--accent-red); }
 .btn-danger:hover { background:rgba(248,113,113,0.1); }
 .btn-small { padding:5px 12px; font-size:12px; height:32px; }
 .btn:disabled { opacity:0.4; cursor:not-allowed; }
+.btn:active:not(:disabled) { transform:scale(0.97); }
 
 /* Layout */
 .app-layout { display:flex; height:calc(100vh - var(--header-height) - 90px); }
@@ -102,10 +104,10 @@ header { height: var(--header-height); background: var(--bg-secondary); border-b
 .sidebar { width:var(--sidebar-width); min-width:var(--sidebar-width); background:var(--bg-secondary); border-left:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
 
 /* Video Slot Tabs (above video) */
-.video-slot-tabs { display:flex; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; }
-.video-slot-tab { flex:1; padding:6px 4px; font-size:12px; font-weight:500; color:var(--text-muted); border:none; border-bottom:2px solid transparent; cursor:pointer; text-align:center; background:transparent; transition:all var(--transition); }
+.video-slot-tabs { display:flex; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; gap:1px; }
+.video-slot-tab { flex:1; padding:8px 4px; font-size:12px; font-weight:500; color:var(--text-muted); border:none; border-bottom:2px solid transparent; cursor:pointer; text-align:center; background:transparent; transition:all var(--transition); letter-spacing:0.3px; }
 .video-slot-tab:hover { color:var(--text-secondary); background:var(--bg-hover); }
-.video-slot-tab.active { color:var(--text-primary); border-bottom-color:var(--accent-cyan); background:var(--bg-hover); }
+.video-slot-tab.active { color:var(--accent-cyan); border-bottom-color:var(--accent-cyan); background:rgba(34,211,238,0.05); font-weight:600; }
 
 /* Panels — only active panel visible */
 .panels-row { display:flex; flex:1; min-height:0; overflow:hidden; }
@@ -141,11 +143,12 @@ header { height: var(--header-height); background: var(--bg-secondary); border-b
 .slot-file-input { display:none; }
 
 /* Drop Zone */
-.drop-zone { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px dashed var(--border); border-radius:16px; margin:16px; transition:all 0.3s; cursor:pointer; z-index:5; }
+.drop-zone { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px dashed var(--border); border-radius:16px; margin:16px; transition:all 0.3s; cursor:pointer; z-index:5; background:rgba(13,17,23,0.5); }
 .drop-zone.hidden { display:none; }
-.drop-zone:hover, .drop-zone.dragover { border-color:var(--accent-green); background:rgba(74,222,128,0.05); }
-.drop-zone svg { width:40px; height:40px; stroke:var(--accent-green); fill:none; stroke-linecap:round; stroke-linejoin:round; margin-bottom:8px; }
-.drop-text { font-size:14px; margin-bottom:4px; }
+.drop-zone:hover, .drop-zone.dragover { border-color:var(--accent-green); background:rgba(74,222,128,0.06); box-shadow:inset 0 0 40px rgba(74,222,128,0.03); }
+.drop-zone svg { width:40px; height:40px; stroke:var(--accent-green); fill:none; stroke-linecap:round; stroke-linejoin:round; margin-bottom:8px; opacity:0.8; }
+.drop-zone:hover svg { opacity:1; }
+.drop-text { font-size:14px; margin-bottom:4px; font-weight:500; }
 .drop-sub { font-size:11px; color:var(--text-muted); }
 
 /* Frame Badge */
@@ -408,13 +411,14 @@ header { height: var(--header-height); background: var(--bg-secondary); border-b
 
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
 
-/* Ad Slots */
+/* Ad Slots — responsive */
 .ad-slot { display:flex; align-items:center; justify-content:center; background:var(--bg-secondary); border:1px solid var(--border); overflow:hidden; flex-shrink:0; }
 .ad-slot-header { width:100%; height:90px; max-height:90px; overflow:hidden; border-bottom:1px solid var(--border); }
 .ad-slot-sidebar { width:100%; min-height:250px; margin-top:auto; border-top:1px solid var(--border); padding:8px 0; }
 .ad-slot-footer { width:100%; height:90px; border-top:1px solid var(--border); }
 .ad-slot-label { font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; position:absolute; top:2px; right:6px; pointer-events:none; }
-.ad-slot-wrapper { position:relative; display:flex; align-items:center; justify-content:center; }
+.ad-slot-wrapper { position:relative; display:flex; align-items:center; justify-content:center; max-width:100%; overflow:hidden; }
+.ad-slot-wrapper ins { max-width:100% !important; }
 .ad-placeholder { font-size:11px; color:var(--text-muted); text-align:center; padding:8px; }
 
 /* Responsive */
@@ -483,22 +487,52 @@ header { height: var(--header-height); background: var(--bg-secondary); border-b
 }
 @media (max-width:479px) {
   .panel-header { padding:3px 6px; gap:3px; flex-wrap:wrap; height:auto; min-height:28px; }
-  .panel-label { font-size:11px; }
-  .panel-video-col .video-container { min-height:50vh; }
+  .panel-label { font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px; }
+  .panel-video-col .video-container { min-height:45vh; }
   .kf-card-label { font-size:8px; padding:1px 4px 2px; }
   .kf-card-watermark { font-size:6px; }
   .kf-grid { gap:2px; padding:2px; }
-  .controls-bar { padding:8px 12px; }
-  .progress-container { height:40px; margin:0 10px; }
-  .progress-bar { height:8px; top:16px; }
-  .progress-handle { width:28px; height:28px; top:-10px; }
+  .controls-bar { padding:8px 8px; }
+  .progress-container { height:40px; margin:0 4px; }
+  .progress-bar { height:10px; top:15px; border-radius:5px; }
+  .progress-fill { border-radius:5px; }
+  .progress-handle { width:28px; height:28px; top:-9px; }
   .trim-handle { width:20px; height:36px; top:-14px; }
-  .ctrl-btn { width:42px; height:42px; font-size:16px; border-radius:var(--radius); }
+  .ctrl-btn { width:44px; height:44px; font-size:16px; border-radius:var(--radius); }
   .ctrl-btn svg { width:18px; height:18px; }
   .time-display { font-size:10px; min-width:60px; }
   .panel-draw-btn, .panel-clear-btn { height:38px; font-size:13px; }
   .panel-mirror-btn, .panel-overlay-btn { height:38px; width:38px; font-size:16px; }
   .btn-small { padding:5px 10px; font-size:12px; height:38px; }
+  .sidebar .section-content { padding:8px; }
+  .sidebar .section-title { font-size:10px; }
+  .ad-slot-header, .ad-slot-footer { height:50px; }
+  header { padding:0 10px; }
+  .logo { font-size:14px; }
+  .header-btn { width:28px; height:28px; font-size:12px; }
+  .drop-text { font-size:13px; }
+  .drop-sub { font-size:10px; }
+  .drop-zone svg { width:32px; height:32px; }
+  .drop-zone { margin:8px; border-radius:12px; }
+}
+/* Landscape phones — reduce video height to fit controls */
+@media (max-width:899px) and (max-height:500px) {
+  .panel-video-col .video-container { min-height:35vh; }
+  .ad-slot-header, .ad-slot-footer { display:none; }
+  .app-layout { height:calc(100vh - var(--header-height)); overflow-y:auto; }
+  .controls-bar { padding:4px 8px; }
+  .ctrl-btn { width:36px; height:36px; font-size:14px; }
+  .swing-rating-overlay { top:4px; right:4px; padding:4px 8px; }
+  .swing-rating-score { font-size:18px; }
+}
+/* Ultra-narrow phones */
+@media (max-width:350px) {
+  .logo { font-size:12px; }
+  .header-btn { width:26px; height:26px; font-size:11px; }
+  .video-slot-tab { font-size:11px; padding:5px 2px; }
+  .ctrl-btn { width:38px; height:38px; }
+  .drawing-toolbar { max-width:30px; right:2px; }
+  .panel-draw-btn, .panel-clear-btn { padding:4px 8px; font-size:11px; }
 }
 </style>
 </head>
@@ -508,8 +542,10 @@ header { height: var(--header-height); background: var(--bg-secondary); border-b
   <div class="logo">Free<span>GolfSwingAnalyzer</span>.com</div>
   <div class="header-tagline">No Login · No Upload · Totally Free Golf Swing Analyzer</div>
   <div class="header-spacer"></div>
-  <button class="header-btn" id="feedbackBtn" title="Send Feedback">✉</button>
-  <button class="header-btn" id="helpBtn" title="Help (?)">?</button>
+  <div class="header-actions">
+    <button class="header-btn" id="feedbackBtn" title="Send Feedback">✉</button>
+    <button class="header-btn" id="helpBtn" title="Help (?)">?</button>
+  </div>
 </header>
 <div class="copy-toast" id="copyToast"></div>
 
@@ -517,7 +553,7 @@ header { height: var(--header-height); background: var(--bg-secondary); border-b
 <div class="ad-slot ad-slot-header" id="adTop">
   <div class="ad-slot-wrapper">
     <ins class="adsbygoogle"
-         style="display:inline-block;width:728px;height:90px"
+         style="display:inline-block;width:728px;max-width:100%;height:90px"
          data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
          data-ad-slot="XXXXXXXXXX"></ins>
     <div class="ad-placeholder" id="adTopPlaceholder">Ad — 728×90 Leaderboard</div>
@@ -805,7 +841,7 @@ header { height: var(--header-height); background: var(--bg-secondary); border-b
     <div class="ad-slot ad-slot-sidebar" id="adSidebar">
       <div class="ad-slot-wrapper">
         <ins class="adsbygoogle"
-             style="display:inline-block;width:300px;height:250px"
+             style="display:inline-block;width:300px;max-width:100%;height:250px"
              data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
              data-ad-slot="XXXXXXXXXX"></ins>
         <div class="ad-placeholder" id="adSidebarPlaceholder">Ad — 300×250 Rectangle</div>
@@ -818,12 +854,19 @@ header { height: var(--header-height); background: var(--bg-secondary); border-b
 <div class="ad-slot ad-slot-footer" id="adBottom">
   <div class="ad-slot-wrapper">
     <ins class="adsbygoogle"
-         style="display:inline-block;width:728px;height:90px"
+         style="display:inline-block;width:728px;max-width:100%;height:90px"
          data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
          data-ad-slot="XXXXXXXXXX"></ins>
     <div class="ad-placeholder" id="adBottomPlaceholder">Ad — 728×90 Leaderboard</div>
   </div>
 </div>
+
+<!-- Site Footer -->
+<footer style="display:flex;justify-content:center;align-items:center;gap:16px;padding:8px 16px;background:var(--bg-secondary);border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);">
+  <span>&copy; 2026 FreeGolfSwingAnalyzer.com</span>
+  <a href="#" onclick="openLegal('privacy');return false" style="color:var(--text-muted);text-decoration:none;">Privacy</a>
+  <a href="#" onclick="openLegal('terms');return false" style="color:var(--text-muted);text-decoration:none;">Terms</a>
+</footer>
 
 <!-- Help Overlay -->
 <div class="help-overlay" id="helpOverlay">
