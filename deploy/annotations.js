@@ -1,4 +1,5 @@
 import { DrawingHistory, clone, isDrawingVisible, toVideoPoint, hitShape, movePoints, paintShape, angleDegrees } from './drawing.js';
+import { frameStamp } from './timing.js';
 
 const tools = [
   ['view','View','<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'],
@@ -177,13 +178,13 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     const hint=!s.ready?'Add a video, then choose a drawing tool. No analysis needed.':busy?'Drawing is paused while analysis runs.':!visible?'Drawings are hidden. Show them again to edit.':hints[tool];
     if($('drawingHint').textContent!==hint) $('drawingHint').textContent=hint;
     const times=[...new Set(history.items.filter(s=>s.scope==='frame').map(s=>s.time))].sort((a,b)=>a-b);
-    const frames=$('drawingFrames'), signature=`${active}:${busy}:${times.join(',')}`;
+    const frames=$('drawingFrames'), signature=`${active}:${busy}:${s.fps}:${s.shotFps}:${times.join(',')}`;
     if(frames.dataset.signature!==signature){
       frames.dataset.signature=signature; frames.replaceChildren();
       if(times.length){
         const select=document.createElement('select');select.setAttribute('aria-label','Go to an annotated frame');select.disabled=busy;
         select.add(new Option('Choose a frame',''));
-        times.forEach(time=>select.add(new Option(`${time.toFixed(2)} s`,String(time))));
+        times.forEach(time=>select.add(new Option(frameStamp(time,s),String(time))));
         select.onchange=()=>{if(select.value!==''){cancelDraft();seekActive(Number(select.value));select.value='';}};
         frames.append(select);
       }
@@ -209,7 +210,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
       indices.forEach((i,column)=>{
         const s=slots[i],left=column*(cellWidth+gap);
         const view=s.viewport.geometry(),w=view.image.width,h=view.image.height;
-        ctx.fillStyle='#d6ee9c';ctx.font='600 22px sans-serif';ctx.fillText(`Swing ${i?'B':'A'}  ·  ${s.video.currentTime.toFixed(2)} s  ·  ${view.zoom.toFixed(2)}×`,left+22,40);
+        ctx.fillStyle='#d6ee9c';ctx.font='600 22px sans-serif';ctx.fillText(`Swing ${i?'B':'A'}  ·  ${frameStamp(s.video.currentTime,s)}  ·  ${view.zoom.toFixed(2)}×`,left+22,40);
         // Export the same cropped viewport the user is inspecting. Clip before
         // scaling so enlarged video and drawings cannot cover the other panel.
         const scale=Math.min(cellWidth/view.stage.width,imageHeight/view.stage.height);
@@ -232,6 +233,20 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
   }
   return {
     render,
+    capture(i,width=960,height=720) {
+      const s=slots[i],view=s.viewport.geometry(),w=view.image.width,h=view.image.height;
+      const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+      const ctx=canvas.getContext('2d');ctx.fillStyle='#17251f';ctx.fillRect(0,0,width,height);
+      const scale=Math.min(width/view.stage.width,height/view.stage.height);
+      const sw=view.stage.width*scale,sh=view.stage.height*scale,x=(width-sw)/2,y=(height-sh)/2;
+      ctx.save();ctx.beginPath();ctx.rect(x,y,sw,sh);ctx.clip();
+      ctx.translate(x+sw/2+view.offset.x*scale,y+sh/2+view.offset.y*scale);
+      ctx.scale(scale*view.zoom,scale*view.zoom);ctx.translate(-w/2,-h/2);
+      ctx.save();if(mirrored(i)){ctx.translate(w,0);ctx.scale(-1,1);}
+      ctx.drawImage(s.video,0,0,w,h);ctx.drawImage(s.canvas,0,0,w,h);ctx.restore();
+      for(const shape of displayed(i)) paintShape(ctx,shape,w,h,mirrored(i));
+      ctx.restore();return canvas;
+    },
     isViewing: () => tool === 'view' || !visible,
     view: () => setTool('view'),
     reset(i){histories[i].reset();if(selection?.slot===i)selection=null;draft=null;gesture=null;render();},

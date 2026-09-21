@@ -37,8 +37,9 @@ for(const [width,height] of [[1440,900],[1280,720],[2560,1440],[390,844],[320,56
     for(const controls of await page.locator('.zoom-controls').all()) {
       const size=await controls.evaluate(e=>({w:e.clientWidth,sw:e.scrollWidth}));expect(size.sw).toBeLessThanOrEqual(size.w+1);
     }
+    await page.screenshot({path:`/tmp/sidebar-screen-${width}.png`});
     const stage=await page.locator('.stage').first().boundingBox();expect(stage.height).toBeGreaterThan(height<500?50:100);
-    await page.screenshot({path:`/tmp/sidebar-screen-${width}.png`});expect(errors).toEqual([]);
+    expect(errors).toEqual([]);
   });
 }
 test('desktop scroll snapping and persistent sections preserve playback and zoom',async({page})=>{

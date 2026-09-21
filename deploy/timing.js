@@ -5,6 +5,18 @@ import { clamp, frameTime, syncBounds } from './analysis.js';
 export function mediaRate(fileFps, shotFps = fileFps) {
   return shotFps / fileFps;
 }
+export const clipRate = clip => mediaRate(clip.fps, clip.shotFps ?? clip.fps);
+export const realTime = (time, clip) => time / clipRate(clip);
+export const fileTime = (time, clip) => time * clipRate(clip);
+export const frameNumber = (time, fps, duration = Infinity) => Math.min(lastFrame(duration,fps), Math.max(0, Math.floor(time * fps + 0.00001)));
+export const seconds = time => Number.isFinite(time) ? time.toFixed(3) : '—';
+export function frameStamp(time, clip) {
+  return `${seconds(realTime(time, clip))} s · F${frameNumber(time, clip.fps, clip.video?.duration)}`;
+}
+export function lastFrame(duration, fps) { return Number.isNaN(duration) ? 0 : Math.max(0, Math.ceil(duration * fps - 0.00001) - 1); }
+export function markedFrame(time, clip) {
+  return Math.min(frameNumber(time, clip.fps), lastFrame(clip.video.duration, clip.fps)) / clip.fps;
+}
 
 // The shared clock uses real seconds relative to A's start. B's origin is
 // offset on that clock; file playheads, analysis ranges and drawings stay in

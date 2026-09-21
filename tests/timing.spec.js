@@ -1,5 +1,4 @@
 import {test, expect} from '@playwright/test';
-import fs from 'node:fs/promises';
 const card = (page, i) => page.locator(`[data-slot="${i}"]`);
 const state = page => page.locator('video').evaluateAll(vs => vs.map(v => ({time:v.currentTime, rate:v.playbackRate, paused:v.paused})));
 async function setup(page, second = 'timing-60.mp4') {
@@ -40,18 +39,18 @@ test('30/60 FPS files use equal elapsed time and shared steps ignore selected-vi
 test('120 FPS footage saved at 30 FPS stays aligned through playback, seek, step, speed and restart', async ({page}) => {
   await setup(page,'timing-slow.mp4');
   await card(page,1).locator('.shot-fps').selectOption('120');
-  await align(page,.3,2);
+  await align(page,.3,.5);
   await page.locator('#next').click();
   let s = await state(page); expect(s[0].time).toBeCloseTo(.3+1/30,4); expect(s[1].time).toBeCloseTo(2+4/30,4);
   expect(s.map(v=>v.rate)).toEqual([1,4]);
-  await page.locator('#timeline').fill('3');
+  await page.locator('#timeline').fill('0.75');
   s = await state(page); expect(s.map(v=>v.time)).toEqual([.55,3]);
   await page.locator('#speed').selectOption('0.5'); expect((await state(page)).map(v=>v.rate)).toEqual([.5,2]);
   await page.locator('#play').click(); await page.waitForTimeout(350);
   s = await state(page); expect(s.every(v=>!v.paused)).toBe(true); expect(Math.abs(s[1].time/4-s[0].time-.2)).toBeLessThan(.07);
   await page.locator('#play').click(); await page.locator('#restart').click();
   s = await state(page); expect(s[0].time).toBe(0); expect(s[1].time).toBeCloseTo(.8,4);
-  await page.locator('#timeline').fill('7.9'); await page.locator('#play').click();
+  await page.locator('#timeline').fill('1.975'); await page.locator('#play').click();
   await expect.poll(async()=> (await state(page)).every(v=>v.paused)).toBe(true);
 });
 
@@ -64,11 +63,10 @@ test('retiming retains aligned file frames and moment marks, corrects tempo dura
   await card(page,1).locator('.shot-fps').selectOption('120');
   await page.locator('#next').click();
   let s=await state(page);expect(s[0].time).toBeCloseTo(.5+1/30,4);expect(s[1].time).toBeCloseTo(2+4/30,4);
-  await expect(page.locator('#phase-impact')).toHaveText('2.00 s');
+  await expect(page.locator('#phase-impact')).toHaveText('0.500 s');
   await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
-  await expect(page.locator('#tempoNote')).toHaveText('0.38 s backswing / 0.13 s downswing. Real time from your marks.');
-  const download=page.waitForEvent('download');await page.locator('#export').click();
-  const data=JSON.parse(await fs.readFile(await (await download).path(),'utf8'));
+  await expect(page.locator('#tempoNote')).toHaveText('0.375 s backswing / 0.125 s downswing. Real time from your marks.');
+  const data=await page.evaluate(async()=> (await import('/app.js')).reportData());
   expect(data.frameRate).toBe(30);expect(data.recordingFrameRate).toBe(120);expect(data.mediaSecondsPerRealSecond).toBe(4);expect(data.marks.impact).toBe(2);
   await page.locator('#independent').click();await card(page,0).locator('.clip-play').click();
   await card(page,1).locator('.fps').selectOption('60');

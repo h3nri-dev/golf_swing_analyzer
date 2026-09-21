@@ -12,7 +12,7 @@ test('single mode loads local video, steps, marks tempo and exports', async ({ p
   await (await transport(page,'next')).click(); expect((await times(page))[0]).toBeCloseTo(1/30,3);
   await (await settings(page,0,'.fps')).selectOption('60'); await seek(page,0); await (await transport(page,'next')).click(); expect((await times(page))[0]).toBeCloseTo(1/60,3);
   await seek(page,.2); await focusSection(page,'moments');await page.locator('#mark-address').click(); await seek(page,1.1); await page.locator('#mark-top').click(); await seek(page,1.4); await page.locator('#mark-impact').click(); await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
-  const download = page.waitForEvent('download'); await focusSection(page,'moments');await page.locator('#export').click(); expect((await download).suggestedFilename()).toBe('swing-a-analysis.json');
+  const download = page.waitForEvent('download'); await focusSection(page,'moments');await page.locator('#export').click(); expect((await download).suggestedFilename()).toBe('swing-a-report.pdf');
   await page.screenshot({path:'/tmp/swing-single.png',fullPage:true});
   await clip(page,0).locator('.remove').click();await discardIfAsked(page); await expect((await transport(page,'play'))).toBeDisabled(); expect(errors).toEqual([]);
 });
@@ -55,11 +55,16 @@ test('real MediaPipe model detects a pose locally',async({page})=>{
   await expect(page.locator('#coverage')).not.toContainText('—');
   await expect(page.locator('#elbow')).not.toContainText('—');
   expect(requests.filter(r=>r.method!=='GET')).toEqual([]);
-  const download = page.waitForEvent('download'); await focusSection(page,'moments');await page.locator('#export').click();
-  const data = JSON.parse(await fs.readFile(await (await download).path(), 'utf8'));
+  const data = await page.evaluate(async()=> (await import('/app.js')).reportData());
   expect(data.analyzedRange).toEqual([0.1, 0.4]);
   expect(data.measurements.length).toBeGreaterThan(0);
   expect(data.measurements.every(sample => sample.time >= 0.1 && sample.time < 0.4)).toBe(true);
+  await page.locator('#mark-impact').click();
+  const download=page.waitForEvent('download');await page.locator('#export').click();
+  const result=await download;await result.saveAs('/tmp/swing-pose-report.pdf');
+  const pdf=(await fs.readFile(await result.path())).toString('latin1');
+  expect(pdf).toContain('pose coverage');expect(pdf).toContain('0.100 - 0.400 s');
+  await expect(page.locator('#reportDialog')).toBeHidden();
   await page.screenshot({path:'/tmp/swing-analysis.png',fullPage:true});
 });
 test('negative sync offsets respect overlap with unequal clip lengths',async({page})=>{

@@ -14,7 +14,7 @@ npm run deploy            # existing Cloudflare Pages project; requires wrangler
 
 Node dependencies are development tools only. Production is **just the `deploy/` directory**: HTML, CSS, ES modules and local fonts. No Node server, API, database, account, build step or secret is required. Serve this folder using any static HTTPS host. Opening `index.html` through `file://` is unsupported because of ES-module restrictions.
 
-Browser tests use installed Google Chrome for MP4 support. Set `PLAYWRIGHT_CHANNEL` to another installed supported browser channel if needed. For optional real inference verification, set `POSE_FIXTURE=/absolute/path/to/video.mp4` before `npm run test:browser`; the clip should show a clearly visible person for at least 0.3 seconds. This test downloads the actual model, verifies nonempty measurements, and asserts that no POST/upload requests occur. The checked-in fixtures are generated color-bar videos, not user footage.
+Browser tests use installed Google Chrome for MP4 support. Set `PLAYWRIGHT_CHANNEL` to another installed supported browser channel if needed. For optional real inference verification, set `POSE_FIXTURE=/absolute/path/to/video.mp4` before `npm run test:browser`; the clip should show a clearly visible person for at least 0.3 seconds. This test downloads the actual model, verifies nonempty measurements, and asserts that no POST/upload requests occur. The checked-in fixtures are synthetic videos, not user footage. PDF tests also verify local generation, frame restoration, cancellation and retry.
 
 ## UX design
 
@@ -29,7 +29,7 @@ See [UX_REVIEW.md](UX_REVIEW.md) for the task review, research sources, observed
 - **Sync on/off:** turning sync off preserves current playback and zoom. Turning it on pauses and aligns both at the selected clip’s position within the shared range, preserves the alignment offset, and uses the selected clip’s speed; press Play both to resume. With sync off, marking, replacing or reaching the end of one clip leaves the other playing.
 - Select a clip using its A/B badge or its card. The selection chooses the drawing, analysis and moment-marker target; the bottom playback controller still acts on both videos.
 - Each player has **File FPS** and **Shot FPS** beside its playback controls. Use **Video** for mirror, Pan or Fit. Speed lives beside the appropriate playback controls. Arrow keys step and Space toggles playback when focus is outside interactive controls.
-- Use **Moments** to mark address, top, impact and finish manually. Ordered address/top/impact marks produce the backswing-to-downswing tempo ratio. Export saves the selected clip's marks and sampled measurements as JSON. Refresh clears the session.
+- **Moments beside Play A / Play B:** choose a saved moment to jump straight to its frame, choose an unmarked phase to add it, or choose **Add / edit moments**. The nearby editor lets you enter an exact frame number, use **Set here**, or delete a mark. The first frame is 0. On narrow phones the menu uses a flag icon. Single mode puts the same menu beside its Play button. Individual marker actions affect their own clip and release sync. The expanded sidebar still offers address, top, impact and finish shortcuts. Ordered marks produce the backswing-to-downswing tempo ratio.
 - Video decoding depends on the browser and codec. H.264 MP4 and WebM are recommended. A MOV extension alone does not guarantee support.
 
 ## Frame rates and slow-motion comparison
@@ -44,7 +44,7 @@ Set **File FPS** to each file's encoded frame rate. It defaults to 30; it is not
 
 Position both clips at a shared event and choose **Sync Videos**. Linked playback and seeking preserve that event's offset on a common real-time clock. Shared frame steps use the lower recording rate: with ordinary 30/60 FPS clips, one step spans one frame of A and two of B. Selecting a different clip does not change this interval. Independent controls still step one file frame at a time and release sync. All speed selectors apply to real time after the FPS settings, so choosing 0.25× slows both calibrated clips equally.
 
-Changing timing preserves moment marks, drawings and analysis timestamps; the stored alignment frames are used to recalculate the common offset. Timeline labels, ranges and exported timestamps remain **file seconds**. The tempo ratio is unchanged by a constant slow-motion factor, while displayed backswing/downswing durations use real seconds. JSON also records the selected file/recording rates and their conversion factor. Replacing a clip resets only that clip's timing settings.
+Changing timing preserves the actual moment frames, drawings and analyzed samples; the stored alignment frames recalculate the common offset. **Clocks, slider values, range inputs, moment labels, tempo durations and PDF timestamps use real elapsed seconds**, with three decimal places. Video labels also show the frame number (`F60` means frame 60, counting from 0). A 120 FPS recording saved at 30 FPS therefore shows frame 60 at 0.500 real seconds. Marks snap to a file frame. Internal media coordinates remain in file seconds so retiming does not move saved work. Replacing a clip resets only that clip's timing settings.
 
 The rate correction assumes a constant slow-motion factor. Keep Shot FPS at Same if an export already plays at real speed, even if the camera originally recorded at a higher rate. Variable-speed edits need to be exported as a constant-speed section first. Variable-frame-rate files and browser seeking do not guarantee exact encoded-frame access; stepping is time-based at the selected rates.
 
@@ -52,17 +52,17 @@ Timing follows the distinction between file and capture rates described in [Kino
 
 ## Selecting an analysis range
 
-The expanded **Range** section is in the right sidebar, alongside Draw, Video, Results and Moments. On narrow screens these sections stack below the players. Drag the two handles to highlight any section of up to **20 seconds**, or enter exact start/end times in seconds. Dragging a handle previews that boundary; keyboard arrow keys adjust a focused handle. You can also pause or step to a moment and choose **Set here** for Start or End. **Go** beside Start or End revisits either boundary without changing your selection. The playhead remains visible on the range bar.
+The expanded **Range** section is in the right sidebar, alongside Draw, Video, Results and Moments. On narrow screens these sections stack below the players. Drag the two handles to highlight any section of up to **20 real seconds**, or enter exact start/end times in real seconds. Dragging a handle previews that boundary; keyboard arrow keys adjust a focused handle. You can also pause or step to a moment and choose **Set here** for Start or End. **Go** beside Start or End revisits either boundary without changing your selection. The playhead remains visible on the range bar.
 
 Each comparison clip keeps its own selection, even with synchronized playback. Range previews can inspect the selected clip outside the pair's shared playback interval; normal synchronized playback still uses the shared interval. **Use full clip** selects a short clip in full; on longer videos, **First 20 seconds** restores the initial selection. Empty, reversed, out-of-bounds or overlong ranges show an inline explanation and disable analysis until corrected.
 
-Changing the range preserves earlier results and marks, with a reminder to analyze again. JSON exports include `selectedRange` and `analyzedRange` separately; `range` describes the exported measurements' analyzed interval when results exist. Cancelling an analysis preserves previous results and their original interval. Analysis restores the playhead and retains zoom and drawings.
+Changing the range preserves earlier results and marks, with a reminder to analyze again. PDF reports identify the selected and analyzed intervals separately, so earlier results are not mistaken for a newly selected range. Cancelling an analysis preserves previous results and their original interval. Analysis restores the playhead and retains zoom and drawings. The 240-sample processing cap also applies to slow-motion footage.
 
 ## Analysis and privacy
 
 The app lazy-loads pinned MediaPipe Tasks Vision 0.10.21 and the Pose Landmarker Lite model. Code/WASM comes from jsDelivr and model weights come from Google's public storage; **video pixels stay in browser memory**. A network connection is required for uncached model assets. Regular video review works without the model. Fonts are served locally; the application has no analytics code, cookie storage, or video upload endpoint. The existing Cloudflare Pages host injects its own web analytics beacon for page visits and performance data, disclosed in the privacy dialog. It receives no video content or swing measurements.
 
-Each run uses a fresh CPU model, scans at up to 30 samples/second with a maximum of 240 samples, and downscales inference images to a 640-pixel longest edge. Analysis yields between samples, supports cancellation (including stalled model initialization), times out stalled downloads/seeks, and preserves prior results when cancelled. Object URLs are revoked when clips are replaced or removed.
+Each run uses a fresh CPU model, scans at up to 30 samples per file second with a maximum of 240 samples, and downscales inference images to a 640-pixel longest edge. Model timestamps are calibrated to real elapsed time. Analysis yields between samples, supports cancellation (including stalled model initialization), times out stalled downloads/seeks, and preserves prior results when cancelled. Object URLs are revoked when clips are replaced or removed.
 
 Measurements require landmark visibility of at least 0.65. Pixel-space geometry corrects for aspect ratio. A three-sample median suppresses isolated jitter without inventing landmarks in missing frames. The overlay chooses only nearby samples and does not bridge missing hand-path observations. Pose coverage is the fraction of sampled frames with visible shoulders and hips, not a quality score.
 
@@ -78,12 +78,25 @@ References: [MediaPipe web guide](https://ai.google.dev/edge/mediapipe/solutions
 - `deploy/ux.js`, `deploy/ux.css` — task help, session-work confirmation and interaction refinements.
 - `deploy/app.js` — file lifecycle, playback, synchronized seeking, overlays, lazy inference and exports.
 - `deploy/analysis.js` — pure geometry, confidence filtering, smoothing, timing helpers.
-- `deploy/timing.js` — recording/file FPS conversion, shared real-time clock, frame stepping and overlapping playback limits.
+- `deploy/timing.js` — recording/file FPS conversion, clocks, frame numbering, stepping and overlapping playback limits.
+- `deploy/moments.js` — per-player moment menus and frame editor.
+- `deploy/report.js`, `deploy/vendor/` — local PDF report layout and pinned jsPDF browser library.
 - `deploy/range.js` — range selection, boundary previews and validation.
 - `deploy/fonts/` — locally hosted DM Sans and Manrope, with their OFL licenses.
 - `tests/` — unit and browser tests plus generated fixtures.
 
 Cloudflare Pages deploys the static directory to `freegolfswinganalyzer`, branch `main`. The existing custom domain is retained. No Cloudflare Functions or Workers run for analysis.
+
+## Saving a PDF report
+
+Choose **Save PDF report** in the expanded Moments section. Single mode creates a two-page report; comparison creates a three-page report containing both loaded clips. No analysis or marker is required to export.
+
+- The overview includes the current annotated frame(s), filenames, File FPS / Shot FPS, real elapsed time, frame numbers, zoom, mirroring, current pose measurements, selected/analyzed ranges and tempo.
+- Each swing gets a page with address, top, impact and finish images, a table of measurements at those marked frames, pose coverage and calibrated backswing/downswing durations. Missing marks or low-confidence measurements are clearly shown as unavailable.
+- The report includes the visible drawing and pose settings. Export pauses playback, captures decoded frames, then restores the original playheads and views. You can cancel; a failed export leaves the studio usable and can be retried.
+- PDF generation uses the locally hosted, pinned jsPDF 4.2.1 browser build. No video, frame, filename or report content is uploaded. The app downloads a PDF directly, with searchable report text and browser-rendered filenames for non-Latin characters. It does not require a print dialog or a backend.
+
+A PDF is a readable review, not an editable session backup. Reloading the site still clears the session. See [jsPDF's official documentation](https://github.com/parallax/jsPDF) for the underlying PDF library.
 
 ## Drawing and comparison
 
@@ -96,7 +109,7 @@ The expanded **Draw** section contains color, stroke, visibility duration, copy,
 - **Copy visible to A/B** copies the current visible drawings to the other clip. If a drawing is selected, only that drawing is copied. Positions are relative to the image, so different camera views may need manual adjustment with Select. A frame-scoped copy belongs to the destination's current time.
 - Each video has its own undo/redo history (50 edits). Clear, delete, copy and style changes can all be undone. Use Ctrl/⌘ Z, Ctrl/⌘ Shift Z, Delete, or Escape (cancel the current drawing / return to View).
 - **Hide drawings** temporarily hides only manual annotations. Pose overlays remain independently controllable. **View** allows regular viewing; playing a video exits the drawing tool.
-- **Save image / Save comparison** downloads the currently displayed frame(s), visible drawings and pose overlays as a PNG. This is a still image, not an annotated video recording. JSON analysis exports now include editable drawing geometry and measured angles, but importing a saved session is not implemented. Refreshing or replacing a clip clears its drawings.
+- **Save image / Save comparison** downloads the currently displayed frame(s), visible drawings and pose overlays as a PNG. This is a still image, not an annotated video recording. The PDF report also includes annotated frames and moment measurements. Importing a saved session is not implemented. Refreshing or replacing a clip clears its drawings.
 
 Annotations are vector data in normalized, unmirrored video coordinates. Pointer events handle mouse, touch and pen input. The drawing layer fits the actual video image, supports high-DPI screens, and remains aligned through resizing, portrait/landscape media and mirroring. Text on angle labels remains readable when mirrored. Export composes local frames and overlays in the browser; nothing is uploaded.
 
@@ -114,7 +127,7 @@ Each video has its own **− / +** buttons and compact **Zoom** slider, from **1
 
 When zoomed and using **View**, drag the video to pan. **Pan** returns from a drawing tool to view movement without pausing the video; press it again to disable dragging. Pinch with two fingers while Pan is active, or use Ctrl/⌘ + scroll over the video to zoom around the pointer. Ordinary scrolling moves between the page's snap sections; Ctrl/⌘ + scroll remains dedicated to video zoom. **Fit** restores 1× and centers that clip. Loading a replacement clip resets only its own view.
 
-The video, pose overlay, and manual drawings share one transformed image plane, so drawing and editing work at any magnification. Exported PNGs show the current zoomed crop (including pan and mirroring); JSON exports include the normalized view center and zoom. This is display magnification, not an increase in the source video's resolution. Session views are not retained after a page reload.
+The video, pose overlay, and manual drawings share one transformed image plane, so drawing and editing work at any magnification. Exported PNGs show the current zoomed crop (including pan and mirroring); PDF reports include the zoomed view and state its magnification. This is display magnification, not an increase in the source video's resolution. Session views are not retained after a page reload.
 
 `deploy/viewport.js` contains bounded view geometry, controls, and mouse/touch interactions. Tests verify playback persistence, independent comparison views, pointer-anchored zoom, pan bounds, frame stepping, resizing, mirror/drawing alignment, touch gestures, and image export.
 

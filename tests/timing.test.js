@@ -1,8 +1,22 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mediaRate, synchronization} from '../deploy/timing.js';
+import {mediaRate, synchronization, realTime, fileTime, frameNumber, frameStamp, markedFrame, lastFrame} from '../deploy/timing.js';
+import {analysisRangeError} from '../deploy/range.js';
 const clip = (fps, duration = 4, shotFps = fps) => ({fps, duration, shotFps});
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-8, `${actual} ≈ ${expected}`);
+
+test('displayed seconds, frame labels and marker positions use file and recording FPS',()=>{
+  const slow={fps:30,shotFps:120,video:{duration:8}};
+  assert.equal(realTime(2,slow),.5);assert.equal(fileTime(.5,slow),2);
+  assert.equal(frameStamp(2,slow),'0.500 s · F60');
+  assert.equal(frameStamp(1/30,slow),'0.008 s · F1');
+  assert.equal(frameStamp(8,slow),'2.000 s · F239');
+  assert.equal(markedFrame(2.02,slow),2);assert.equal(lastFrame(8,30),239);
+  near(markedFrame(8,slow),239/30);
+  assert.equal(frameNumber(100/29.97,29.97),100);
+  assert.equal(analysisRangeError(0,80,100,4),'');
+  assert.match(analysisRangeError(0,81,100,4),/20 seconds/);
+});
 
 test('ordinary different-FPS files keep the same real-time playback speed', () => {
   assert.equal(mediaRate(30), 1); assert.equal(mediaRate(60), 1);

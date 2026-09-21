@@ -68,7 +68,7 @@ test('selected clip and interval are explicit and completed analysis has a resul
   await page.route('https://cdn.jsdelivr.net/**/vision_bundle.mjs',r=>r.fulfill({contentType:'application/javascript',headers:{'access-control-allow-origin':'*'},body:'export const FilesetResolver={forVisionTasks:async()=>({})};export const PoseLandmarker={createFromOptions:async()=>({close(){},detectForVideo(){return {landmarks:[]}}})};'}));
   await page.goto('/');await page.locator('#compareMode').click();await load(page,0);await load(page,1);
   await focusSection(page,'range');await page.locator('#rangeStart').fill('1');await page.locator('#rangeEnd').fill('1.2');
-  await expect(page.locator('#reviewContext')).toHaveText('Swing B · 1.00–1.20 s');await expect(page.locator('#analyze')).toHaveText('Analyze B');
+  await expect(page.locator('#reviewContext')).toHaveText('Swing B · 1.000–1.200 s');await expect(page.locator('#analyze')).toHaveText('Analyze B');
   await page.locator('#analyze').click();await expect(page.locator('#status')).toContainText('No clear pose found');
   await expect(page.locator('#viewResults')).toBeVisible();await page.locator('#viewResults').click();
   await expect(page.locator('#panel-pose')).toBeFocused();await expect(page.locator('#resultsEmpty')).toBeHidden();

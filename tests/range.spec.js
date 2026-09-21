@@ -1,15 +1,11 @@
 import {focusSection, settings, discardIfAsked, transport} from './ui.js';
 import { test, expect } from '@playwright/test';
-import fs from 'node:fs/promises';
 const clip = (page, i) => page.locator(`[data-slot="${i}"]`);
 async function load(page, i) {
   await clip(page, i).locator('input[type=file]').setInputFiles(new URL('./fixtures/portrait.mp4', import.meta.url).pathname);
   await discardIfAsked(page);await expect(clip(page, i).locator('video')).toBeVisible();await focusSection(page,'range');
 }
-async function exported(page) {
-  const download = page.waitForEvent('download'); await focusSection(page,'moments');await page.locator('#export').click();
-  return JSON.parse(await fs.readFile(await (await download).path(), 'utf8'));
-}
+async function reportModel(page) { return page.evaluate(async()=> (await import('/app.js')).reportData()); }
 async function modelStub(page) {
   await page.route('https://cdn.jsdelivr.net/**/vision_bundle.mjs', route => route.fulfill({
     contentType: 'application/javascript', headers: {'access-control-allow-origin': '*'},
@@ -64,13 +60,13 @@ test('analysis scans only the selected interval and exports the result range aft
   const times = await page.evaluate(() => window.scannedTimes);
   expect(times.length).toBeGreaterThan(0); expect(times.every(t => t >= 1 && t < 1.3)).toBe(true);
   expect(await clip(page, 0).locator('video').evaluate(v => v.currentTime)).toBeCloseTo(2.5, 3);
-  let data = await exported(page); expect(data.analyzedRange).toEqual([1,1.3]);
+  let data = await reportModel(page); expect(data.analyzedRange).toEqual([1,1.3]);
   await focusSection(page,'range');await page.locator('#rangeEnd').fill('3'); await expect(page.locator('#analyzedRangeNote')).toContainText('Analyze again');
-  data = await exported(page); expect(data.range).toEqual([1,1.3]); expect(data.selectedRange).toEqual([1,3]);
+  data = await reportModel(page); expect(data.range).toEqual([1,1.3]); expect(data.selectedRange).toEqual([1,3]);
   await page.locator('#analyze').click(); await expect(page.locator('#rangeStart')).toBeDisabled();
   await expect(page.locator('#status')).toBeVisible();
   await page.locator('#cancel').click(); await expect(page.locator('#status')).toContainText('Analysis cancelled');
-  data = await exported(page); expect(data.analyzedRange).toEqual([1,1.3]); expect(data.measurements.length).toBe(times.length);
+  data = await reportModel(page); expect(data.analyzedRange).toEqual([1,1.3]); expect(data.measurements.length).toBe(times.length);
 });
 
 test('range handles support touch and keyboard on a phone without overflow', async ({browser}) => {
