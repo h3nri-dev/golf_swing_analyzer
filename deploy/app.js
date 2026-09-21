@@ -14,6 +14,9 @@ const frameRates = [23.976,24,25,29.97,30,50,59.94,60,100,120,240];
 const phases = [['address', 'Address'], ['top', 'Top of backswing'], ['impact', 'Impact'], ['finish', 'Finish']];
 const connections = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[27,29],[29,31],[28,30],[30,32]];
 let mode = 'single', active = 0, linked = true, offset = 0, aligned = false, job = null;
+// With sync off, the common controller owns its last group command. Local
+// controls release its live updates without changing the displayed state.
+const commonTransport = { following: false, clock: 0, time: 0, duration: 1, speed: '1', playing: false };
 const slots = names.map((name, index) => {
   const card = document.createElement('section');
   card.className = `video-card${index === 0 ? ' selected' : ''}`;
@@ -83,10 +86,27 @@ function configureTiming(index, fps, shotFps) {
   update();
 }
 function isLinked() { return mode === 'compare' && linked && slots.every(s => s.ready); }
+function isIndependent() { return mode === 'compare' && !linked; }
+function playerState(clock) {
+  const s = slots[clock], both = mode === 'compare';
+  return { clock, time: s.video.currentTime || 0, duration: s.ready ? s.video.duration : 0,
+    speed: both && slots[0].speed !== slots[1].speed ? 'mixed' : String(s.speed),
+    playing: both ? slots.some(slot => !slot.video.paused) : !s.video.paused };
+}
+function commonState() {
+  if (!isIndependent()) return playerState(active);
+  if (commonTransport.following) Object.assign(commonTransport, playerState(commonTransport.clock));
+  return commonTransport;
+}
+function releaseCommon() {
+  if (!isIndependent()) return;
+  commonState(); commonTransport.following = false;
+}
 function pauseSlots(targets) { targets.forEach(s => { s.playGeneration++; s.video.pause(); }); }
 function pauseAll() { pauseSlots(slots); }
-function pauseControlled(index = active) { pauseSlots(isLinked() ? slots : [slots[index]]); }
+function pauseControlled(index = active) { releaseCommon(); pauseSlots(isLinked() ? slots : [slots[index]]); }
 function setSpeed(speed, both = false) {
+  if (both && isIndependent()) commonTransport.following = true;
   (isLinked() || (both && mode === 'compare') ? slots : [slots[active]]).forEach(s => { s.speed = speed; applySpeed(s); });
   update();
 }
@@ -96,6 +116,7 @@ function setLinked(next) {
   // Unlink without interrupting playback; pending group play requests no longer own both clips.
   else slots.forEach(s => s.playGeneration++);
   linked = next;
+  if (!next) Object.assign(commonTransport, playerState(active), { following: false });
   if (isLinked()) { setSpeed(slots[active].speed); seekActive(slots[active].video.currentTime); }
   update();
 }
@@ -106,7 +127,7 @@ function controlClip(index, action) {
     setLinked(false);
     toast(`Sync off · controlling swing ${names[index]}. Use the bottom controller for both.`);
   }
-  selectSlot(index); action();
+  releaseCommon(); selectSlot(index); action();
 }
 function invalidateSync() { offset = 0; aligned = false; slots.forEach(s => s.anchor = null); }
 function hasSavedWork(s, index) { return !!(s.samples.length || Object.keys(s.marks).length || annotations?.count(index)); }
@@ -148,6 +169,7 @@ async function loadFile(index, file) {
     s.ready = true; s.video.hidden = false; s.drop.hidden = true;
     s.end = Math.min(MAX_ANALYSIS_SECONDS, s.video.duration);
     if (isLinked()) { s.speed = slots[1 - index].speed; applySpeed(s); }
+    if (isIndependent()) Object.assign(commonTransport, playerState(active), { following: false });
     s.status = s.video.duration > MAX_ANALYSIS_SECONDS ? 'Choose up to 20 seconds in Range, then analyze.' : 'Ready. Choose a section in Range, or analyze the full clip.';
     s.video.onerror = () => { if (s.ready) { pauseControlled(index); s.status = 'Video decoding failed. Replace this clip with an H.264 MP4.'; s.ready = false; update(); } };
     update(); studioScreen?.focus();
@@ -159,6 +181,7 @@ async function loadFile(index, file) {
 function setMode(next) {
   if (job) return;
   slots.forEach(s => s.viewport?.cancelGesture()); annotations?.interrupt(); pauseAll(); mode = next; if (mode === 'single') active = 0;
+  if (isIndependent()) Object.assign(commonTransport, playerState(active), { following: false });
   $('singleMode').setAttribute('aria-pressed', mode === 'single'); $('compareMode').setAttribute('aria-pressed', mode === 'compare');
   $('comparisonBar').hidden = $('analysisTarget').hidden = mode !== 'compare';
   $('videoGrid').classList.toggle('compare', mode === 'compare');
@@ -171,7 +194,7 @@ function selectSlot(index) { if (job) return; if (active !== index) annotations?
 function updatePlayback() {
   if (!slots.length) return;
   const both = mode === 'compare';
-  const playing = both ? slots.some(s => !s.video.paused) : !slots[active].video.paused;
+  const playing = commonState().playing;
   const action = playing ? 'Pause' : 'Play', target = both ? 'both swings' : `swing ${names[active]}`;
   $('play').innerHTML = `<span aria-hidden="true">${playing ? 'Ⅱ' : '▶'}</span><span class="play-word">${action} ${both ? 'both' : names[active]}</span>`;
   $('play').setAttribute('aria-label', `${action} ${target}`);
@@ -216,13 +239,10 @@ function update() {
   $('cancel').hidden = !busy; $('progress').hidden = !busy;
   $('hand').value = s.hand;
   $('status').textContent = s.status; $('activeLabel').textContent = mode === 'compare' ? 'BOTH' : 'SWING A';
-  $('timeline').setAttribute('aria-label', mode === 'compare' ? `Both videos timeline, swing ${names[active]} clock` : 'Swing A timeline');
-  $('timeline').title = mode === 'compare' ? `Seek both by the same time change. Clock: swing ${names[active]}.` : 'Seek swing A';
   for (const [id, label] of [['previous','Previous frame'],['next','Next frame'],['restart','Restart'],['speed','Playback speed']]) $(id).setAttribute('aria-label', `${label} ${mode === 'compare' ? 'both swings' : 'swing A'}`);
   $('restart').innerHTML = '<span aria-hidden="true">↺</span><span class="restart-word"> Restart</span>';
-  $('speed').value = mode === 'compare' && slots[0].speed !== slots[1].speed ? 'mixed' : String(s.speed);
   $('linked').setAttribute('aria-pressed', linked); $('independent').setAttribute('aria-pressed', !linked);
-  $('syncHint').textContent = !linked ? 'Individual controls affect one video. Bottom controls affect both.' : aligned ? `Aligned · B offset ${offset >= 0 ? '+' : ''}${offset.toFixed(2)} real s` : 'Sync is locked. Individual controls turn sync off.';
+  $('syncHint').textContent = !linked ? 'Individual controls leave the common controller unchanged.' : aligned ? `Aligned · B offset ${offset >= 0 ? '+' : ''}${offset.toFixed(2)} real s` : 'Sync is locked. Individual controls turn sync off.';
   const model = isLinked() ? syncModel() : null;
   for (const id of ['previous','next']) $(id).title = model ? `Step both by ${(model.stepSeconds * 1000).toFixed(2)} ms of real time, using both frame rates` : `${id === 'next' ? 'Next' : 'Previous'} frame`;
   $('align').title = `Sync the displayed frames using each video's File FPS and Shot FPS. Use Sync off to position them first.`;
@@ -267,7 +287,9 @@ function seekRangeBoundary(time) {
 async function togglePlay(both = false) {
   if (job || !slots[active].ready || (both && mode === 'compare' && !slots.every(s => s.ready))) return;
   const targets = isLinked() || (both && mode === 'compare') ? slots : [slots[active]];
-  if (targets.some(s => !s.video.paused)) { pauseSlots(targets); return; }
+  const shouldPause = both && isIndependent() ? commonState().playing : targets.some(s => !s.video.paused);
+  if (both && isIndependent()) commonTransport.following = true;
+  if (shouldPause) { pauseSlots(targets); updatePlayback(); render(); return; }
   if (isLinked()) {
     const model = syncModel();
     if (!model) return toast('No shared playback range. Choose new sync frames.');
@@ -290,25 +312,28 @@ function step(direction) { const s = slots[active]; if (s.ready) seekActive(fram
 function seekBoth(time) {
   if (mode !== 'compare' || isLinked()) return seekActive(time);
   if (job || !Number.isFinite(time) || !slots.every(s => s.ready)) return;
-  const delta = time - slots[active].video.currentTime;
+  const delta = time - slots[commonTransport.clock].video.currentTime;
+  commonTransport.following = true;
   pauseAll();
   slots.forEach(s => { s.video.currentTime = clamp(s.video.currentTime + delta, 0, s.video.duration); });
-  render();
+  updatePlayback(); render();
 }
 function stepBoth(direction) {
   if (mode !== 'compare') return step(direction);
   if (job || !slots.every(s => s.ready)) return;
+  if (isIndependent()) commonTransport.following = true;
   pauseAll();
   if (isLinked()) {
     const targets = syncModel()?.step(slots.map(s => s.video.currentTime), direction);
     if (targets) slots.forEach((s, i) => s.video.currentTime = targets[i]);
   } else slots.forEach(s => { s.video.currentTime = frameTime(s.video.currentTime, direction, s.fps, 0, s.video.duration); });
-  render();
+  updatePlayback(); render();
 }
 function restartBoth() {
   if (mode !== 'compare' || isLinked()) return seekActive(0);
   if (job || !slots.every(s => s.ready)) return;
-  pauseAll(); slots.forEach(s => { s.video.currentTime = 0; }); render();
+  commonTransport.following = true;
+  pauseAll(); slots.forEach(s => { s.video.currentTime = 0; }); updatePlayback(); render();
 }
 function playerTime(time) {
   const value = Math.max(0, Number.isFinite(time) ? time : 0);
@@ -318,9 +343,13 @@ function render() {
   const s = slots[active];
   studioScreen?.update();
   slots.forEach(slot => slot.viewport?.apply());
-  $('timeline').max = s.ready ? s.video.duration : 1; $('timeline').value = s.video.currentTime || 0;
-  $('time').dataset.shortTime = `${mode === 'compare' ? names[active] + ' ' : ''}${playerTime(s.video.currentTime)} / ${playerTime(s.ready ? s.video.duration : 0)}`;
-  $('time').textContent = `${mode === 'compare' ? names[active] + ' ' : ''}${(s.video.currentTime || 0).toFixed(2)} / ${(s.ready ? s.video.duration : 0).toFixed(2)} s`;
+  const controller = commonState(), clockName = mode === 'compare' ? names[controller.clock] + ' ' : '';
+  $('timeline').max = controller.duration || 1; $('timeline').value = controller.time;
+  $('timeline').setAttribute('aria-label', mode === 'compare' ? `Both videos timeline, swing ${names[controller.clock]} clock` : 'Swing A timeline');
+  $('timeline').title = mode === 'compare' ? `Seek both by the same time change. Clock: swing ${names[controller.clock]}.` : 'Seek swing A';
+  $('speed').value = controller.speed;
+  $('time').dataset.shortTime = `${clockName}${playerTime(controller.time)} / ${playerTime(controller.duration)}`;
+  $('time').textContent = `${clockName}${controller.time.toFixed(2)} / ${controller.duration.toFixed(2)} s`;
   slots.forEach(slot => {
     slot.get('.clip-timeline').max = slot.ready ? slot.video.duration : 1;
     slot.get('.clip-timeline').value = slot.video.currentTime || 0;
