@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "python3 -m http.server 8080 --directory deploy",
-    "test": "node --test tests/analysis.test.js",
+    "test": "node --test tests/*.test.js",
     "test:browser": "playwright test",
     "deploy": "wrangler pages deploy deploy --project-name freegolfswinganalyzer --branch main"
   },

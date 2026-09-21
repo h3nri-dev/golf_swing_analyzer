@@ -9,6 +9,8 @@ This is a build-free, browser-only application. Keep production entirely static:
 - `deploy/index.html`, `styles.css`: semantic responsive interface.
 - `deploy/app.js`: two local video slots, single/compare modes, playback synchronization, lazy MediaPipe inference and export.
 - `deploy/analysis.js`: pure calculation helpers; unit-test changes here.
+- `deploy/drawing.js`, `deploy/annotations.js`: annotation geometry/history, pointer tools and PNG export. Keep coordinates normalized to the unmirrored video image, not the stage.
+- Keep main controls and explanatory text at 16px and secondary labels at least 14px. Check phone layouts when changing type or tools.
 - `tests/analysis.test.js`, `tests/studio.spec.js`: unit and Chrome browser tests.
 - `tests/fixtures/`: synthetic MP4s with different orientations and durations.
 - `README.md`: workflow, limitations, data privacy and deployment details.
