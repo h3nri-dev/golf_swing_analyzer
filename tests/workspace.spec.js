@@ -1,3 +1,4 @@
+import {settings} from './ui.js';
 import {test, expect} from '@playwright/test';
 const clip = (page, i) => page.locator(`[data-slot="${i}"]`);
 async function load(page, i) {
@@ -49,8 +50,8 @@ test('hiding insights expands videos without interrupting playback or changing z
 
 test('phone rail stays vertical and drawing on A leaves independent B playing', async ({page}) => {
   await page.setViewportSize({width:390,height:844}); await page.goto('/'); await load(page,0); await page.locator('#compareMode').click(); await load(page,1);
-  await page.locator('#independent').click(); await clip(page,1).locator('.clip-speed').selectOption('0.25'); await clip(page,1).locator('.clip-play').click();
-  await page.locator('[data-drawing-slot="0"]').click(); await page.locator('[data-tool="line"]').click(); await drawLine(page,0);
+  await page.locator('#independent').click(); await (await settings(page,1,'.clip-speed')).selectOption('0.25'); await page.locator('#closePanel').click(); await clip(page,1).locator('.clip-play').click();
+  await page.locator('[data-select="0"]').click(); await page.locator('[data-tool="line"]').click(); await drawLine(page,0);
   await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
   expect(await clip(page,1).locator('video').evaluate(v=>v.paused)).toBe(false);
   const rail=await page.locator('#drawingToolbar').boundingBox(), stage=await clip(page,0).locator('.stage').boundingBox();

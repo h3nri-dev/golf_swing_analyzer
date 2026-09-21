@@ -9,6 +9,7 @@
   <meta name="theme-color" content="#f5f5ef">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="screen.css">
   <script type="module" src="app.js"></script>
 </head>
 <body>
@@ -18,7 +19,7 @@
 </header>
 <main>
   <section class="intro"><div><h1>Your swing. <em>A closer look.</em></h1><p class="intro-copy">Draw, slow down, and compare. Your videos stay on your device.</p></div></section>
-  <section class="studio" aria-label="Swing workspace">
+  <section class="studio" id="studio" aria-label="Swing workspace">
     <div class="studio-heading"><div class="mode-switch" role="group" aria-label="Usage mode"><button id="singleMode" aria-pressed="true"><span>01</span> Analyze a swing</button><button id="compareMode" aria-pressed="false"><span>02</span> Compare swings</button></div><button id="toggleInsights" class="insights-toggle" aria-expanded="true" aria-controls="analysisPanel">Hide insights</button></div>
     <div class="workspace" id="workspace">
       <div class="review-area">

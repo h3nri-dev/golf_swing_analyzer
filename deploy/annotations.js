@@ -14,7 +14,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
   const $ = id => document.getElementById(id);
   const histories = slots.map(() => new DrawingHistory());
   let tool='view', color=palette[0][0], width=3, scope='clip', visible=true, selection=null, draft=null, gesture=null;
-  const toolbar = $('videoEditor');
+  const toolbar = $('studio');
   $('drawingToolbar').innerHTML = `
     <h3 class="drawing-rail-title">Draw</h3>
     <div class="drawing-tools" role="group" aria-label="Drawing tools">${tools.map(([key,label,path])=>`<button data-tool="${key}" aria-pressed="${key==='view'}" title="${label}"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg><span>${label}</span></button>`).join('')}</div>
@@ -143,6 +143,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
   });
   function render() {
     const {active,mode,busy}=state(); invalidateSelection();
+    toolbar.dataset.activeTool = tool;
     if(busy && (draft || gesture)) {draft=null;gesture=null;}
     const s=slots[active], history=current(), selected=selectedShape();
     slots.forEach((slot,i)=>{
@@ -172,15 +173,20 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     $('drawingCopy').disabled=busy||!slots[1-active].ready||!displayed(active).length;
     $('drawingSnapshot').textContent=mode==='compare'?'↓ Save comparison':'↓ Save image';
     $('drawingCount').textContent=`${history.items.length} drawing${history.items.length===1?'':'s'} on ${active?'B':'A'}`;
-    const hints={view:'Choose a tool to draw. Your reference lines stay visible during playback.',select:'Drag a drawing to move it. Drag its white handles to reshape it.',pen:'Drag to trace a path. Works with a mouse, pen or touch.',line:'Drag a reference line for your spine, setup or swing plane.',arrow:'Drag from the tail to the point of your arrow.',circle:'Drag around the area you want to highlight.',angle:draft?'Tap '+(draft.shape.points.length===1?'the joint (vertex), then the other endpoint.':'the final endpoint to finish your angle.'):'Tap 3 points: first endpoint → joint (vertex) → other endpoint. Angles are 2D.'};
+    const hints={view:'Choose a tool to draw. Zoom stays while playing.',select:'Drag a drawing or its white handles to edit it.',pen:'Drag to trace a path.',line:'Drag to draw a reference line.',arrow:'Drag from the tail to the arrow tip.',circle:'Drag around the area to highlight.',angle:draft?'Tap '+(draft.shape.points.length===1?'the joint, then the other endpoint.':'the last endpoint to finish.'):'Angle: tap the first endpoint, joint, then other endpoint.'};
     const hint=!s.ready?'Add a video, then choose a drawing tool. No analysis needed.':busy?'Drawing is paused while analysis runs.':!visible?'Drawings are hidden. Show them again to edit.':hints[tool];
     if($('drawingHint').textContent!==hint) $('drawingHint').textContent=hint;
     const times=[...new Set(history.items.filter(s=>s.scope==='frame').map(s=>s.time))].sort((a,b)=>a-b);
     const frames=$('drawingFrames'), signature=`${active}:${busy}:${times.join(',')}`;
     if(frames.dataset.signature!==signature){
       frames.dataset.signature=signature; frames.replaceChildren();
-      if(times.length){const label=document.createElement('span');label.textContent='Marked frames';frames.append(label);}
-      times.forEach(time=>{const b=document.createElement('button');b.textContent=`${time.toFixed(2)} s`;b.disabled=busy;b.onclick=()=>{cancelDraft();seekActive(time);};frames.append(b);});
+      if(times.length){
+        const select=document.createElement('select');select.setAttribute('aria-label','Go to an annotated frame');select.disabled=busy;
+        select.add(new Option('Choose a frame',''));
+        times.forEach(time=>select.add(new Option(`${time.toFixed(2)} s`,String(time))));
+        select.onchange=()=>{if(select.value!==''){cancelDraft();seekActive(Number(select.value));select.value='';}};
+        frames.append(select);
+      }
     }
   }
   async function saveImage() {

@@ -65,7 +65,7 @@ export function createRangeSelector({ slots, state, seek, pause, changed }) {
     panel.classList.toggle('invalid-range', !!error);
     $('rangeError').hidden = !error; $('rangeError').textContent = error;
     $('rangeSummary').textContent = !s.ready ? 'Add a video to choose a range.' : error ? 'Adjust the selected range.' : `${format(s.end - s.start)} s selected`;
-    $('analysisRangeSummary').textContent = !s.ready ? 'Add a video to select a range.' : error ? 'Adjust the range below the video.' : `Swing ${name} · ${format(s.start)}–${format(s.end)} s`;
+    $('analysisRangeSummary').textContent = !s.ready ? 'Add a video to select a range.' : error ? 'Adjust the selection in Range.' : `Swing ${name} · ${format(s.start)}–${format(s.end)} s`;
     $('rangeReset').textContent = duration > MAX_ANALYSIS_SECONDS ? 'First 20 seconds' : 'Use full clip';
     const previous = s.analyzedRange;
     $('analyzedRangeNote').hidden = !previous || (previous[0] === s.start && previous[1] === s.end);

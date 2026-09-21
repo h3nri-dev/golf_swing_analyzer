@@ -32,7 +32,8 @@ export function createViewport(slot, index, { busy, viewing, enterView, changed 
   controls.setAttribute('aria-label', `Swing ${name} zoom controls`);
   controls.innerHTML = `<span class="zoom-label">Zoom</span><button class="zoom-out" aria-label="Zoom out swing ${name}" title="Zoom out">−</button><input class="zoom-slider" type="range" min="1" max="4" step="0.05" value="1" aria-label="Swing ${name} zoom"><button class="zoom-in" aria-label="Zoom in swing ${name}" title="Zoom in">+</button><output class="zoom-value">1.00×</output><button class="zoom-pan" aria-pressed="false" title="Drag the video to move the zoomed view">Pan</button><button class="zoom-fit" title="Reset zoom and center the video">Fit</button><span class="zoom-help">Zoom stays while playing.</span>`;
   slot.get('.clip-transport').insertAdjacentElement('afterend', controls);
-  const get = selector => controls.querySelector(selector);
+  const controlCache = new Map();
+  const get = selector => { const element = controls.querySelector(selector); if (element) controlCache.set(selector, element); return element || controlCache.get(selector); };
   let view = { zoom: 1, x: 0.5, y: 0.5 }, panEnabled = true, gesture = null;
   const pointers = new Map();
   const stageSize = () => ({ width: slot.stage.clientWidth, height: slot.stage.clientHeight });

@@ -1,3 +1,4 @@
+import {settings} from './ui.js';
 import { test, expect } from '@playwright/test';
 const fixture = name => new URL(`./fixtures/${name}.mp4`, import.meta.url).pathname;
 const clip = (page, i) => page.locator(`[data-slot="${i}"]`);
@@ -14,7 +15,7 @@ async function setup(page) {
 
 test('separate controls leave the other video playing during pause, seek, stepping and speed changes', async ({page}) => {
   await setup(page);
-  await clip(page, 1).locator('.clip-speed').selectOption('0.25');
+  await (await settings(page,1,'.clip-speed')).selectOption('0.25');
   await clip(page, 0).locator('.clip-play').click();
   await clip(page, 1).locator('.clip-play').click();
   expect((await state(page)).every(v => !v.paused)).toBe(true);
@@ -27,7 +28,7 @@ test('separate controls leave the other video playing during pause, seek, steppi
   states = await state(page);
   expect(states[0].time).toBeCloseTo(1 + 1/30, 3); expect(states[1].paused).toBe(false);
   await clip(page, 0).locator('.clip-previous').click();
-  await clip(page, 0).locator('.clip-speed').selectOption('0.5');
+  await (await settings(page,0,'.clip-speed')).selectOption('0.5');
   await clip(page, 0).locator('.clip-play').click();
   await expect(page.locator('#speed')).toHaveValue('0.5');
   await page.locator('#speed').selectOption('1.5');
@@ -43,20 +44,20 @@ test('separate controls leave the other video playing during pause, seek, steppi
 
 test('unsync preserves playback and zoom; resync restores the offset and common speed', async ({page}) => {
   await setup(page);
-  await clip(page, 0).locator('.clip-timeline').fill('0.5'); await clip(page, 0).locator('.sync-mark').click();
-  await clip(page, 1).locator('.clip-timeline').fill('0.2'); await clip(page, 1).locator('.sync-mark').click();
+  await clip(page, 0).locator('.clip-timeline').fill('0.5'); await (await settings(page,0,'.sync-mark')).click();
+  await clip(page, 1).locator('.clip-timeline').fill('0.2'); await (await settings(page,1,'.sync-mark')).click();
   await page.locator('#align').click(); await page.locator('#speed').selectOption('0.25');
   await clip(page, 0).locator('.zoom-slider').fill('2');
   await page.locator('#play').click(); await page.locator('#independent').click();
   expect((await state(page)).every(v => !v.paused)).toBe(true);
   await expect(clip(page, 0).locator('.clip-transport')).toBeVisible();
   await clip(page, 0).locator('.clip-timeline').fill('1.2');
-  await clip(page, 0).locator('.clip-speed').selectOption('0.5');
+  await (await settings(page,0,'.clip-speed')).selectOption('0.5');
   await page.locator('#linked').click();
   let states = await state(page);
   expect(states.every(v => v.paused)).toBe(true); expect(states.map(v => v.rate)).toEqual([0.5, 0.5]);
   expect(states[1].time - states[0].time).toBeCloseTo(-0.3, 2);
-  await expect(clip(page, 0).locator('.clip-transport')).toBeHidden();
+  await expect(clip(page, 0).locator('.clip-play')).toHaveText('▶ Play both');
   await expect(clip(page, 0).locator('.zoom-value')).toHaveText('2.00×');
   await page.locator('#play').click(); await page.waitForTimeout(300);
   states = await state(page); expect(states.every(v => !v.paused)).toBe(true);
@@ -65,7 +66,7 @@ test('unsync preserves playback and zoom; resync restores the offset and common 
 
 test('ending or removing one independent clip does not stop the other', async ({page}) => {
   await setup(page);
-  await clip(page, 0).locator('.clip-speed').selectOption('0.25'); await clip(page, 0).locator('.clip-play').click();
+  await (await settings(page,0,'.clip-speed')).selectOption('0.25'); await clip(page, 0).locator('.clip-play').click();
   await clip(page, 1).locator('.clip-timeline').fill('1.8'); await clip(page, 1).locator('.clip-play').click();
   await expect.poll(() => video(page, 1).evaluate(v => v.ended)).toBe(true);
   expect(await video(page, 0).evaluate(v => v.paused)).toBe(false);

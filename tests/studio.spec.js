@@ -1,3 +1,4 @@
+import {openPanel, settings} from './ui.js';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 const fixture = new URL('./fixtures/portrait.mp4', import.meta.url).pathname;
@@ -9,16 +10,16 @@ test('single mode loads local video, steps, marks tempo and exports', async ({ p
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/'); await expect(clip(page,1)).toBeHidden(); await load(page,0);
   await page.locator('#next').click(); expect((await times(page))[0]).toBeCloseTo(1/30,3);
-  await clip(page,0).locator('.fps').selectOption('60'); await seek(page,0); await page.locator('#next').click(); expect((await times(page))[0]).toBeCloseTo(1/60,3);
-  await seek(page,.2); await page.locator('#mark-address').click(); await seek(page,1.1); await page.locator('#mark-top').click(); await seek(page,1.4); await page.locator('#mark-impact').click(); await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
-  const download = page.waitForEvent('download'); await page.locator('#export').click(); expect((await download).suggestedFilename()).toBe('swing-a-analysis.json');
+  await (await settings(page,0,'.fps')).selectOption('60'); await seek(page,0); await page.locator('#next').click(); expect((await times(page))[0]).toBeCloseTo(1/60,3);
+  await seek(page,.2); await openPanel(page,'moments');await page.locator('#mark-address').click(); await seek(page,1.1); await page.locator('#mark-top').click(); await seek(page,1.4); await page.locator('#mark-impact').click(); await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
+  const download = page.waitForEvent('download'); await openPanel(page,'moments');await page.locator('#export').click(); expect((await download).suggestedFilename()).toBe('swing-a-analysis.json');
   await page.screenshot({path:'/tmp/swing-single.png',fullPage:true});
   await clip(page,0).locator('.remove').click(); await expect(page.locator('#play')).toBeDisabled(); expect(errors).toEqual([]);
 });
 test('comparison aligns offsets, steps together, plays independently and pauses on mode change', async ({page})=>{
   await page.goto('/'); await load(page,0); await page.locator('#compareMode').click(); await load(page,1);
-  await page.locator('#independent').click(); await page.locator('[data-select="0"]').click(); await seek(page,.5); await clip(page,0).locator('.sync-mark').click();
-  await page.locator('[data-select="1"]').click(); await seek(page,1.2); await clip(page,1).locator('.sync-mark').click(); await page.locator('#align').click();
+  await page.locator('#independent').click(); await page.locator('[data-select="0"]').click(); await seek(page,.5); await (await settings(page,0,'.sync-mark')).click();
+  await page.locator('[data-select="1"]').click(); await seek(page,1.2); await (await settings(page,1,'.sync-mark')).click(); await page.locator('#align').click();
   let ts = await times(page); expect(ts[1]-ts[0]).toBeCloseTo(.7,2);
   await page.locator('#next').click(); ts=await times(page); expect(ts[1]-ts[0]).toBeCloseTo(.7,2);
   await page.locator('#play').click(); await page.waitForTimeout(400); ts=await times(page); expect(Math.abs(ts[1]-ts[0]-.7)).toBeLessThan(.09);
@@ -48,13 +49,13 @@ test('real MediaPipe model detects a pose locally',async({page})=>{
   await page.goto('/'); await clip(page,0).locator('input[type=file]').setInputFiles(process.env.POSE_FIXTURE); await expect(page.locator('#analyze')).toBeEnabled();
   await clip(page,0).locator('.zoom-slider').fill('2');
   await page.locator('#timeline').fill('0.2');
-  await page.locator('#rangeStart').fill('0.1'); await page.locator('#rangeEnd').fill('0.4'); await page.locator('#analyze').click();
+  await openPanel(page,'range');await page.locator('#rangeStart').fill('0.1'); await openPanel(page,'range');await page.locator('#rangeEnd').fill('0.4'); await page.locator('#analyze').click();
   await expect(page.locator('#status')).toContainText('Analysis ready',{timeout:100000});
   await expect(clip(page,0).locator('.zoom-value')).toHaveText('2.00×');
   await expect(page.locator('#coverage')).not.toContainText('—');
   await expect(page.locator('#elbow')).not.toContainText('—');
   expect(requests.filter(r=>r.method!=='GET')).toEqual([]);
-  const download = page.waitForEvent('download'); await page.locator('#export').click();
+  const download = page.waitForEvent('download'); await openPanel(page,'moments');await page.locator('#export').click();
   const data = JSON.parse(await fs.readFile(await (await download).path(), 'utf8'));
   expect(data.analyzedRange).toEqual([0.1, 0.4]);
   expect(data.measurements.length).toBeGreaterThan(0);
@@ -64,8 +65,8 @@ test('real MediaPipe model detects a pose locally',async({page})=>{
 test('negative sync offsets respect overlap with unequal clip lengths',async({page})=>{
   await page.goto('/'); await load(page,0); await page.locator('#compareMode').click();
   await clip(page,1).locator('input[type=file]').setInputFiles(new URL('./fixtures/landscape.mp4',import.meta.url).pathname); await expect(clip(page,1).locator('video')).toBeVisible();
-  await page.locator('#independent').click(); await page.locator('[data-select="0"]').click(); await seek(page,1); await clip(page,0).locator('.sync-mark').click();
-  await page.locator('[data-select="1"]').click(); await seek(page,.2); await clip(page,1).locator('.sync-mark').click(); await page.locator('#align').click();
+  await page.locator('#independent').click(); await page.locator('[data-select="0"]').click(); await seek(page,1); await (await settings(page,0,'.sync-mark')).click();
+  await page.locator('[data-select="1"]').click(); await seek(page,.2); await (await settings(page,1,'.sync-mark')).click(); await page.locator('#align').click();
   await page.locator('[data-select="0"]').click(); await page.locator('#restart').click(); let ts=await times(page); expect(ts[0]).toBeCloseTo(.8,2); expect(ts[1]).toBeCloseTo(0,2);
   await seek(page,2.7); await page.locator('#play').click(); await page.waitForTimeout(500);
   expect(await page.locator('video').evaluateAll(v=>v.every(x=>x.paused))).toBe(true);
@@ -73,9 +74,9 @@ test('negative sync offsets respect overlap with unequal clip lengths',async({pa
 });
 test('independent videos can both play and replacement clears only its own marks',async({page})=>{
   await page.goto('/'); await load(page,0); await page.locator('#compareMode').click(); await load(page,1); await page.locator('#independent').click();
-  await clip(page,0).locator('.clip-speed').selectOption('0.25');
+  await (await settings(page,0,'.clip-speed')).selectOption('0.25');
   await clip(page,0).locator('.clip-play').click(); await clip(page,1).locator('.clip-play').click(); expect(await page.locator('video').evaluateAll(v=>v.every(x=>!x.paused))).toBe(true);
-  await page.locator('#mark-address').click(); await expect(page.locator('#phase-address')).not.toHaveText('—'); await load(page,1); await expect(page.locator('#phase-address')).toHaveText('—');
+  await openPanel(page,'moments');await page.locator('#mark-address').click(); await expect(page.locator('#phase-address')).not.toHaveText('—'); await load(page,1); await expect(page.locator('#phase-address')).toHaveText('—');
   expect(await clip(page,0).locator('video').evaluate(v=>v.paused)).toBe(false);
-  await page.locator('#rangeStart').fill('3'); await page.locator('#rangeEnd').fill('1'); await expect(page.locator('#rangeError')).toContainText('End must be after start'); await expect(page.locator('#analyze')).toBeDisabled(); await expect(page.locator('#play')).toBeEnabled();
+  await openPanel(page,'range');await page.locator('#rangeStart').fill('3'); await openPanel(page,'range');await page.locator('#rangeEnd').fill('1'); await expect(page.locator('#rangeError')).toContainText('End must be after start'); await expect(page.locator('#analyze')).toBeDisabled(); await expect(page.locator('#play')).toBeEnabled();
 });

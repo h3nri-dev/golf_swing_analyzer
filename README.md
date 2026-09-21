@@ -18,17 +18,17 @@ Browser tests use installed Google Chrome for MP4 support. Set `PLAYWRIGHT_CHANN
 
 ## Using the studio
 
-- **Analyze a swing:** choose a local clip and playing hand, select a range below the video, then choose **Analyze selected range**. Only that section is scanned. Scrub to inspect pose landmarks, the lead-hand trail and image-plane joint angles.
-- **Compare swings:** load A and B. **Sync on** plays and steps both clips together. Mark the same event (usually impact) in each clip, then choose **Align marked points**. Synchronized playback is constrained to the overlapping range and stops when either clip reaches the end.
+- **Analyze a swing:** choose a local clip and playing hand, select a section in **Range**, then choose **Analyze range**. Only that section is scanned. Scrub to inspect pose landmarks, the lead-hand trail and image-plane joint angles.
+- **Compare swings:** load A and B. **Sync on** plays and steps both clips together. Mark the same event (usually impact) in each clip, then choose **Align marks**. Synchronized playback is constrained to the overlapping range and stops when either clip reaches the end.
 - **Sync off** gives each video its own play/pause, timeline, frame steps and speed. Play either clip alone or both at once at different speeds. Pausing, scrubbing, stepping, marking, replacing or reaching the end of one clip leaves the other playing. Turning sync off preserves current playback and zoom. Turning it on pauses and aligns both at the selected clip's position (within the shared range), preserves any marked offset, and uses the selected clip's speed; press Play to resume together.
 - Select a clip using the A/B review buttons or its card. The shared timeline, stepping controls, analysis and moment markers operate on this selected clip. Linked seeking moves both clips.
-- Set each video's FPS to its source rate. Arrow keys step and Space toggles playback when focus is outside interactive controls. Variable-frame-rate video and browser seeking do not guarantee exact encoded-frame access; stepping is time-based at the selected rate.
-- Mark address, top, impact and finish manually. Ordered address/top/impact marks produce the backswing-to-downswing tempo ratio. Export saves the selected clip's marks and sampled measurements as JSON. Refresh clears the session.
+- Open **Video** to set the selected clip's FPS, speed, mirror, sync point, Pan or Fit. Set FPS to the source rate. Arrow keys step and Space toggles playback when focus is outside interactive controls. Variable-frame-rate video and browser seeking do not guarantee exact encoded-frame access; stepping is time-based at the selected rate.
+- Open **Moments** to mark address, top, impact and finish manually. Ordered address/top/impact marks produce the backswing-to-downswing tempo ratio. Export saves the selected clip's marks and sampled measurements as JSON. Refresh clears the session.
 - Video decoding depends on the browser and codec. H.264 MP4 and WebM are recommended. A MOV extension alone does not guarantee support.
 
 ## Selecting an analysis range
 
-The **Select a range to analyze** panel sits directly below the playback controls. Drag the two handles to highlight any section of up to **20 seconds**, or enter exact start/end times in seconds. Dragging a handle previews that boundary; keyboard arrow keys adjust a focused handle. You can also pause or step to a moment and choose **Set start here** or **Set end here**. **Go to start/end** revisits either boundary without changing your selection. The playhead remains visible on the range bar.
+Open the **Range** tab in the workspace header. The panel stays beside or over the video, within the same screen. Drag the two handles to highlight any section of up to **20 seconds**, or enter exact start/end times in seconds. Dragging a handle previews that boundary; keyboard arrow keys adjust a focused handle. You can also pause or step to a moment and choose **Set here** for Start or End. **Go** beside Start or End revisits either boundary without changing your selection. The playhead remains visible on the range bar.
 
 Each comparison clip keeps its own selection, even with synchronized playback. Range previews can inspect the selected clip outside the pair's shared playback interval; normal synchronized playback still uses the shared interval. **Use full clip** selects a short clip in full; on longer videos, **First 20 seconds** restores the initial selection. Empty, reversed, out-of-bounds or overlong ranges show an inline explanation and disable analysis until corrected.
 
@@ -49,7 +49,8 @@ References: [MediaPipe web guide](https://ai.google.dev/edge/mediapipe/solutions
 ## Source layout
 
 - `deploy/index.html` — semantic layout, single/compare modes, privacy details.
-- `deploy/styles.css` — responsive studio design.
+- `deploy/styles.css` — base studio design.
+- `deploy/screen.js`, `deploy/screen.css` — viewport workspace, accessible control panels and scroll snapping.
 - `deploy/app.js` — file lifecycle, playback, synchronized seeking, overlays, lazy inference and exports.
 - `deploy/analysis.js` — pure geometry, confidence filtering, smoothing, timing helpers.
 - `deploy/range.js` — range selection, boundary previews and validation.
@@ -60,12 +61,12 @@ Cloudflare Pages deploys the static directory to `freegolfswinganalyzer`, branch
 
 ## Drawing and comparison
 
-The vertical **Draw** rail sits beside the videos and follows page scrolling while you work, on desktop and phone. Choose **Pen**, **Line**, **Arrow**, **Circle** (an adjustable ellipse), or **Angle**, then draw directly on either loaded video. Undo and Redo are in the same rail. Drawing pauses the clip being edited; with Sync off, the other clip can keep playing. For an angle, tap/click the first endpoint, the joint/vertex, and the other endpoint; the label is an image-plane angle in degrees.
+The vertical **Draw** rail stays beside the videos, on desktop and phone. Short screens use labeled-on-hover icons, and landscape phones use two narrow tool columns. Choose **Pen**, **Line**, **Arrow**, **Circle** (an adjustable ellipse), or **Angle**, then draw directly on either loaded video. Undo and Redo are in the same rail. Drawing pauses the clip being edited; with Sync off, the other clip can keep playing. For an angle, tap/click the first endpoint, the joint/vertex, and the other endpoint; the label is an image-plane angle in degrees.
 
-Color, stroke, visibility duration and the A/B editing target sit in a compact strip above the footage. Copy, hide, delete and image export sit below it. Each clip's Play button is immediately below its frame and says **Play both** when synchronization is on. **Hide insights** in the workspace header gives the videos the sidebar's space without stopping playback, resetting zoom, or moving drawings. Show insights again to access pose results and moment markers. On smaller laptops the insights panel moves below the workspace so the videos and tool rail have enough room.
+Open **Drawing** for color, stroke, visibility duration, copy, hide, delete and image export. The header's A/B selector chooses the editing target. Each clip's Play button is immediately below its frame and says **Play both** when synchronization is on. **Hide panel** or the panel's close button gives videos the sidebar's space without stopping playback, resetting zoom or moving drawings. On phones and tablets, controls open over the footage; close them or choose a drawing tool to return to the unobstructed video. All five panel tabs remain accessible in the header.
 
 - **Select** moves an existing drawing; white handles adjust endpoints and circle bounds. Pen strokes move as one object. The color and stroke selectors also edit a selected shape.
-- **Entire clip** keeps reference drawings visible throughout playback. **This frame** attaches a drawing to the current timestamp with a half-frame tolerance based on the selected source FPS. **Marked frames** buttons revisit these moments.
+- **Entire clip** keeps reference drawings visible throughout playback. **This frame** attaches a drawing to the current timestamp with a half-frame tolerance based on the selected source FPS. The **Choose a frame** menu revisits these moments.
 - **Copy visible to A/B** copies the current visible drawings to the other clip. If a drawing is selected, only that drawing is copied. Positions are relative to the image, so different camera views may need manual adjustment with Select. A frame-scoped copy belongs to the destination's current time.
 - Each video has its own undo/redo history (50 edits). Clear, delete, copy and style changes can all be undone. Use Ctrl/⌘ Z, Ctrl/⌘ Shift Z, Delete, or Escape (cancel the current drawing / return to View).
 - **Hide drawings** temporarily hides only manual annotations. Pose overlays remain independently controllable. **View** allows regular viewing; playing a video exits the drawing tool.
@@ -79,11 +80,13 @@ Implementation: `deploy/drawing.js` contains pure annotation geometry, history a
 
 ## Zoom and pan
 
-The workspace fills the available screen width with modest outer margins. On desktop, video frames grow with the window's height and width in both single and comparison mode, including large and ultrawide monitors. The insights sidebar keeps its compact width so the extra space goes to the videos. Phone and tablet layouts retain smaller frames and readable controls. Resizing preserves playback, zoom and drawing alignment.
+The studio fills one browser viewport. Opening a video brings it into view; native scroll snapping lands on the studio when scrolling from the introduction or guide. The page can still scroll to those sections. The main timeline, playback and Analyze/Cancel remain at the bottom. Drawing, Video, Range, Pose and Moments tabs expose the selected controls within that screen. Tabs support arrow keys; Escape closes the panel. At unusually small sizes or high browser text zoom, a panel can scroll internally so controls remain accessible.
+
+Video frames use the remaining width and height, including large and ultrawide monitors. The desktop inspector keeps its compact width so extra space goes to the videos. Resizing and opening panels preserve playback, zoom and drawing alignment.
 
 Each video has its own **− / +** buttons and **Zoom** slider, from **1× (Fit) to 4×**. Zooming or panning does not pause playback. The view is retained when playing, pausing, changing speed, scrubbing, stepping, running analysis, switching modes, or resizing the window. The two comparison videos keep independent views even when their playback is linked.
 
-When zoomed and using **View**, drag the video to pan. **Pan** returns from a drawing tool to view movement without pausing the video; press it again to disable dragging. Pinch with two fingers while Pan is active, or use Ctrl/⌘ + scroll over the video to zoom around the pointer. Ordinary scrolling still scrolls the page. **Fit** restores 1× and centers that clip. Loading a replacement clip resets only its own view.
+When zoomed and using **View**, drag the video to pan. **Pan** returns from a drawing tool to view movement without pausing the video; press it again to disable dragging. Pinch with two fingers while Pan is active, or use Ctrl/⌘ + scroll over the video to zoom around the pointer. Ordinary scrolling moves between the page's snap sections; Ctrl/⌘ + scroll remains dedicated to video zoom. **Fit** restores 1× and centers that clip. Loading a replacement clip resets only its own view.
 
 The video, pose overlay, and manual drawings share one transformed image plane, so drawing and editing work at any magnification. Exported PNGs show the current zoomed crop (including pan and mirroring); JSON exports include the normalized view center and zoom. This is display magnification, not an increase in the source video's resolution. Session views are not retained after a page reload.
 

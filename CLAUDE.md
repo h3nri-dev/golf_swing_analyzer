@@ -7,6 +7,7 @@ This is a build-free, browser-only application. Keep production entirely static:
 ## Files
 
 - `deploy/index.html`, `styles.css`: semantic responsive interface.
+- `deploy/screen.js`, `deploy/screen.css`: viewport-sized studio, accessible control panels and native scroll snapping. Keep regular controls within the viewport; use internal panel scrolling only as an accessibility fallback for extreme sizes or text scaling.
 - `deploy/app.js`: two local video slots, single/compare modes, playback synchronization, lazy MediaPipe inference and export.
 - `deploy/analysis.js`: pure calculation helpers; unit-test changes here.
 - `deploy/viewport.js`: per-clip zoom/pan. Keep video and both overlays on the same transformed plane, and never pause playback for view changes.
