@@ -2,7 +2,7 @@
 
 Repository: `h3nri-dev/golf_swing_analyzer`. Existing production host: Cloudflare Pages project `freegolfswinganalyzer`, serving `deploy/` at `freegolfswinganalyzer.com`.
 
-This is a build-free, browser-only application. Keep production entirely static: no backend, secret, database, analytics or video upload. Do not add a server runtime to support analysis. Node dependencies are development/testing/deployment tools only.
+This is a build-free, browser-only application. Keep production entirely static: no backend, secret, database or video upload. Do not add application analytics; the existing hosting-injected Cloudflare beacon is disclosed in the privacy dialog. Do not add a server runtime to support analysis. Node dependencies are development/testing/deployment tools only.
 
 ## Files
 
