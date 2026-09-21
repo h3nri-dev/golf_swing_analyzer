@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs/promises';
 const fixture = new URL('./fixtures/portrait.mp4', import.meta.url).pathname;
 const clip = (page,i) => page.locator(`[data-slot="${i}"]`);
 async function load(page,i) { await clip(page,i).locator('input[type=file]').setInputFiles(fixture); await expect(clip(page,i).locator('video')).toBeVisible(); await expect(page.locator('#analyze')).toBeEnabled(); }
@@ -46,12 +47,18 @@ test('real MediaPipe model detects a pose locally',async({page})=>{
   const requests=[]; page.on('request',r=>requests.push({method:r.method(),url:r.url()}));
   await page.goto('/'); await clip(page,0).locator('input[type=file]').setInputFiles(process.env.POSE_FIXTURE); await expect(page.locator('#analyze')).toBeEnabled();
   await clip(page,0).locator('.zoom-slider').fill('2');
-  await page.locator('#rangeEnd').fill('0.3'); await page.locator('#analyze').click();
+  await page.locator('#timeline').fill('0.2');
+  await page.locator('#rangeStart').fill('0.1'); await page.locator('#rangeEnd').fill('0.4'); await page.locator('#analyze').click();
   await expect(page.locator('#status')).toContainText('Analysis ready',{timeout:100000});
   await expect(clip(page,0).locator('.zoom-value')).toHaveText('2.00×');
   await expect(page.locator('#coverage')).not.toContainText('—');
   await expect(page.locator('#elbow')).not.toContainText('—');
   expect(requests.filter(r=>r.method!=='GET')).toEqual([]);
+  const download = page.waitForEvent('download'); await page.locator('#export').click();
+  const data = JSON.parse(await fs.readFile(await (await download).path(), 'utf8'));
+  expect(data.analyzedRange).toEqual([0.1, 0.4]);
+  expect(data.measurements.length).toBeGreaterThan(0);
+  expect(data.measurements.every(sample => sample.time >= 0.1 && sample.time < 0.4)).toBe(true);
   await page.screenshot({path:'/tmp/swing-analysis.png',fullPage:true});
 });
 test('negative sync offsets respect overlap with unequal clip lengths',async({page})=>{
@@ -70,5 +77,5 @@ test('independent videos can both play and replacement clears only its own marks
   await clip(page,0).locator('.clip-play').click(); await clip(page,1).locator('.clip-play').click(); expect(await page.locator('video').evaluateAll(v=>v.every(x=>!x.paused))).toBe(true);
   await page.locator('#mark-address').click(); await expect(page.locator('#phase-address')).not.toHaveText('—'); await load(page,1); await expect(page.locator('#phase-address')).toHaveText('—');
   expect(await clip(page,0).locator('video').evaluate(v=>v.paused)).toBe(false);
-  await page.locator('#rangeStart').fill('3'); await page.locator('#rangeEnd').fill('1'); await page.locator('#analyze').click(); await expect(page.locator('#toast')).toContainText('Choose a range'); await expect(page.locator('#play')).toBeEnabled();
+  await page.locator('#rangeStart').fill('3'); await page.locator('#rangeEnd').fill('1'); await expect(page.locator('#rangeError')).toContainText('End must be after start'); await expect(page.locator('#analyze')).toBeDisabled(); await expect(page.locator('#play')).toBeEnabled();
 });

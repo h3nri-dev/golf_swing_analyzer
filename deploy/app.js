@@ -1,7 +1,9 @@
 import { clamp, visible, measurements, syncBounds, frameTime, tempo, nearestSample, smoothSamples } from './analysis.js';
 import { createAnnotations } from './annotations.js';
 import { createViewport } from './viewport.js';
+import { createRangeSelector, analysisRangeError, MAX_ANALYSIS_SECONDS } from './range.js';
 let annotations = null;
+let rangeSelector = null;
 const $ = id => document.getElementById(id);
 const names = ['A', 'B'];
 const phases = [['address', 'Address'], ['top', 'Top of backswing'], ['impact', 'Impact'], ['finish', 'Finish']];
@@ -74,7 +76,7 @@ function resetSlot(index) {
   pauseControlled(index); const s = slots[index]; s.version++; s.ready = false; s.video.onerror = null;
   s.video.removeAttribute('src'); s.video.load();
   if (s.url) URL.revokeObjectURL(s.url);
-  Object.assign(s, { url: null, samples: [], marks: {}, anchor: null, start: 0, end: 0, status: 'Add a video to get started.' });
+  Object.assign(s, { url: null, samples: [], analyzedRange: null, analysisAttempted: false, marks: {}, anchor: null, start: 0, end: 0, status: 'Add a video to get started.' });
   s.input.value = ''; s.get('.file-name').textContent = index ? 'Reference swing' : 'Your swing';
   s.video.hidden = true; s.drop.hidden = false; s.canvas.hidden = true;
   s.stage.classList.remove('mirrored'); s.get('.mirror').setAttribute('aria-pressed', false);
@@ -98,9 +100,9 @@ async function loadFile(index, file) {
     if (s.version !== version) return;
     if (!Number.isFinite(s.video.duration) || s.video.duration <= 0 || !s.video.videoWidth) throw new Error('This video has no readable duration. Try exporting it as an MP4.');
     s.ready = true; s.video.hidden = false; s.drop.hidden = true;
-    s.end = Math.min(20, s.video.duration);
+    s.end = Math.min(MAX_ANALYSIS_SECONDS, s.video.duration);
     if (isLinked()) s.video.playbackRate = slots[1 - index].video.playbackRate;
-    s.status = s.video.duration > 20 ? 'Choose the 20-second section containing your swing, then analyze.' : 'Ready when you are. Analyze to see your movement.';
+    s.status = s.video.duration > MAX_ANALYSIS_SECONDS ? 'Select up to 20 seconds below the video, then analyze that range.' : 'Select a range below the video, or analyze the full clip.';
     s.video.onerror = () => { if (s.ready) { pauseControlled(index); s.status = 'Video decoding failed. Replace this clip with an H.264 MP4.'; s.ready = false; update(); } };
     update();
   } catch (error) {
@@ -127,9 +129,14 @@ function updatePlayback() {
   $('play').textContent = playing ? 'Ⅱ' : '▶'; $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
   slots.forEach((s, i) => { s.get('.clip-play').textContent = `${s.video.paused ? '▶ Play' : 'Ⅱ Pause'} ${names[i]}`; s.get('.clip-play').setAttribute('aria-label', `${s.video.paused ? 'Play' : 'Pause'} swing ${names[i]}`); });
 }
+function updateAnalysisControls() {
+  const s = slots[active];
+  const disabled = !s.ready || !!job || !!analysisRangeError(s.start, s.end, s.video.duration);
+  $('analyze').disabled = $('analyzeSelection').disabled = disabled;
+}
 function update() {
   const s = slots[active], busy = !!job;
-  for (const id of ['singleMode','compareMode','linked','independent','hand','rangeStart','rangeEnd','speed']) $(id).disabled = busy;
+  for (const id of ['singleMode','compareMode','linked','independent','hand','speed']) $(id).disabled = busy;
   document.querySelectorAll('[data-select]').forEach(b => { b.disabled = busy; b.setAttribute('aria-pressed', Number(b.dataset.select) === active); });
   slots.forEach((slot, i) => {
     slot.card.classList.toggle('selected', i === active);
@@ -141,17 +148,16 @@ function update() {
     slot.drop.disabled = busy; slot.get('.corner-label').hidden = !slot.ready;
     slot.get('.sync-mark').textContent = slot.anchor === null ? 'Mark sync point' : `Sync: ${slot.anchor.toFixed(2)} s`;
   });
-  for (const id of ['play','previous','next','restart','timeline','analyze','clearMarks']) $(id).disabled = !s.ready || busy;
+  for (const id of ['play','previous','next','restart','timeline','clearMarks']) $(id).disabled = !s.ready || busy;
   $('export').disabled = busy || (!s.samples.length && !Object.keys(s.marks).length && !annotations?.count(active));
   $('align').disabled = busy || !slots.every(x => x.ready && x.anchor !== null);
   $('cancel').hidden = !busy; $('progress').hidden = !busy;
-  $('hand').value = s.hand; $('rangeStart').value = s.start.toFixed(2); $('rangeEnd').value = s.end.toFixed(2);
-  $('rangeStart').max = $('rangeEnd').max = s.ready ? s.video.duration : 0;
+  $('hand').value = s.hand;
   $('status').textContent = s.status; $('activeLabel').textContent = `SWING ${names[active]}`;
   $('speed').value = String(s.video.playbackRate);
   $('linked').setAttribute('aria-pressed', linked); $('independent').setAttribute('aria-pressed', !linked);
   $('syncHint').textContent = !linked ? 'Sync is off. Play either video or both at once. Each has its own timeline, frame steps and speed.' : aligned ? `Aligned to your marks · B offset ${offset >= 0 ? '+' : ''}${offset.toFixed(2)} s · playback stops at the shared range end.` : 'Sync is on. Both clips play together. Mark the same moment in each clip to align, or choose Sync off for separate controls.';
-  updatePhases(); updatePlayback(); render();
+  rangeSelector?.render(); updateAnalysisControls(); updatePhases(); updatePlayback(); render();
 }
 function updatePhases() {
   const s = slots[active];
@@ -173,6 +179,19 @@ function seekActive(time) {
     const target = clamp(time - (active === 1 ? offset : 0), bounds.start, bounds.end);
     slots[0].video.currentTime = target; slots[1].video.currentTime = target + offset;
   } else slots[active].video.currentTime = clamp(time, 0, slots[active].video.duration);
+  render();
+}
+function seekRangeBoundary(time) {
+  const s = slots[active];
+  if (!s.ready || job || !Number.isFinite(time)) return;
+  pauseControlled();
+  // An analysis range may extend beyond the synchronized clips' shared range.
+  // Preview the selected clip's exact boundary; keep the companion as close as possible.
+  s.video.currentTime = clamp(time, 0, s.video.duration);
+  if (isLinked()) {
+    const other = slots[1 - active];
+    other.video.currentTime = clamp(s.video.currentTime + (active === 0 ? offset : -offset), 0, other.video.duration);
+  }
   render();
 }
 async function togglePlay() {
@@ -212,6 +231,7 @@ function render() {
   const count = s.samples.filter(x => x.points && [11,12,23,24].every(i => visible(x.points[i]))).length;
   $('coverage').innerHTML = `${s.samples.length ? Math.round(count / s.samples.length * 100) : '—'}<small>%</small>`;
   annotations?.render();
+  rangeSelector?.renderPlayhead();
 }
 function draw(s, index) {
   s.get('.clip-time').textContent = `${s.video.currentTime.toFixed(2)} s`;
@@ -279,9 +299,9 @@ function modelOperation(promise, token, release = () => {}) {
 }
 async function analyze() {
   const s = slots[active]; if (!s.ready || job) return;
-  const start = Number($('rangeStart').value), end = Number($('rangeEnd').value);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end > s.video.duration + 0.01 || end <= start || end - start > 20.001) return toast('Choose a range within the video, longer than 0 and no more than 20 seconds.');
-  s.start = start; s.end = Math.min(end, s.video.duration);
+  const start = s.start, end = s.end, rangeError = analysisRangeError(start, end, s.video.duration);
+  if (rangeError) return toast(rangeError);
+  s.start = start; s.end = Math.min(end, s.video.duration); s.analysisAttempted = true;
   pauseAll(); const originalTime = s.video.currentTime; const token = { cancelled: false, controller: new AbortController() }; job = token;
   s.status = 'Loading the on-device pose model…'; $('progress').value = 0; update();
   let detector;
@@ -308,11 +328,12 @@ async function analyze() {
       ctx.drawImage(s.video,0,0,buffer.width,buffer.height);
       const result = detector.detectForVideo(buffer, i * interval * 1000 + 1);
       samples.push({ time, points: result.landmarks[0]?.map(p => ({ x: p.x, y: p.y, visibility: p.visibility })) ?? null });
-      $('progress').value = (i + 1) / count; s.status = `Looking closer… ${Math.round((i + 1) / count * 100)}% · ${i + 1} / ${count} samples`; $('status').textContent = s.status;
+      $('progress').value = (i + 1) / count; s.status = `Looking closer… ${Math.round((i + 1) / count * 100)}% · ${i + 1} / ${count} samples`; $('status').textContent = $('rangeStatus').textContent = s.status;
       await yieldFrame();
     }
     if (!token.cancelled) {
       s.samples = smoothSamples(samples); s.tolerance = interval * 0.6;
+      s.analyzedRange = [start, s.end];
       const valid = samples.filter(x => x.points && [11,12,23,24].every(i => visible(x.points[i]))).length;
       s.status = valid === 0 ? 'No clear pose found. Try a well-lit clip with your whole body visible.' : `Analysis ready · ${samples.length} samples. ${valid / samples.length < 0.5 ? 'Low pose coverage: try better lighting or a clearer view.' : 'Scrub the video to explore your angles and hand path.'}`;
     }
@@ -334,13 +355,12 @@ $('timeline').oninput = e => seekActive(Number(e.target.value)); $('play').oncli
 $('previous').onclick = () => step(-1); $('next').onclick = () => step(1); $('restart').onclick = () => seekActive(0);
 $('speed').onchange = e => setSpeed(Number(e.target.value));
 $('hand').onchange = e => { slots[active].hand = e.target.value; render(); };
-for (const [id, field] of [['rangeStart','start'],['rangeEnd','end']]) $(id).onchange = e => { slots[active][field] = Number(e.target.value); };
 for (const id of ['skeleton','trail','guideLines']) $(id).onchange = render;
 $('clearMarks').onclick = () => { slots[active].marks = {}; updatePhases(); };
-$('analyze').onclick = analyze; $('cancel').onclick = () => { if (job) { job.cancelled = true; job.controller.abort(); $('status').textContent = 'Cancelling… finishing the current model operation.'; } };
+$('analyze').onclick = $('analyzeSelection').onclick = analyze; $('cancel').onclick = $('cancelSelection').onclick = () => { if (job) { job.cancelled = true; job.controller.abort(); $('status').textContent = $('rangeStatus').textContent = 'Cancelling… finishing the current model operation.'; } };
 $('export').onclick = () => {
   const s = slots[active];
-  const data = { version: 3, viewport: s.viewport.state(), drawings: annotations.data(active), drawingCoordinates: 'normalized, unmirrored video coordinates', file: s.get('.file-name').textContent, hand: s.hand, frameRate: s.fps, frameRateSource: 'user-selected', range: [s.start,s.end], marks: s.marks, tempo: tempo(s.marks), measurements: s.samples.map(sample => ({ time: sample.time, ...measurements(sample.points,s.video.videoWidth,s.video.videoHeight,s.hand) })), note: '2D image-plane estimates. Missing or low-confidence measurements are null. Frame rate is user-selected.' };
+  const data = { version: 4, viewport: s.viewport.state(), drawings: annotations.data(active), drawingCoordinates: 'normalized, unmirrored video coordinates', file: s.get('.file-name').textContent, hand: s.hand, frameRate: s.fps, frameRateSource: 'user-selected', range: s.analyzedRange || [s.start,s.end], analyzedRange: s.analyzedRange ?? null, selectedRange: [s.start,s.end], marks: s.marks, tempo: tempo(s.marks), measurements: s.samples.map(sample => ({ time: sample.time, ...measurements(sample.points,s.video.videoWidth,s.video.videoHeight,s.hand) })), note: '2D image-plane estimates. Missing or low-confidence measurements are null. Frame rate is user-selected.' };
   const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], { type: 'application/json' }));
   const a = document.createElement('a'); a.href = url; a.download = `swing-${names[active].toLowerCase()}-analysis.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
 };
@@ -355,4 +375,5 @@ slots.forEach((slot, index) => {
   });
 });
 annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!job }), selectSlot, pauseAll, seekActive, toast, changed: updatePhases });
+rangeSelector = createRangeSelector({ slots, state: () => ({ active, busy: !!job }), seek: seekRangeBoundary, pause: pauseControlled, changed: updateAnalysisControls });
 setMode('single'); requestAnimationFrame(playbackLoop);

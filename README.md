@@ -18,13 +18,21 @@ Browser tests use installed Google Chrome for MP4 support. Set `PLAYWRIGHT_CHANN
 
 ## Using the studio
 
-- **Analyze a swing:** choose a local clip, choose the playing hand and an analysis range of up to 20 seconds, then analyze. Scrub to inspect pose landmarks, the lead-hand trail and image-plane joint angles.
+- **Analyze a swing:** choose a local clip and playing hand, select a range below the video, then choose **Analyze selected range**. Only that section is scanned. Scrub to inspect pose landmarks, the lead-hand trail and image-plane joint angles.
 - **Compare swings:** load A and B. **Sync on** plays and steps both clips together. Mark the same event (usually impact) in each clip, then choose **Align marked points**. Synchronized playback is constrained to the overlapping range and stops when either clip reaches the end.
 - **Sync off** gives each video its own play/pause, timeline, frame steps and speed. Play either clip alone or both at once at different speeds. Pausing, scrubbing, stepping, marking, replacing or reaching the end of one clip leaves the other playing. Turning sync off preserves current playback and zoom. Turning it on pauses and aligns both at the selected clip's position (within the shared range), preserves any marked offset, and uses the selected clip's speed; press Play to resume together.
 - Select a clip using the A/B review buttons or its card. The shared timeline, stepping controls, analysis and moment markers operate on this selected clip. Linked seeking moves both clips.
 - Set each video's FPS to its source rate. Arrow keys step and Space toggles playback when focus is outside interactive controls. Variable-frame-rate video and browser seeking do not guarantee exact encoded-frame access; stepping is time-based at the selected rate.
 - Mark address, top, impact and finish manually. Ordered address/top/impact marks produce the backswing-to-downswing tempo ratio. Export saves the selected clip's marks and sampled measurements as JSON. Refresh clears the session.
 - Video decoding depends on the browser and codec. H.264 MP4 and WebM are recommended. A MOV extension alone does not guarantee support.
+
+## Selecting an analysis range
+
+The **Select a range to analyze** panel sits directly below the playback controls. Drag the two handles to highlight any section of up to **20 seconds**, or enter exact start/end times in seconds. Dragging a handle previews that boundary; keyboard arrow keys adjust a focused handle. You can also pause or step to a moment and choose **Set start here** or **Set end here**. **Go to start/end** revisits either boundary without changing your selection. The playhead remains visible on the range bar.
+
+Each comparison clip keeps its own selection, even with synchronized playback. Range previews can inspect the selected clip outside the pair's shared playback interval; normal synchronized playback still uses the shared interval. **Use full clip** selects a short clip in full; on longer videos, **First 20 seconds** restores the initial selection. Empty, reversed, out-of-bounds or overlong ranges show an inline explanation and disable analysis until corrected.
+
+Changing the range preserves earlier results and marks, with a reminder to analyze again. JSON exports include `selectedRange` and `analyzedRange` separately; `range` describes the exported measurements' analyzed interval when results exist. Cancelling an analysis preserves previous results and their original interval. Analysis restores the playhead and retains zoom and drawings.
 
 ## Analysis and privacy
 
@@ -44,6 +52,7 @@ References: [MediaPipe web guide](https://ai.google.dev/edge/mediapipe/solutions
 - `deploy/styles.css` — responsive studio design.
 - `deploy/app.js` — file lifecycle, playback, synchronized seeking, overlays, lazy inference and exports.
 - `deploy/analysis.js` — pure geometry, confidence filtering, smoothing, timing helpers.
+- `deploy/range.js` — range selection, boundary previews and validation.
 - `deploy/fonts/` — locally hosted DM Sans and Manrope, with their OFL licenses.
 - `tests/` — unit and browser tests plus generated fixtures.
 
