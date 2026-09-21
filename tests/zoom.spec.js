@@ -1,10 +1,10 @@
-import {openPanel, settings} from './ui.js';
+import {openPanel, settings, closePanel, discardIfAsked, transport} from './ui.js';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 const clip=(page,i)=>page.locator(`[data-slot="${i}"]`);
 async function load(page,i,file='portrait.mp4'){
   await clip(page,i).locator('input[type=file]').setInputFiles(new URL(`./fixtures/${file}`,import.meta.url).pathname);
-  await expect(clip(page,i).locator('video')).toBeVisible();
+  await discardIfAsked(page);await expect(clip(page,i).locator('video')).toBeVisible();
 }
 const transform=(page,i)=>clip(page,i).locator('.video-plane').evaluate(e=>e.style.transform);
 async function pan(page,i,dx,dy){
@@ -16,23 +16,23 @@ async function exported(page){const wait=page.waitForEvent('download');await ope
 test('zoom and pan persist during playback, seeking, stepping, resizing and mode changes',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');await load(page,0);
-  await clip(page,0).locator('.clip-play').click();
+  await (await transport(page,'play',0)).click();
   await clip(page,0).locator('.zoom-slider').fill('2');
   await pan(page,0,0,70);
   expect(await clip(page,0).locator('video').evaluate(v=>v.paused)).toBe(false);
   const before=await transform(page,0);await page.waitForTimeout(200);expect(await transform(page,0)).toBe(before);
-  await clip(page,0).locator('.clip-play').click();await page.locator('#timeline').fill('1');await page.locator('#next').click();expect(await transform(page,0)).toBe(before);
+  await (await transport(page,'play',0)).click();await (await transport(page,'timeline')).fill('1');await (await transport(page,'next')).click();expect(await transform(page,0)).toBe(before);
   await page.locator('#compareMode').click();await page.locator('#singleMode').click();await expect(clip(page,0).locator('.zoom-value')).toHaveText('2.00×');
   await page.setViewportSize({width:390,height:844});await expect(clip(page,0).locator('.zoom-value')).toHaveText('2.00×');
   await (await settings(page,0,'.zoom-fit')).click();await expect(clip(page,0).locator('.zoom-value')).toHaveText('1.00×');expect(await transform(page,0)).toBe('translate(0px, 0px) scale(1)');
-  await page.locator('#closePanel').click();await clip(page,0).locator('.zoom-in').click();await expect(clip(page,0).locator('.zoom-value')).toHaveText('1.25×');
+  await closePanel(page);await clip(page,0).locator('.zoom-in').click();await expect(clip(page,0).locator('.zoom-value')).toHaveText('1.25×');
   await clip(page,0).locator('.zoom-out').click();await expect(clip(page,0).locator('.zoom-out')).toBeDisabled();
   expect(errors).toEqual([]);
 });
 test('comparison keeps independent zoom while linked playback stays synchronized',async({page})=>{
   await page.goto('/');await load(page,0);await page.locator('#compareMode').click();await load(page,1);
   await clip(page,0).locator('.zoom-slider').fill('2');await clip(page,1).locator('.zoom-slider').fill('3');
-  await page.locator('#play').click();await page.waitForTimeout(250);
+  await (await transport(page,'play')).click();await page.waitForTimeout(250);
   const times=await page.locator('video').evaluateAll(v=>v.map(x=>x.currentTime));expect(Math.abs(times[1]-times[0])).toBeLessThan(.09);
   expect(await page.locator('video').evaluateAll(v=>v.every(x=>!x.paused))).toBe(true);
   await expect(clip(page,0).locator('.zoom-value')).toHaveText('2.00×');await expect(clip(page,1).locator('.zoom-value')).toHaveText('3.00×');
@@ -57,7 +57,7 @@ test('drawing coordinates, editing and mirrored overlays remain correct when zoo
 test('touch pan and pinch preserve playback and zoom controls fit a phone',async({browser})=>{
   const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});const page=await context.newPage();
   await page.goto('/');await load(page,0);await page.locator('#compareMode').click();await load(page,1);
-  await clip(page,1).locator('.zoom-slider').fill('2');await clip(page,1).locator('.clip-play').click();
+  await clip(page,1).locator('.zoom-slider').fill('2');await (await transport(page,'play',1)).click();
   const stage=clip(page,1).locator('.stage');await stage.scrollIntoViewIfNeeded();const b=await stage.boundingBox(),x=b.x+b.width/2,y=b.y+b.height/2;
   const cdp=await context.newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y:y-30,id:0},{x,y:y+30,id:1}]});

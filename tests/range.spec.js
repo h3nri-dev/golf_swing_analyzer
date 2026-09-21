@@ -1,10 +1,10 @@
-import {openPanel, settings} from './ui.js';
+import {openPanel, settings, discardIfAsked, transport} from './ui.js';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 const clip = (page, i) => page.locator(`[data-slot="${i}"]`);
 async function load(page, i) {
   await clip(page, i).locator('input[type=file]').setInputFiles(new URL('./fixtures/portrait.mp4', import.meta.url).pathname);
-  await expect(clip(page, i).locator('video')).toBeVisible();
+  await discardIfAsked(page);await expect(clip(page, i).locator('video')).toBeVisible();await openPanel(page,'range');
 }
 async function exported(page) {
   const download = page.waitForEvent('download'); await openPanel(page,'moments');await page.locator('#export').click();
@@ -27,8 +27,8 @@ test('choose boundaries by handles and current frame without losing zoom', async
   await expect(page.locator('#rangeStart')).toHaveValue('0.500'); await expect(page.locator('#rangeSummary')).toHaveText('1.000 s selected');
   expect(await clip(page, 0).locator('video').evaluate(v => v.currentTime)).toBeCloseTo(1.5, 3);
   await page.locator('#rangeGoStart').click(); expect(await clip(page, 0).locator('video').evaluate(v => v.currentTime)).toBeCloseTo(0.5, 3);
-  await page.locator('#timeline').fill('0.75'); await openPanel(page,'range'); await page.locator('#rangeSetStart').click();
-  await page.locator('#timeline').fill('2'); await openPanel(page,'range'); await page.locator('#rangeSetEnd').click();
+  await (await transport(page,'timeline')).fill('0.75'); await openPanel(page,'range'); await page.locator('#rangeSetStart').click();
+  await (await transport(page,'timeline')).fill('2'); await openPanel(page,'range'); await page.locator('#rangeSetEnd').click();
   await expect(page.locator('#rangeStart')).toHaveValue('0.750'); await expect(page.locator('#rangeEnd')).toHaveValue('2.000');
   await expect(clip(page, 0).locator('.zoom-value')).toHaveText('2.00×');
   await openPanel(page,'range');await page.locator('#rangeSelection').screenshot({path:'/tmp/swing-range-desktop.png'});
@@ -49,7 +49,7 @@ test('comparison ranges remain separate and unsynced boundary previews leave the
   await page.goto('/'); await load(page, 0); await openPanel(page,'range');await page.locator('#rangeEnd').fill('1');
   await page.locator('#compareMode').click(); await load(page, 1); await page.locator('#independent').click();
   await openPanel(page,'range');await page.locator('#rangeStart').fill('2'); await openPanel(page,'range');await page.locator('#rangeEnd').fill('3');
-  await (await settings(page,1,'.clip-speed')).selectOption('0.25'); await clip(page, 1).locator('.clip-play').click();
+  await (await settings(page,1,'.clip-speed')).selectOption('0.25'); await (await transport(page,'play',1)).click();
   await page.locator('[data-select="0"]').click(); await expect(page.locator('#rangeEnd')).toHaveValue('1.000');
   await openPanel(page,'range');await page.locator('#rangeStartHandle').fill('0.5'); expect(await clip(page, 1).locator('video').evaluate(v => v.paused)).toBe(false);
   await page.locator('[data-select="1"]').click(); await expect(page.locator('#rangeStart')).toHaveValue('2.000'); await expect(page.locator('#rangeEnd')).toHaveValue('3.000');
@@ -59,7 +59,7 @@ test('comparison ranges remain separate and unsynced boundary previews leave the
 
 test('analysis scans only the selected interval and exports the result range after edits or cancellation', async ({page}) => {
   await modelStub(page); await page.goto('/'); await load(page, 0);
-  await page.locator('#timeline').fill('2.5'); await openPanel(page,'range');await page.locator('#rangeStart').fill('1'); await openPanel(page,'range');await page.locator('#rangeEnd').fill('1.3');
+  await (await transport(page,'timeline')).fill('2.5'); await openPanel(page,'range');await page.locator('#rangeStart').fill('1'); await openPanel(page,'range');await page.locator('#rangeEnd').fill('1.3');
   await page.locator('#analyze').click(); await expect(page.locator('#status')).toContainText('No clear pose found');
   const times = await page.evaluate(() => window.scannedTimes);
   expect(times.length).toBeGreaterThan(0); expect(times.every(t => t >= 1 && t < 1.3)).toBe(true);

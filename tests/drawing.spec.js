@@ -1,10 +1,10 @@
-import {openPanel, settings} from './ui.js';
+import {openPanel, settings, discardIfAsked, transport} from './ui.js';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 const fixture = new URL('./fixtures/portrait.mp4',import.meta.url).pathname;
 const clip=(page,i)=>page.locator(`[data-slot="${i}"]`);
 const surface=(page,i)=>clip(page,i).locator('.annotation-canvas');
-async function load(page,i){await clip(page,i).locator('input[type=file]').setInputFiles(fixture);await expect(clip(page,i).locator('video')).toBeVisible();}
+async function load(page,i){await clip(page,i).locator('input[type=file]').setInputFiles(fixture);await discardIfAsked(page);await expect(clip(page,i).locator('video')).toBeVisible();}
 async function line(page,i,from={x:.2,y:.3},to={x:.8,y:.7}){
   await surface(page,i).scrollIntoViewIfNeeded(); const b=await surface(page,i).boundingBox();
   await page.mouse.move(b.x+b.width*from.x,b.y+b.height*from.y);await page.mouse.down();await page.mouse.move(b.x+b.width*to.x,b.y+b.height*to.y,{steps:10});await page.mouse.up();
@@ -35,7 +35,7 @@ test('draw, adjust, undo, copy, hide, and export side-by-side annotations',async
 test('frame annotations return at their marked time and survive responsive resizing and mirror',async({page})=>{
   await page.goto('/');await load(page,0);await openPanel(page,'draw');await page.locator('#drawingScope').selectOption('frame');
   await page.locator('[data-tool="arrow"]').click();await line(page,0);await expect(surface(page,0)).toHaveAttribute('data-visible-drawings','1');
-  await page.locator('#next').click();await expect(surface(page,0)).toHaveAttribute('data-visible-drawings','0');await page.locator('#drawingFrames select').selectOption({index:1});await expect(surface(page,0)).toHaveAttribute('data-visible-drawings','1');
+  await (await transport(page,'next')).click();await expect(surface(page,0)).toHaveAttribute('data-visible-drawings','0');await page.locator('#drawingFrames select').selectOption({index:1});await expect(surface(page,0)).toHaveAttribute('data-visible-drawings','1');
   const original=await exported(page);await (await settings(page,0,'.mirror')).click();await openPanel(page,'draw');await page.locator('#drawingScope').selectOption('clip');await page.locator('[data-tool="line"]').click();await line(page,0,{x:.1,y:.2},{x:.4,y:.5});
   const mirrored=await exported(page);expect(mirrored.drawings[1].points[0].x).toBeCloseTo(.9,2);expect(mirrored.drawings[0]).toEqual(original.drawings[0]);
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

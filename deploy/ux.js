@@ -1,0 +1,36 @@
+// Task help and safeguards use native dialogs for focus containment and Escape.
+const $ = id => document.getElementById(id);
+
+export function createTaskHelp({ screen, compare }) {
+  const dialog = $('helpDialog');
+  $('workspaceHelp').onclick = () => dialog.showModal();
+  $('closeHelp').onclick = () => dialog.close();
+  dialog.querySelectorAll('[data-help-task]').forEach(button => {
+    button.onclick = () => {
+      dialog.close();
+      const task = button.dataset.helpTask;
+      if (task === 'compare') { compare(); screen.close(); screen.focus(); }
+      else screen.open(task);
+      const destination = task === 'compare' ? document.querySelector('[data-slot="1"] .dropzone') : $(`tab-${task}`);
+      if (!destination?.hidden) destination?.focus({ preventScroll: true });
+    };
+  });
+}
+
+export function confirmDiscard(slot, action, hasWork) {
+  if (!hasWork) return Promise.resolve(true);
+  const dialog = $('discardDialog');
+  if (dialog.open) return Promise.resolve(false);
+  const name = slot.card.dataset.slot === '0' ? 'A' : 'B';
+  $('discardTitle').textContent = `${action} swing ${name}?`;
+  $('discardFile').textContent = slot.get('.file-name').textContent;
+  $('discardConfirm').textContent = `${action} video`;
+  dialog.returnValue = '';
+  $('discardCancel').onclick = () => dialog.close('cancel');
+  $('discardConfirm').onclick = () => dialog.close('discard');
+  return new Promise(resolve => {
+    dialog.addEventListener('close', () => resolve(dialog.returnValue === 'discard'), { once: true });
+    dialog.showModal();
+    $('discardCancel').focus();
+  });
+}

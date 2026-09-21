@@ -1,0 +1,121 @@
+/* Research-led refinements: one playback scope, visible context, clear exits. */
+.screen-ready .studio-heading { gap: 8px; }
+.screen-ready .mode-switch button { white-space: nowrap; }
+.workspace-help { order: 6; border: 1px solid #bbc9b4; border-radius: 7px; background: white; padding: 8px 12px; font-size: 16px; min-height: 40px; }
+.screen-ready .insights-toggle { display: none; }
+.screen-ready .analysis-target > span { display: inline; margin-right: 3px; color: #4c5d44; }
+.screen-ready .analysis-target button { min-height: 40px; font-size: 16px; }
+.screen-ready .analysis-target button[aria-pressed=true] { background: #354f3d; color: white; border-color: #354f3d; }
+.screen-ready .screen-tabs button[aria-selected=true] { background: #354f3d; color: #fff; border-color: #354f3d; }
+.screen-ready .screen-tabs button { min-height: 40px; }
+.screen-ready .screen-panel-heading #closePanel { font-size: 14px; width: auto; padding: 8px; min-height: 40px; white-space: nowrap; }
+.screen-panel:focus-visible { outline: 2px solid #789b3e; outline-offset: 3px; }
+.screen-ready .comparison-bar { flex-wrap: wrap; }
+.screen-ready .comparison-bar #syncHint { flex: 1; font-size: 14px; }
+.screen-ready #alignmentHelp { display: block; flex: 1; margin: 0; font-size: 14px; line-height: 1.3; color: #354f3d; }
+.screen-notice:has(#alignmentHelp:not([hidden])) > :not(#alignmentHelp) { display: none; }
+.screen-ready #align { min-height: 40px; padding: 7px 10px; font-size: 16px; border: 1px solid #c7d2bf; border-radius: 6px; background: #fff; }
+.screen-ready #align:disabled { opacity: .6; }
+.screen-ready .screen-transport .main-play { width: auto; min-width: 100px; padding: 0 12px; display: flex; gap: 7px; align-items: center; justify-content: center; font-size: 16px; }
+.screen-ready .screen-transport .play-buttons > button { min-height: 40px; }
+.screen-ready .review-context { border: 0; border-bottom: 1px dotted #8b9c7f; padding: 5px 3px; background: none; color: #4c603f; font-size: 14px; min-height: 36px; }
+.screen-ready .screen-commands { gap: 10px; }
+/* Separate playback belongs to the respective video; shared controls act on both. */
+.screen-ready.independent-playback .screen-transport > .timeline-row,
+.screen-ready.independent-playback .screen-transport .play-buttons,
+.screen-ready.independent-playback .screen-transport .speed-label,
+.screen-ready.independent-playback .screen-transport #restart { display: none; }
+.screen-ready.independent-playback .screen-commands { width: 100%; }
+.screen-ready.independent-playback .screen-commands #analyze { margin-left: auto; }
+.screen-ready .clip-transport { grid-template-columns: minmax(0,1fr); }
+.screen-ready .clip-frame-controls { grid-column: 1; grid-row: 1; flex-wrap: nowrap; justify-content: center; gap: 4px; }
+.screen-ready .clip-timeline-row { display: none; }
+.screen-ready .clip-timeline { grid-column: 1; grid-row: 2; height: 28px; }
+.screen-ready .clip-frame-controls .clip-speed-label { display: flex; width: auto; margin: 0 0 0 auto; font-size: 14px; gap: 5px; }
+.screen-ready .clip-speed { min-height: 36px; padding: 3px; }
+.screen-ready .clip-frame-controls > button { min-height: 36px; }
+.screen-ready #viewResults { border: 0; background: none; color: #354f3d; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; min-height: 36px; margin-left: auto; white-space: nowrap; }
+.screen-ready #viewResults:not([hidden]) ~ * { display: none; }
+.screen-notice:has(#viewResults:not([hidden])) .drawing-instruction { display: none; }
+.screen-ready .screen-video-settings .fps-label { grid-column: 1 / -1; }
+.screen-ready .screen-video-settings .fps-label select { min-width: 100px; }
+.screen-ready #resultsEmpty { background: #f0f4e8; padding: 12px; border-radius: 8px; font-size: 16px; }
+/* Native dialogs preserve focus and provide a predictable Escape route. */
+.task-dialog { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 22px; border-radius: 14px; background: #fff; overflow: auto; overscroll-behavior: contain; }
+.task-dialog h2 { margin: 0; font-size: 23px; }
+.task-dialog p { color: #53634c; font-size: 16px; line-height: 1.45; }
+.task-dialog-heading { display: flex; gap: 14px; justify-content: space-between; align-items: center; }
+.task-dialog-heading > button { padding: 8px; border: 1px solid #ccd7c1; background: white; border-radius: 6px; min-height: 40px; }
+.help-task { width: 100%; display: grid; gap: 6px; text-align: left; padding: 12px; margin: 9px 0; background: #f4f7ee; border: 1px solid #d6dfca; border-radius: 8px; }
+.help-task strong { font-size: 17px; display: flex; justify-content: space-between; }
+.help-task > span { color: #53634c; font-size: 14px; line-height: 1.45; }
+.task-dialog .help-shortcuts { font-size: 14px; line-height: 1.7; margin-bottom: 0; }
+#discardFile { overflow-wrap: anywhere; font-weight: 600; }
+.discard-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.discard-actions button { min-height: 44px; padding: 10px 14px; border: 1px solid #bdcbb1; border-radius: 7px; background: #fff; }
+.discard-actions #discardCancel { background: #354f3d; color: white; border-color: #354f3d; }
+.discard-actions #discardConfirm { color: #924a34; }
+@media (max-width: 1350px) {
+  .workspace-help { margin-left: auto; order: 4; }
+}
+@media (max-width: 1000px) {
+  .screen-ready .screen-commands .review-context { display: none; }
+  .screen-ready.independent-playback .screen-commands .review-context { display: inline; }
+  .screen-ready .analysis-panel { box-shadow: 0 10px 30px #17251f55; }
+}
+@media (max-width: 600px) {
+  .screen-ready .studio-heading { gap: 3px; }
+  .screen-ready .mode-switch { width: calc(100% - 57px); }
+  .screen-ready .mode-switch button { font-size: 16px; padding: 7px 4px; }
+  .workspace-help { order: 0; width: 51px; padding: 7px 3px; font-size: 16px; margin: 0; }
+  .screen-ready .analysis-target { order: 1; }
+  .screen-ready .analysis-target > span { display: none; }
+  .screen-ready .analysis-target button { min-height: 36px; font-size: 14px; }
+  .screen-ready .screen-tabs { order: 2; }
+  .screen-ready .screen-tabs button { font-size: 16px; padding: 5px; }
+  .screen-ready #align { min-height: 36px; padding: 5px 7px; font-size: 14px; }
+  .screen-ready .comparison-bar { gap: 3px; }
+  .screen-ready .screen-transport .main-play { min-width: 42px; padding: 0 8px; }
+  .screen-ready .main-play .play-word { display: none; }
+  .screen-ready .clip-frame-controls { flex-wrap: wrap; }
+  .screen-ready .clip-frame-controls > button { min-height: 36px; }
+  .screen-ready .clip-frame-controls .clip-speed-label { width: 100%; justify-content: space-between; margin: 0; }
+  .screen-ready .clip-speed { width: 66px; min-height: 32px; }
+  .screen-ready .screen-video-settings .fps-label { grid-column: 1 / -1; }
+  .screen-ready .screen-panel-heading #closePanel { padding: 5px 7px; min-height: 36px; }
+  .screen-ready .screen-panel-heading h2 { font-size: 20px; }
+  .task-dialog { padding: 16px; }
+  .screen-ready .range-heading { display: none; }
+}
+@media (max-height: 740px) {
+  .screen-ready #resultsEmpty { padding: 8px; font-size: 14px; margin-bottom: 8px; }
+}
+@media (max-height: 600px) and (max-width: 600px) {
+  .screen-ready .screen-notice { min-height: 20px; }
+  .screen-ready .clip-frame-controls > button { min-height: 30px; }
+  .screen-ready .clip-speed { min-height: 28px; }
+  .screen-ready .clip-timeline { height: 24px; }
+  .screen-ready .clip-frame-controls .clip-speed-label { font-size: 14px; }
+}
+@media (max-height: 500px) and (min-width: 601px) {
+  .screen-ready .screen-tabs { margin-left: auto; }
+  .workspace-help { order: 4; min-height: 32px; padding: 5px; font-size: 14px; margin-left: 0; }
+  .screen-ready .analysis-target { margin-left: 0; }
+  .screen-ready .mode-switch button { font-size: 14px; }
+  .screen-ready #align { min-height: 30px; padding: 3px 6px; font-size: 14px; }
+  .screen-ready .screen-tabs button { min-height: 32px; padding: 5px; font-size: 14px; }
+  .screen-ready .clip-transport { display: grid; }
+  .screen-ready .clip-frame-controls { grid-row: 1; }
+  .screen-ready .clip-timeline { grid-row: 2; height: 22px; }
+  .screen-ready .clip-frame-controls .clip-speed-label { font-size: 0; }
+  .screen-ready .clip-speed { font-size: 14px; min-height: 28px; }
+  .screen-ready .clip-frame-controls > button { min-height: 28px; }
+  .screen-ready #panel-pose #resultsEmpty { grid-column: 2; grid-row: 1 / 3; margin: 0; }
+}
+.screen-ready .timeline-row input { height: 28px; }
+.screen-ready .video-top .remove { width: 32px; min-width: 32px; }
+.screen-ready .studio-heading, .screen-ready .screen-tabs { min-width: 0; }
+@media (max-width: 600px) and (max-height: 740px) {
+  .screen-ready .screen-panel-help { margin-bottom: 8px; }
+  .screen-ready #panel-moments .metric-note { margin: 2px 0; }
+}
