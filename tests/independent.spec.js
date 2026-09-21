@@ -57,7 +57,7 @@ test('unsync preserves playback and zoom; resync restores the offset and common 
   let states = await state(page);
   expect(states.every(v => v.paused)).toBe(true); expect(states.map(v => v.rate)).toEqual([0.5, 0.5]);
   expect(states[1].time - states[0].time).toBeCloseTo(-0.3, 2);
-  await expect(clip(page, 0).locator('.clip-play')).toHaveText('▶ Play both');
+  await expect(clip(page, 0).locator('.clip-play')).toHaveText('▶ Play A');
   await expect(clip(page, 0).locator('.zoom-value')).toHaveText('2.00×');
   await (await transport(page,'play')).click(); await page.waitForTimeout(300);
   states = await state(page); expect(states.every(v => !v.paused)).toBe(true);

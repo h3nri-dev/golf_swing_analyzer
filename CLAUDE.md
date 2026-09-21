@@ -10,6 +10,7 @@ This is a build-free, browser-only application. Keep production entirely static:
 - `deploy/screen.js`, `deploy/screen.css`: viewport-sized studio, accessible control panels and native scroll snapping. Keep regular controls within the viewport; use internal panel scrolling only as an accessibility fallback for extreme sizes or text scaling.
 - `deploy/ux.js`, `deploy/ux.css`: task help, session-work confirmation and interaction refinements. `UX_REVIEW.md` records the research basis and task checks.
 - `deploy/app.js`: two local video slots, single/compare modes, playback synchronization, lazy MediaPipe inference and export.
+- Compare mode must keep both individual players and the common controller visible. Individual playback actions affect one clip and release sync; common actions affect both, respecting the current sync state. Keep zoom sliders compact.
 - `deploy/analysis.js`: pure calculation helpers; unit-test changes here.
 - `deploy/viewport.js`: per-clip zoom/pan. Keep video and both overlays on the same transformed plane, and never pause playback for view changes.
 - `deploy/drawing.js`, `deploy/annotations.js`: annotation geometry/history, pointer tools and PNG export. Keep coordinates normalized to the unmirrored video image, not the stage.

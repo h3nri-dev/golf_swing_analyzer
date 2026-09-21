@@ -18,9 +18,9 @@ test('first use provides task help and one playback control per scope',async({pa
   await page.locator('[data-help-task="compare"]').click();await expect(slot(page,1)).toBeVisible();
   await load(page,0);await load(page,1);
   await expect(page.getByRole('button',{name:'Play both swings',exact:true})).toHaveCount(1);
-  await expect(page.locator('.clip-transport').first()).toBeHidden();
+  await expect(page.locator('.clip-transport').first()).toBeVisible();
   await page.locator('#independent').click();
-  await expect(page.locator('#play')).toBeHidden();
+  await expect(page.locator('#play')).toBeVisible();
   await expect(page.getByRole('button',{name:'Play swing A',exact:true})).toHaveCount(1);
   await expect(page.getByRole('button',{name:'Play swing B',exact:true})).toHaveCount(1);
   await expect(slot(page,0).locator('.clip-speed')).toBeVisible();

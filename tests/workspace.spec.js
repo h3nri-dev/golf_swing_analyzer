@@ -34,7 +34,7 @@ test('drawing rail stays beside the video while switching tools and undoing', as
 test('hiding insights expands videos without interrupting playback or changing zoom', async ({page}) => {
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/'); await load(page,0); await page.locator('#compareMode').click(); await load(page,1);
-  await expect(clip(page,0).locator('.clip-play')).toHaveText('▶ Play both');
+  await expect(clip(page,0).locator('.clip-play')).toHaveText('▶ Play A');
   await (await transport(page,'speed')).selectOption('0.25'); await clip(page,0).locator('.zoom-slider').fill('2');
   await openPanel(page,'range');const before=await clip(page,0).locator('.stage').boundingBox();
   await (await transport(page,'play',0)).click(); await closePanel(page);

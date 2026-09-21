@@ -51,6 +51,12 @@ export function createStudioScreen({ slots, state, changed }) {
   slots.forEach((s,i)=>{
     const group=document.createElement('div');group.dataset.settingsSlot=i;group.className='screen-video-settings';
     const title=document.createElement('h3');title.textContent=`Swing ${i?'B':'A'}`;group.append(title);
+    const review = $('analysisTarget').querySelector(`[data-select="${i}"]`);
+    review.className = 'slot-badge'; review.textContent = i ? 'B' : 'A';
+    review.setAttribute('aria-label', `Review swing ${i?'B':'A'}`);
+    review.title = `Select swing ${i?'B':'A'} for drawing and analysis`;
+    s.get('.slot-badge').replaceWith(review);
+    s.get('.clip-timeline-row').insertBefore(s.get('.clip-timeline'), s.get('.clip-duration'));
     s.get('.clip-speed').closest('label').className = 'clip-speed-label';
     s.get('.fps-label').firstChild.textContent = 'Frame rate ';
     // Warm the selectors before moving their nodes out of the video card.
