@@ -1,6 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { analysisRangeError } from '../deploy/range.js';
+import { analysisRangeError, analysisWindow } from '../deploy/range.js';
+import {fileTime} from '../deploy/timing.js';
+
+test('default window covers five seconds either side and clips at both edges',()=>{
+  assert.deepEqual(analysisWindow(30,60),[25,35]);
+  assert.deepEqual(analysisWindow(0,60),[0,5]);
+  assert.deepEqual(analysisWindow(59,60),[54,60]);
+  assert.deepEqual(analysisWindow(2,4),[0,4]);
+  assert.deepEqual(analysisWindow(60,60),[55,60]);
+  assert.deepEqual(analysisWindow(NaN,60),[0,0]);
+  assert.deepEqual(analysisWindow(0,0),[0,0]);
+});
+test('window sizes use real seconds across ordinary and slow-motion frame rates',()=>{
+  for(const [fps,shotFps] of [[30,30],[60,60],[30,120],[29.97,119.88]]) {
+    const clip={fps,shotFps},scale=shotFps/fps;
+    assert.deepEqual(analysisWindow(fileTime(7,clip),fileTime(15,clip),fileTime(10,clip)),[2*scale,12*scale]);
+  }
+  assert.deepEqual(analysisWindow(30,60,2),[29,31]);
+});
 
 test('analysis accepts sections anywhere in a long video, up to 20 seconds', () => {
   assert.equal(analysisRangeError(31.2, 51.2, 120), '');

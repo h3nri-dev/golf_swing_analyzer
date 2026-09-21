@@ -57,7 +57,7 @@ export function createStudioScreen({ slots, state, changed }) {
   common.append($('comparisonBar'),footer.querySelector('.timeline-row'),footer.querySelector('.transport-row'));footer.insertBefore(common,notice);
   pieces.note.textContent='2D estimates at the playhead. Camera angle and visibility affect accuracy.';
   const resultsEmpty = document.createElement('p'); resultsEmpty.id = 'resultsEmpty'; resultsEmpty.className = 'screen-panel-help';
-  resultsEmpty.textContent = 'Choose a range, then Analyze. You can play and draw without analysis.';
+  resultsEmpty.textContent = 'Pause at your swing, then Analyze. You can play and draw without analysis.';
   panels.pose.append(pieces.hand, resultsEmpty, pieces.overlays, pieces.metrics, pieces.note);
   panels.moments.append(pieces.momentsHeading, pieces.momentsCopy, pieces.phases, pieces.tempo, pieces.tempoNote, pieces.export);
   const videoNote=document.createElement('p');videoNote.className='screen-panel-help';videoNote.textContent='Slow-motion export? Set Shot FPS to the camera’s recording rate. Otherwise leave Same.';panels.video.append(videoNote);
@@ -94,7 +94,7 @@ export function createStudioScreen({ slots, state, changed }) {
   inspector.replaceChildren(inspectorHeader,sections);
   inspector.hidden=false;studio.append(inspector);
   // A compact range editor stays readable even on a phone-sized controls panel.
-  $('rangeTitle').textContent='Up to 20 seconds';
+  $('rangeTitle').textContent='10-second analysis window';
   $('rangeSetStart').textContent=$('rangeSetEnd').textContent='Set';
   $('rangeSetStart').setAttribute('aria-label','Set analysis start at current frame');
   $('rangeSetEnd').setAttribute('aria-label','Set analysis end at current frame');

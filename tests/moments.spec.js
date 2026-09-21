@@ -41,7 +41,7 @@ test('frame-aware clocks, range inputs and retiming use real seconds without mov
   await page.locator('#rangeStart').fill('0.25');await page.locator('#rangeEnd').fill('1.5');
   let data=await page.evaluate(async()=>(await import('/app.js')).reportData());
   expect(data.selectedRange).toEqual([1,6]);expect(data.marks.impact).toBe(2);
-  await expect(page.locator('#rangeSummary')).toHaveText('1.250 s selected');
+  await expect(page.locator('#rangeSummary')).toHaveText('Pinned · 1.250 s');
   await card(page,1).locator('.fps').selectOption('60');
   await expect(page.locator('#phase-impact')).toHaveText('1.000 s');
   await expect(page.locator('#rangeStart')).toHaveValue('0.500');await expect(page.locator('#rangeEnd')).toHaveValue('3.000');

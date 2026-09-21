@@ -79,3 +79,12 @@ The range editor previously lived across the screen from the playback timeline a
 | Resize and use a keyboard or touchscreen | Desktop controls use available width; laptop playback spans the workspace. At very small phone sizes controls stack below a minimum-height player. No control is covered or removed. |
 
 Geometry regression checks protect range-before-player ordering, neighboring analysis commands, Fit/Zoom and drawing history placement, and adjacent sync/alignment controls. Range selection, real-time FPS conversions, independent controller state, analysis cancellation, drawings, previews and PDF export continue to use the established behavior tests. This is an implementation review and browser task check, not a new study with golfers.
+
+
+## Default sliding analysis window
+
+Selecting two small boundary handles was unnecessary work for the common task of reviewing the swing currently on screen. The default is now a visible ±5-real-second window following the playhead. Analyze captures the current window immediately, then freezes it while scanning. Each edge is clipped to the video duration, so the window is shorter near the beginning/end instead of scanning more than five seconds away.
+
+One 48×40-pixel thumb moves the window as a unit. Dragging it pins the selection without seeking or pausing the video. A pressed-state Follow ±5s control next to the window distinguishes automatic from pinned selection and restores the default. Precise fields and Set/Go controls remain available, and automatically pin the range. Native range input semantics support touch and keyboard; arrows move one second, Shift + arrow one recorded frame, and Page Up/Down five seconds. A and B retain separate settings.
+
+Validation uses a generated 60-second clip to test centered scans, the actual playhead at Analyze click, edge clipping, sliding and exact edits, cancellation, touch/keyboard access, independent playback, zoom preservation and slow-motion conversion. No source video is uploaded and no backend is added.

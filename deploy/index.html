@@ -39,15 +39,15 @@
           <div class="transport-row"><div class="play-buttons"><button id="previous" aria-label="Previous frame" title="Previous frame (←)" disabled>Ⅰ‹</button><button id="play" class="main-play" aria-label="Play" disabled>▶</button><button id="next" aria-label="Next frame" title="Next frame (→)" disabled>›Ⅰ</button></div><label class="speed-label">Speed <select id="speed" aria-label="Playback speed"><option value="mixed" disabled>Mixed</option><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option></select></label><span class="shortcut-hint"><kbd>←</kbd><kbd>→</kbd> frame by frame <span>·</span> <kbd>space</kbd> play</span><button id="restart" class="text-button" disabled>↺ Restart</button></div>
           <section class="analysis-range" id="rangeSelection" aria-labelledby="rangeTitle">
             <div class="range-heading"><h3 id="rangeTitle">Select a range to analyze</h3><span id="rangeTarget">Swing A</span></div>
-            <p class="range-help">Drag the handles, enter times, or pause the video and set each point. Up to 20 seconds per analysis.</p>
-            <div class="range-track"><div class="range-rail"><span id="rangeBand"></span><span id="rangePlayhead"></span></div><input id="rangeStartHandle" type="range" min="0" max="1" step="0.001" value="0" aria-label="Analysis range start" disabled><input id="rangeEndHandle" type="range" min="0" max="1" step="0.001" value="1" aria-label="Analysis range end" disabled></div>
+            <p class="range-help">Analyze five seconds before and after the current frame. Drag the window to pin it, or enter exact times. The window stops at the clip’s edges.</p>
+            <div class="range-track"><div class="range-rail"><span id="rangeBand"></span><span id="rangePlayhead"></span></div><input id="rangeWindow" type="range" min="0" max="1" step="0.001" value="0" aria-label="Move analysis window" aria-describedby="rangeSummary" disabled></div>
             <div class="range-limits"><span>0.000 s</span><span id="rangeClipDuration">0.000 s</span></div>
             <div class="range-boundaries">
               <div class="range-boundary"><label for="rangeStart">Start <span><input id="rangeStart" type="number" value="0" min="0" step="0.001" aria-label="Analysis start in seconds" aria-describedby="rangeError" disabled> s</span></label><div><button id="rangeSetStart" disabled>Set start here</button><button id="rangeGoStart" disabled>Go to start</button></div></div>
               <div class="range-boundary"><label for="rangeEnd">End <span><input id="rangeEnd" type="number" value="0" min="0" step="0.001" aria-label="Analysis end in seconds" aria-describedby="rangeError" disabled> s</span></label><div><button id="rangeSetEnd" disabled>Set end here</button><button id="rangeGoEnd" disabled>Go to end</button></div></div>
             </div>
             <p id="rangeError" class="range-error" role="status" hidden></p>
-            <div class="range-footer"><output id="rangeSummary">Add a video to choose a range.</output><button id="rangeReset" disabled>Use full clip</button><button id="analyzeSelection" disabled>Analyze selected range ↗</button></div>
+            <div class="range-footer"><output id="rangeSummary">Add a video to choose a range.</output><button id="rangeReset" aria-pressed="true" disabled>Follow ±5s</button><button id="analyzeSelection" disabled>Analyze selected range ↗</button></div>
             <div class="range-progress"><p id="rangeStatus" role="status" hidden></p><button id="cancelSelection" class="text-button" hidden>Cancel analysis</button></div>
           </section>
         </div>
@@ -78,7 +78,7 @@
   <p>Start with a video. Drawing and comparison work without running analysis.</p>
   <button class="help-task" data-help-task="draw"><strong>Draw on a frame <span>↗</span></strong><span>Choose a tool beside the video. Use Line for a reference or Angle to tap three points.</span></button>
   <button class="help-task" data-help-task="compare"><strong>Compare two swings <span>↗</span></strong><span>Controls under A or B affect that video. The bottom controller affects both. Use Sync off to find impact in each clip, then Sync Videos.</span></button>
-  <button class="help-task" data-help-task="range"><strong>Analyze part of a swing <span>↗</span></strong><span>Use the range row directly above playback to choose start and end, then Analyze. Results shows your body angles.</span></button>
+  <button class="help-task" data-help-task="range"><strong>Analyze part of a swing <span>↗</span></strong><span>Pause at your swing, then Analyze. The window covers ±5 seconds around that frame. Drag the window to pin it, or use Follow ±5s to follow playback again.</span></button>
   <p class="help-shortcuts"><kbd>←</kbd> <kbd>→</kbd> step frames · <kbd>Space</kbd> play<br><kbd>Ctrl/⌘ Z</kbd> undo a drawing · <kbd>Esc</kbd> exit drawing</p>
 </dialog>
 <dialog id="discardDialog" class="task-dialog" aria-labelledby="discardTitle" aria-describedby="discardDescription">

@@ -17,10 +17,10 @@ async function modelStub(page) {
   }));
 }
 
-test('choose boundaries by handles and current frame without losing zoom', async ({page}) => {
+test('exact boundaries and current-frame shortcuts pin the range without losing zoom', async ({page}) => {
   await page.goto('/'); await load(page, 0); await clip(page, 0).locator('.zoom-slider').fill('2');
-  await focusSection(page,'range');await page.locator('#rangeStartHandle').fill('0.5'); await page.locator('#rangeEndHandle').fill('1.5');
-  await expect(page.locator('#rangeStart')).toHaveValue('0.500'); await expect(page.locator('#rangeSummary')).toHaveText('1.000 s selected');
+  await focusSection(page,'range');await page.locator('#rangeStart').fill('0.5'); await page.locator('#rangeEnd').fill('1.5');await page.locator('#rangeGoEnd').click();
+  await expect(page.locator('#rangeStart')).toHaveValue('0.500'); await expect(page.locator('#rangeSummary')).toHaveText('Pinned · 1.000 s');
   expect(await clip(page, 0).locator('video').evaluate(v => v.currentTime)).toBeCloseTo(1.5, 3);
   await page.locator('#rangeGoStart').click(); expect(await clip(page, 0).locator('video').evaluate(v => v.currentTime)).toBeCloseTo(0.5, 3);
   await (await transport(page,'timeline')).fill('0.75'); await focusSection(page,'range'); await page.locator('#rangeSetStart').click();
@@ -47,7 +47,7 @@ test('comparison ranges remain separate and unsynced boundary previews leave the
   await focusSection(page,'range');await page.locator('#rangeStart').fill('2'); await focusSection(page,'range');await page.locator('#rangeEnd').fill('3');
   await (await settings(page,1,'.clip-speed')).selectOption('0.25'); await (await transport(page,'play',1)).click();
   await page.locator('[data-select="0"]').click(); await expect(page.locator('#rangeEnd')).toHaveValue('1.000');
-  await focusSection(page,'range');await page.locator('#rangeStartHandle').fill('0.5'); expect(await clip(page, 1).locator('video').evaluate(v => v.paused)).toBe(false);
+  await focusSection(page,'range');await page.locator('#rangeStart').fill('0.5');await page.locator('#rangeGoStart').click(); expect(await clip(page, 1).locator('video').evaluate(v => v.paused)).toBe(false);
   await page.locator('[data-select="1"]').click(); await expect(page.locator('#rangeStart')).toHaveValue('2.000'); await expect(page.locator('#rangeEnd')).toHaveValue('3.000');
   await load(page, 1); await expect(page.locator('#rangeStart')).toHaveValue('0.000');
   await page.locator('[data-select="0"]').click(); await expect(page.locator('#rangeStart')).toHaveValue('0.500');
@@ -69,16 +69,22 @@ test('analysis scans only the selected interval and exports the result range aft
   data = await reportModel(page); expect(data.analyzedRange).toEqual([1,1.3]); expect(data.measurements.length).toBe(times.length);
 });
 
-test('range handles support touch and keyboard on a phone without overflow', async ({browser}) => {
+test('sliding window supports touch and keyboard on a phone without overflow', async ({browser}) => {
   const context = await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
-  const page = await context.newPage(); await page.goto('/'); await load(page, 0);
+  const page = await context.newPage(); await page.goto('/');
+  await clip(page,0).locator('input[type=file]').setInputFiles(new URL('./fixtures/window-60s.mp4',import.meta.url).pathname);
+  await expect(clip(page,0).locator('video')).toBeVisible();
   await focusSection(page,'range');await page.locator('#rangeSelection').scrollIntoViewIfNeeded();
   const b = await page.locator('.range-track').boundingBox(); const cdp = await context.newCDPSession(page);
-  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:b.x+14,y:b.y+22,id:0}]});
-  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:b.x+14+(b.width-28)*0.25,y:b.y+22,id:0}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:b.x+24,y:b.y+22,id:0}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:b.x+24+(b.width-48)*0.5,y:b.y+22,id:0}]});
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-  expect(Number(await page.locator('#rangeStart').inputValue())).toBeCloseTo(1,1);
-  await page.locator('#rangeEndHandle').focus(); await page.keyboard.press('ArrowLeft'); await expect(page.locator('#rangeEnd')).toHaveValue('3.999');
+  expect(Number(await page.locator('#rangeStart').inputValue())).toBeCloseTo(25,0);
+  expect(Number(await page.locator('#rangeEnd').inputValue())-Number(await page.locator('#rangeStart').inputValue())).toBeCloseTo(10,3);
+  const center=Number(await page.locator('#rangeWindow').inputValue());
+  await page.locator('#rangeWindow').focus(); await page.keyboard.press('ArrowRight');
+  expect(Number(await page.locator('#rangeWindow').inputValue())).toBeCloseTo(center+1,3);
+  await expect(page.locator('#rangeReset')).toHaveAttribute('aria-pressed','false');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await focusSection(page,'range');await page.locator('#rangeSelection').screenshot({path:'/tmp/swing-range-phone.png'}); await context.close();
 });

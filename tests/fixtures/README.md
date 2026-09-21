@@ -13,3 +13,10 @@ ffmpeg -f lavfi -i 'testsrc2=size=128x224:rate=120:duration=2' \
 ```
 
 Other bundled fixtures are generated videos for orientation, drawing, zoom and duration checks. Real pose inference uses an optional external `POSE_FIXTURE` supplied by the developer.
+
+
+`window-60s.mp4` is a 60-second, 30 FPS synthetic clip for analysis-window tests. Recreate with:
+
+```sh
+ffmpeg -f lavfi -i 'testsrc2=size=96x160:rate=30:duration=60' -an -c:v libx264 -preset fast -crf 38 -pix_fmt yuv420p tests/fixtures/window-60s.mp4
+```

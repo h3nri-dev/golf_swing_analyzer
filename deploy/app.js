@@ -5,7 +5,7 @@ import { PRIMARY_MOMENTS, suggestKeyMoments, keyMomentEntries } from './keyframe
 import { createKeyframeViews } from './keyframe-views.js';
 import { createAnnotations } from './annotations.js';
 import { createViewport } from './viewport.js';
-import { createRangeSelector, analysisRangeError, MAX_ANALYSIS_SECONDS } from './range.js';
+import { createRangeSelector, analysisRangeError } from './range.js';
 import { createStudioScreen } from './screen.js';
 import { createTaskHelp, confirmDiscard } from './ux.js';
 let annotations = null;
@@ -140,7 +140,7 @@ function resetSlot(index) {
   pauseControlled(index); const s = slots[index]; s.version++; s.ready = false; s.video.onerror = null;
   s.video.removeAttribute('src'); s.video.load();
   if (s.url) URL.revokeObjectURL(s.url);
-  Object.assign(s, { url: null, samples: [], keyMoments: [], analyzedRange: null, analysisAttempted: false, marks: {}, anchor: null, start: 0, end: 0, status: 'Add a video to get started.' });
+  Object.assign(s, { url: null, samples: [], keyMoments: [], analyzedRange: null, analysisAttempted: false, marks: {}, anchor: null, start: 0, end: 0, rangeAuto: true, windowCenter: 0, windowSpan: 0, status: 'Add a video to get started.' });
   s.fps = 30; s.shotFps = null; s.speed = 1;
   s.get('.fps').value = '30'; s.get('.shot-fps').value = 'same';
   for (const option of s.get('.shot-fps').options) option.disabled = option.value !== 'same' && Number(option.value) < 30;
@@ -171,10 +171,9 @@ async function loadFile(index, file) {
     if (s.version !== version) return;
     if (!Number.isFinite(s.video.duration) || s.video.duration <= 0 || !s.video.videoWidth) throw new Error('This video has no readable duration. Try exporting it as an MP4.');
     s.ready = true; s.video.hidden = false; s.drop.hidden = true;
-    s.end = Math.min(MAX_ANALYSIS_SECONDS, s.video.duration);
     if (isLinked()) { s.speed = slots[1 - index].speed; applySpeed(s); }
     if (isIndependent()) Object.assign(commonTransport, playerState(active), { following: false });
-    s.status = s.video.duration > MAX_ANALYSIS_SECONDS ? 'Choose up to 20 seconds in Range, then analyze.' : 'Ready. Choose a section in Range, or analyze the full clip.';
+    s.status = 'Pause at your swing, then Analyze. The window follows the current frame ±5 seconds.';
     s.video.onerror = () => { if (s.ready) { pauseControlled(index); s.status = 'Video decoding failed. Replace this clip with an H.264 MP4.'; s.ready = false; update(); } };
     update(); studioScreen?.focus();
   } catch (error) {
@@ -219,7 +218,7 @@ function updateAnalysisControls() {
   $('analyze').title = `Analyze swing ${names[active]} · ${range}`;
   $('reviewContext').textContent = `Swing ${names[active]} · ${range}`;
   $('reviewContext').disabled = !s.ready || !!job;
-  if (s.ready && !s.analysisAttempted) $('status').textContent = analysisRangeError(s.start,s.end,s.video.duration,timingRate(s)) || 'Ready. Play, draw, or analyze.';
+  if (s.ready && !s.analysisAttempted) $('status').textContent = analysisRangeError(s.start,s.end,s.video.duration,timingRate(s)) || (s.rangeAuto !== false ? 'Pause at your swing, then Analyze.' : 'Ready. Analyze your pinned window.');
 }
 function update() {
   const s = slots[active], busy = !!job;
@@ -442,10 +441,16 @@ function modelOperation(promise, token, release = () => {}) {
 }
 async function analyze() {
   const s = slots[active]; if (!s.ready || job) return;
+  // Freeze the playhead before selecting the automatic window so the restored
+  // frame and analyzed interval have the same anchor, even during playback.
+  pauseAll();
+  // Refresh at the click, not at a previous playback/render tick. Pinned ranges
+  // remain exactly as the user chose them throughout scanning and cancellation.
+  rangeSelector.prepare();
   const start = s.start, end = s.end, rangeError = analysisRangeError(start, end, s.video.duration, timingRate(s));
   if (rangeError) return toast(rangeError);
   s.start = start; s.end = Math.min(end, s.video.duration); s.analysisAttempted = true;
-  pauseAll(); const originalTime = s.video.currentTime; const token = { cancelled: false, controller: new AbortController() }; job = token;
+  const originalTime = s.video.currentTime; const token = { cancelled: false, controller: new AbortController() }; job = token;
   s.status = 'Loading the on-device pose model…'; $('progress').value = 0; update();
   let detector;
   try {
