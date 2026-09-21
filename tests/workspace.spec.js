@@ -1,4 +1,4 @@
-import {openPanel, settings, closePanel, discardIfAsked, transport} from './ui.js';
+import {focusSection, settings, focusVideos, discardIfAsked, transport} from './ui.js';
 import {test, expect} from '@playwright/test';
 const clip = (page, i) => page.locator(`[data-slot="${i}"]`);
 async function load(page, i) {
@@ -31,26 +31,26 @@ test('drawing rail stays beside the video while switching tools and undoing', as
   await page.locator('#videoEditor').screenshot({path:'/tmp/swing-side-tools-desktop.png'});
 });
 
-test('hiding insights expands videos without interrupting playback or changing zoom', async ({page}) => {
+test('the expanded sidebar preserves video size, playback and zoom while using controls', async ({page}) => {
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/'); await load(page,0); await page.locator('#compareMode').click(); await load(page,1);
   await expect(clip(page,0).locator('.clip-play')).toHaveText('▶ Play A');
   await (await transport(page,'speed')).selectOption('0.25'); await clip(page,0).locator('.zoom-slider').fill('2');
-  await openPanel(page,'range');const before=await clip(page,0).locator('.stage').boundingBox();
-  await (await transport(page,'play',0)).click(); await closePanel(page);
-  await expect(page.locator('#analysisPanel')).toBeHidden(); await expect(page.locator('#toggleInsights')).toHaveAttribute('aria-expanded','false');
-  expect((await clip(page,0).locator('.stage').boundingBox()).width).toBeGreaterThan(before.width+100);
+  await focusSection(page,'range');const before=await clip(page,0).locator('.stage').boundingBox();
+  await (await transport(page,'play',0)).click(); await focusVideos(page);
+  await expect(page.locator('#analysisPanel')).toBeVisible(); await expect(page.locator('#toggleInsights')).toHaveCount(0);
+  expect((await clip(page,0).locator('.stage').boundingBox()).width).toBeCloseTo(before.width,0);
   expect(await page.locator('video').evaluateAll(v=>v.every(x=>!x.paused))).toBe(true);
   await expect(clip(page,0).locator('.zoom-value')).toHaveText('2.00×');
   const boxes=await clip(page,0).locator('.video-plane > video, .pose-canvas, .annotation-canvas').evaluateAll(es=>es.map(e=>{const b=e.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height};}));
   for(const b of boxes) { expect(b.x).toBeCloseTo(boxes[0].x,0); expect(b.y).toBeCloseTo(boxes[0].y,0); expect(b.w).toBeCloseTo(boxes[0].w,0); expect(b.h).toBeCloseTo(boxes[0].h,0); }
-  await openPanel(page,'range'); await expect(page.locator('#analysisPanel')).toBeVisible();
+  await focusSection(page,'range'); await expect(page.locator('#analysisPanel')).toBeVisible();
   expect(await page.locator('video').evaluateAll(v=>v.every(x=>!x.paused))).toBe(true); expect(errors).toEqual([]);
 });
 
 test('phone rail stays vertical and drawing on A leaves independent B playing', async ({page}) => {
   await page.setViewportSize({width:390,height:844}); await page.goto('/'); await load(page,0); await page.locator('#compareMode').click(); await load(page,1);
-  await page.locator('#independent').click(); await (await settings(page,1,'.clip-speed')).selectOption('0.25'); await closePanel(page); await (await transport(page,'play',1)).click();
+  await page.locator('#independent').click(); await (await settings(page,1,'.clip-speed')).selectOption('0.25'); await focusVideos(page); await (await transport(page,'play',1)).click();
   await page.locator('[data-select="0"]').click(); await page.locator('[data-tool="line"]').click(); await drawLine(page,0);
   await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
   expect(await clip(page,1).locator('video').evaluate(v=>v.paused)).toBe(false);

@@ -9,9 +9,9 @@ export function createTaskHelp({ screen, compare }) {
     button.onclick = () => {
       dialog.close();
       const task = button.dataset.helpTask;
-      if (task === 'compare') { compare(); screen.close(); screen.focus(); }
-      else screen.open(task);
-      const destination = task === 'compare' ? document.querySelector('[data-slot="1"] .dropzone') : $(`tab-${task}`);
+      if (task === 'compare') { compare(); screen.focus(); }
+      else screen.focusSection(task);
+      const destination = task === 'compare' ? document.querySelector('[data-slot="1"] .dropzone') : $(`panel-${task}`);
       if (!destination?.hidden) destination?.focus({ preventScroll: true });
     };
   });

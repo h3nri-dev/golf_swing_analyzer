@@ -1,0 +1,121 @@
+/* All five sections are expanded. The right column owns its overflow, so
+   shorter screens can reach every control without moving the video players. */
+.studio.persistent-sidebar { grid-template-columns: minmax(0,1fr) clamp(520px,40vw,620px); }
+.persistent-sidebar .studio-heading { grid-column: 1 / -1; }
+.persistent-sidebar .workspace { grid-column: 1; grid-row: 2; grid-template-columns: minmax(0,1fr); overflow: hidden; }
+.persistent-sidebar .screen-transport { grid-column: 1; grid-row: 3; min-width: 0; }
+.persistent-sidebar .workspace-help { margin-left: auto; }
+.persistent-sidebar .analysis-panel { grid-column: 2; grid-row: 2 / 4; position: static; width: auto; max-width: none; min-width: 0; padding: 0; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: #f0f3eb; box-shadow: none; overflow: auto; overscroll-behavior: contain; scroll-padding-top: 56px; }
+.sidebar-heading { position: sticky; top: 0; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: #f0f3eb; border-bottom: 1px solid #dbe3d1; }
+.sidebar-heading h2 { margin: 0; font-size: 18px; letter-spacing: -.3px; }
+.persistent-sidebar .sidebar-heading .drawing-target { display: flex; gap: 4px; align-items: center; font-size: 14px; }
+.sidebar-heading .drawing-target button { min-height: 32px; padding: 4px 8px; font-size: 14px; }
+.sidebar-sections { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; gap: 8px; padding: 8px; }
+.persistent-sidebar .screen-panel { display: block; min-width: 0; padding: 10px; border: 1px solid #d7e0cd; border-radius: 8px; background: #fff; }
+.persistent-sidebar .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.section-heading h2 { margin: 0; font-size: 18px; letter-spacing: -.3px; }
+.persistent-sidebar .screen-panel:focus-visible { outline: 2px solid #789b3e; outline-offset: -2px; }
+.persistent-sidebar #panel-draw { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 6px 12px; }
+.persistent-sidebar #panel-draw .section-heading { grid-column: 1 / -1; margin: 0; }
+.persistent-sidebar #drawingSettings { grid-column: 1; grid-row: 2; }
+.persistent-sidebar #drawingActions { grid-column: 2; grid-row: 2; }
+.persistent-sidebar #panel-video { grid-column: 1; }
+.persistent-sidebar #panel-range { grid-column: 2; }
+.persistent-sidebar #panel-pose { grid-column: 1; }
+.persistent-sidebar #panel-moments { grid-column: 2; }
+.persistent-sidebar .drawing-context { display: block; }
+.persistent-sidebar .drawing-settings { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 6px; }
+.persistent-sidebar .drawing-colors { grid-column: 1 / -1; justify-content: flex-start; gap: 6px; }
+.persistent-sidebar .drawing-colors button { width: 32px; height: 32px; }
+.persistent-sidebar .drawing-settings label { flex-direction: column; align-items: stretch; gap: 3px; font-size: 14px; }
+.persistent-sidebar .drawing-settings select { width: 100%; min-width: 0; padding: 4px; font-size: 16px; min-height: 32px; }
+.persistent-sidebar .drawing-actions-panel { margin: 0; }
+.persistent-sidebar .drawing-actions { gap: 4px; }
+.persistent-sidebar .drawing-actions > div { gap: 4px; grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+.persistent-sidebar .drawing-actions button { min-height: 32px; padding: 4px; font-size: 14px; }
+.persistent-sidebar .drawing-footer { margin-top: 8px; flex-wrap: nowrap; gap: 6px; }
+.persistent-sidebar .drawing-frames { flex-basis: auto; }
+.persistent-sidebar .drawing-frames select { min-height: 30px; padding: 3px; font-size: 14px; }
+.persistent-sidebar .screen-panel-help { font-size: 14px; line-height: 1.35; margin: 0 0 8px; }
+.persistent-sidebar .screen-video-settings { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; }
+.persistent-sidebar .screen-video-settings h3 { display: block; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.persistent-sidebar .screen-video-settings label { flex-wrap: nowrap; gap: 6px; font-size: 14px; }
+.persistent-sidebar .screen-video-settings .fps-label { grid-column: 1 / -1; }
+.persistent-sidebar .screen-video-settings .fps-label select { min-width: 70px; min-height: 32px; padding: 4px; font-size: 16px; }
+.persistent-sidebar .screen-video-settings button { min-height: 32px; padding: 4px; font-size: 16px; }
+.persistent-sidebar .analysis-range { display: block; }
+.persistent-sidebar .range-heading, .persistent-sidebar .range-help { display: none; }
+.persistent-sidebar .range-track { margin: 0; }
+.persistent-sidebar .range-limits { margin: 0 0 4px; font-size: 14px; }
+.persistent-sidebar .range-boundaries { display: grid; grid-template-columns: minmax(0,1fr); gap: 4px; }
+.persistent-sidebar .range-boundary { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 4px; }
+.persistent-sidebar .range-boundary label { flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 4px; font-size: 14px; }
+.persistent-sidebar .range-boundary input { width: 80px; min-height: 32px; padding: 3px; font-size: 16px; appearance: textfield; }
+.persistent-sidebar .range-boundary input::-webkit-inner-spin-button, .persistent-sidebar .range-boundary input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.persistent-sidebar .range-boundary > div { margin: 0; gap: 3px; }
+.persistent-sidebar .range-boundary button { min-height: 32px; padding: 3px; font-size: 14px; }
+.persistent-sidebar .range-footer { margin-top: 4px; gap: 4px; }
+.persistent-sidebar .range-footer button { min-height: 32px; padding: 4px; font-size: 14px; }
+.persistent-sidebar .analysis-range-summary { border: 0; padding: 0; margin: 4px 0 0; font-size: 14px; }
+.persistent-sidebar #analysisRangeSummary { display: none; }
+.persistent-sidebar .range-error { font-size: 14px; margin: 4px 0; }
+.persistent-sidebar .setting-row { gap: 4px; margin: 0 0 6px; font-size: 14px; }
+.persistent-sidebar .setting-row select { min-height: 32px; padding: 4px; font-size: 14px; }
+.persistent-sidebar .overlay-options { padding: 4px 0; gap: 4px; }
+.persistent-sidebar .overlay-options label { font-size: 14px; }
+.persistent-sidebar .metrics { grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.persistent-sidebar .metrics > div { gap: 2px; }
+.persistent-sidebar .metrics strong { font-size: 26px; line-height: 1.1; }
+.persistent-sidebar .metrics span { font-size: 14px; line-height: 1.2; }
+.persistent-sidebar .metric-note { margin: 6px 0 0; font-size: 14px; line-height: 1.3; }
+.persistent-sidebar #resultsEmpty { padding: 8px; font-size: 14px; margin: 0 0 4px; }
+.persistent-sidebar #panel-moments .panel-copy { display: none; }
+.persistent-sidebar #clearMarks { width: auto; min-height: 28px; border: 0; background: transparent; padding: 3px; font-size: 14px; }
+.persistent-sidebar .phases { gap: 4px; }
+.persistent-sidebar .phase-row { gap: 3px; }
+.persistent-sidebar .phase-row button { padding: 3px; min-height: 32px; font-size: 14px; }
+.persistent-sidebar .tempo { margin: 6px 0 0; gap: 4px; font-size: 14px; align-items: start; }
+.persistent-sidebar .tempo strong { font-size: 16px; }
+.persistent-sidebar .export-button { margin-top: 6px; padding: 5px; min-height: 32px; font-size: 14px; }
+/* Preserve room for both video players as the inspector becomes permanent. */
+@media (max-width: 1500px) and (min-width: 901px) {
+  .persistent-sidebar .video-editor { grid-template-columns: 50px minmax(0,1fr); padding: 6px; gap: 6px; }
+  .persistent-sidebar .drawing-tools button { flex-direction: column; padding: 4px 0; font-size: 14px; gap: 2px; }
+  .persistent-sidebar .drawing-history button { padding: 3px; font-size: 0; justify-content: center; }
+  .persistent-sidebar .drawing-history button span { font-size: 22px; }
+  .persistent-sidebar .clip-frame-controls .clip-speed-label { font-size: 0; }
+  .persistent-sidebar .clip-speed { font-size: 14px; min-width: 0; width: 65px; }
+  .persistent-sidebar .review-context, .persistent-sidebar .shortcut-hint { display: none; }
+  .persistent-sidebar .screen-transport .transport-row { gap: 6px; }
+  .persistent-sidebar .screen-transport .speed-label { font-size: 0; gap: 0; }
+  .persistent-sidebar .screen-transport .speed-label select { font-size: 16px; width: 68px; }
+}
+@media (max-width: 1179px) and (min-width: 901px) {
+  .studio.persistent-sidebar { grid-template-columns: minmax(0,1fr) 330px; }
+  .sidebar-sections { grid-template-columns: minmax(0,1fr); }
+  .persistent-sidebar #panel-draw { display: block; }
+  .persistent-sidebar #panel-draw .section-heading { margin-bottom: 8px; }
+  .persistent-sidebar .drawing-actions-panel { margin-top: 8px; }
+  .persistent-sidebar #panel-video, .persistent-sidebar #panel-range, .persistent-sidebar #panel-pose, .persistent-sidebar #panel-moments { grid-column: 1; }
+}
+@media (max-width: 900px) {
+  html { scroll-snap-type: y proximity; }
+  .studio.persistent-sidebar { height: auto; grid-template-columns: minmax(0,1fr); grid-template-rows: auto calc(100dvh - 180px) auto auto; overflow: visible; }
+  .persistent-sidebar .workspace { overflow: hidden; }
+  .persistent-sidebar .analysis-panel { grid-column: 1; grid-row: 4; overflow: visible; border-left: 0; border-top: 1px solid var(--line); }
+  .sidebar-heading { position: static; }
+  .persistent-sidebar .screen-panel { scroll-margin-top: 8px; }
+  .persistent-sidebar .drawing-instruction { display: none; }
+}
+@media (max-width: 600px) {
+  .sidebar-sections { grid-template-columns: minmax(0,1fr); }
+  .persistent-sidebar #panel-draw, .persistent-sidebar #panel-video, .persistent-sidebar #panel-range, .persistent-sidebar #panel-pose, .persistent-sidebar #panel-moments { grid-column: 1; }
+  .persistent-sidebar #panel-draw { display: block; }
+  .persistent-sidebar #panel-draw .section-heading { margin-bottom: 8px; }
+  .persistent-sidebar .drawing-actions-panel { margin-top: 8px; }
+  .persistent-sidebar .screen-transport #time { white-space: nowrap; }
+}
+
+@media (max-width: 900px) and (min-width: 601px) and (max-height: 500px) {
+  .studio.persistent-sidebar { grid-template-rows: auto calc(100dvh - 128px) auto auto; }
+}

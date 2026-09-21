@@ -422,7 +422,7 @@ $('align').onclick = () => {
   if (job || !slots.every(s => s.ready)) return;
   pauseAll();
   if (linked) {
-    aligning = true; setLinked(false); studioScreen.close();
+    aligning = true; setLinked(false); studioScreen.focus();
     slots[0].get('.clip-timeline').focus({preventScroll:true});
     return;
   }

@@ -1,15 +1,16 @@
-export async function openPanel(page, name) {
-  if (!await page.locator(`#panel-${name}`).isVisible()) await page.locator(`#tab-${name}`).click();
+// Sections are always expanded; only scroll their controls into reach.
+export async function focusSection(page, name) {
+  await page.locator(`#panel-${name}`).scrollIntoViewIfNeeded();
 }
 export async function settings(page, i, selector) {
   const target = page.locator(`[data-select="${i}"]`);
   if (await target.isVisible()) await target.click();
   if(selector==='.clip-speed') return transport(page,'speed',i);
-  await openPanel(page, 'video');
+  await focusSection(page, 'video');
   return page.locator(`[data-settings-slot="${i}"] ${selector}`);
 }
-export async function closePanel(page) {
-  if (await page.locator('#analysisPanel').isVisible()) await page.locator('#closePanel').click();
+export async function focusVideos(page) {
+  await page.locator('#studio').evaluate(e=>e.scrollIntoView({block:'start',behavior:'instant'}));
 }
 export async function discardIfAsked(page) {
   if (await page.locator('#discardDialog').isVisible()) await page.locator('#discardConfirm').click();

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="screen.css">
   <link rel="stylesheet" href="ux.css">
+  <link rel="stylesheet" href="sidebar.css">
   <script type="module" src="app.js"></script>
 </head>
 <body>
@@ -75,8 +76,8 @@
   <p>Start with a video. Drawing and comparison work without running analysis.</p>
   <button class="help-task" data-help-task="draw"><strong>Draw on a frame <span>↗</span></strong><span>Choose a tool beside the video. Use Line for a reference or Angle to tap three points.</span></button>
   <button class="help-task" data-help-task="compare"><strong>Compare two swings <span>↗</span></strong><span>Controls under A or B affect that video. The bottom controller affects both. Set alignment to match impact.</span></button>
-  <button class="help-task" data-help-task="range"><strong>Analyze part of a swing <span>↗</span></strong><span>Choose start and end in Range, then Analyze. Open Results to inspect body angles.</span></button>
-  <p class="help-shortcuts"><kbd>←</kbd> <kbd>→</kbd> step frames · <kbd>Space</kbd> play<br><kbd>Ctrl/⌘ Z</kbd> undo a drawing · <kbd>Esc</kbd> return to video</p>
+  <button class="help-task" data-help-task="range"><strong>Analyze part of a swing <span>↗</span></strong><span>Choose start and end in Range, then Analyze. Results shows your body angles.</span></button>
+  <p class="help-shortcuts"><kbd>←</kbd> <kbd>→</kbd> step frames · <kbd>Space</kbd> play<br><kbd>Ctrl/⌘ Z</kbd> undo a drawing · <kbd>Esc</kbd> exit drawing</p>
 </dialog>
 <dialog id="discardDialog" class="task-dialog" aria-labelledby="discardTitle" aria-describedby="discardDescription">
   <h2 id="discardTitle">Replace this video?</h2><p id="discardFile"></p>

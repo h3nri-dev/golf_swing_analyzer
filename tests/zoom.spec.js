@@ -1,4 +1,4 @@
-import {openPanel, settings, closePanel, discardIfAsked, transport} from './ui.js';
+import {focusSection, settings, focusVideos, discardIfAsked, transport} from './ui.js';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 const clip=(page,i)=>page.locator(`[data-slot="${i}"]`);
@@ -11,7 +11,7 @@ async function pan(page,i,dx,dy){
   const stage=clip(page,i).locator('.stage');await stage.scrollIntoViewIfNeeded();const b=await stage.boundingBox();
   await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2+dx,b.y+b.height/2+dy,{steps:8});await page.mouse.up();
 }
-async function exported(page){const wait=page.waitForEvent('download');await openPanel(page,'moments');await page.locator('#export').click();return JSON.parse(await fs.readFile(await(await wait).path(),'utf8'));}
+async function exported(page){const wait=page.waitForEvent('download');await focusSection(page,'moments');await page.locator('#export').click();return JSON.parse(await fs.readFile(await(await wait).path(),'utf8'));}
 
 test('zoom and pan persist during playback, seeking, stepping, resizing and mode changes',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -25,7 +25,7 @@ test('zoom and pan persist during playback, seeking, stepping, resizing and mode
   await page.locator('#compareMode').click();await page.locator('#singleMode').click();await expect(clip(page,0).locator('.zoom-value')).toHaveText('2.00×');
   await page.setViewportSize({width:390,height:844});await expect(clip(page,0).locator('.zoom-value')).toHaveText('2.00×');
   await (await settings(page,0,'.zoom-fit')).click();await expect(clip(page,0).locator('.zoom-value')).toHaveText('1.00×');expect(await transform(page,0)).toBe('translate(0px, 0px) scale(1)');
-  await closePanel(page);await clip(page,0).locator('.zoom-in').click();await expect(clip(page,0).locator('.zoom-value')).toHaveText('1.25×');
+  await focusVideos(page);await clip(page,0).locator('.zoom-in').click();await expect(clip(page,0).locator('.zoom-value')).toHaveText('1.25×');
   await clip(page,0).locator('.zoom-out').click();await expect(clip(page,0).locator('.zoom-out')).toBeDisabled();
   expect(errors).toEqual([]);
 });
@@ -71,7 +71,7 @@ test('touch pan and pinch preserve playback and zoom controls fit a phone',async
 test('zoomed image export includes the crop and controls do not hijack ordinary scroll',async({page})=>{
   await page.goto('/');await load(page,0,'landscape.mp4');await clip(page,0).locator('.zoom-slider').fill('2');await pan(page,0,60,40);
   const before=await transform(page,0);await page.mouse.wheel(0,100);expect(await transform(page,0)).toBe(before);
-  const download=page.waitForEvent('download');await openPanel(page,'draw');await page.locator('#drawingSnapshot').click();const result=await download;await result.saveAs('/tmp/swing-zoom-export.png');
+  const download=page.waitForEvent('download');await focusSection(page,'draw');await page.locator('#drawingSnapshot').click();const result=await download;await result.saveAs('/tmp/swing-zoom-export.png');
   const png=await fs.readFile(await result.path());expect(png.readUInt32BE(16)).toBe(720);
   await page.screenshot({path:'/tmp/swing-zoom-desktop.png',fullPage:true});
 });

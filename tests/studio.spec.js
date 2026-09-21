@@ -1,4 +1,4 @@
-import {openPanel, settings, discardIfAsked, transport} from './ui.js';
+import {focusSection, settings, discardIfAsked, transport} from './ui.js';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 const fixture = new URL('./fixtures/portrait.mp4', import.meta.url).pathname;
@@ -11,8 +11,8 @@ test('single mode loads local video, steps, marks tempo and exports', async ({ p
   await page.goto('/'); await expect(clip(page,1)).toBeHidden(); await load(page,0);
   await (await transport(page,'next')).click(); expect((await times(page))[0]).toBeCloseTo(1/30,3);
   await (await settings(page,0,'.fps')).selectOption('60'); await seek(page,0); await (await transport(page,'next')).click(); expect((await times(page))[0]).toBeCloseTo(1/60,3);
-  await seek(page,.2); await openPanel(page,'moments');await page.locator('#mark-address').click(); await seek(page,1.1); await page.locator('#mark-top').click(); await seek(page,1.4); await page.locator('#mark-impact').click(); await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
-  const download = page.waitForEvent('download'); await openPanel(page,'moments');await page.locator('#export').click(); expect((await download).suggestedFilename()).toBe('swing-a-analysis.json');
+  await seek(page,.2); await focusSection(page,'moments');await page.locator('#mark-address').click(); await seek(page,1.1); await page.locator('#mark-top').click(); await seek(page,1.4); await page.locator('#mark-impact').click(); await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
+  const download = page.waitForEvent('download'); await focusSection(page,'moments');await page.locator('#export').click(); expect((await download).suggestedFilename()).toBe('swing-a-analysis.json');
   await page.screenshot({path:'/tmp/swing-single.png',fullPage:true});
   await clip(page,0).locator('.remove').click();await discardIfAsked(page); await expect((await transport(page,'play'))).toBeDisabled(); expect(errors).toEqual([]);
 });
@@ -49,13 +49,13 @@ test('real MediaPipe model detects a pose locally',async({page})=>{
   await page.goto('/'); await clip(page,0).locator('input[type=file]').setInputFiles(process.env.POSE_FIXTURE); await expect(page.locator('#analyze')).toBeEnabled();
   await clip(page,0).locator('.zoom-slider').fill('2');
   await (await transport(page,'timeline')).fill('0.2');
-  await openPanel(page,'range');await page.locator('#rangeStart').fill('0.1'); await openPanel(page,'range');await page.locator('#rangeEnd').fill('0.4'); await page.locator('#analyze').click();
+  await focusSection(page,'range');await page.locator('#rangeStart').fill('0.1'); await focusSection(page,'range');await page.locator('#rangeEnd').fill('0.4'); await page.locator('#analyze').click();
   await expect(page.locator('#status')).toContainText('Analysis ready',{timeout:100000});
   await expect(clip(page,0).locator('.zoom-value')).toHaveText('2.00×');
   await expect(page.locator('#coverage')).not.toContainText('—');
   await expect(page.locator('#elbow')).not.toContainText('—');
   expect(requests.filter(r=>r.method!=='GET')).toEqual([]);
-  const download = page.waitForEvent('download'); await openPanel(page,'moments');await page.locator('#export').click();
+  const download = page.waitForEvent('download'); await focusSection(page,'moments');await page.locator('#export').click();
   const data = JSON.parse(await fs.readFile(await (await download).path(), 'utf8'));
   expect(data.analyzedRange).toEqual([0.1, 0.4]);
   expect(data.measurements.length).toBeGreaterThan(0);
@@ -76,7 +76,7 @@ test('independent videos can both play and replacement clears only its own marks
   await page.goto('/'); await load(page,0); await page.locator('#compareMode').click(); await load(page,1); await page.locator('#independent').click();
   await (await settings(page,0,'.clip-speed')).selectOption('0.25');
   await (await transport(page,'play',0)).click(); await (await transport(page,'play',1)).click(); expect(await page.locator('video').evaluateAll(v=>v.every(x=>!x.paused))).toBe(true);
-  await openPanel(page,'moments');await page.locator('#mark-address').click(); await expect(page.locator('#phase-address')).not.toHaveText('—'); await load(page,1); await expect(page.locator('#phase-address')).toHaveText('—');
+  await focusSection(page,'moments');await page.locator('#mark-address').click(); await expect(page.locator('#phase-address')).not.toHaveText('—'); await load(page,1); await expect(page.locator('#phase-address')).toHaveText('—');
   expect(await clip(page,0).locator('video').evaluate(v=>v.paused)).toBe(false);
-  await openPanel(page,'range');await page.locator('#rangeStart').fill('3'); await openPanel(page,'range');await page.locator('#rangeEnd').fill('1'); await expect(page.locator('#rangeError')).toContainText('End must be after start'); await expect(page.locator('#analyze')).toBeDisabled(); await expect((await transport(page,'play'))).toBeEnabled();
+  await focusSection(page,'range');await page.locator('#rangeStart').fill('3'); await focusSection(page,'range');await page.locator('#rangeEnd').fill('1'); await expect(page.locator('#rangeError')).toContainText('End must be after start'); await expect(page.locator('#analyze')).toBeDisabled(); await expect((await transport(page,'play'))).toBeEnabled();
 });

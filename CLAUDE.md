@@ -7,7 +7,7 @@ This is a build-free, browser-only application. Keep production entirely static:
 ## Files
 
 - `deploy/index.html`, `styles.css`: semantic responsive interface.
-- `deploy/screen.js`, `deploy/screen.css`: viewport-sized studio, accessible control panels and native scroll snapping. Keep regular controls within the viewport; use internal panel scrolling only as an accessibility fallback for extreme sizes or text scaling.
+- `deploy/screen.js`, `deploy/screen.css`, `deploy/sidebar.css`: viewport-sized studio, permanent expanded right sidebar and native scroll snapping. Draw, Video, Range, Results and Moments must remain expanded without tabs. Keep normal desktop controls within the viewport; allow internal sidebar scrolling on short/narrow desktop screens or at high text zoom. On phones, stack the expanded sections below the players without covering them.
 - `deploy/ux.js`, `deploy/ux.css`: task help, session-work confirmation and interaction refinements. `UX_REVIEW.md` records the research basis and task checks.
 - `deploy/app.js`: two local video slots, single/compare modes, playback synchronization, lazy MediaPipe inference and export.
 - Compare mode must keep both individual players and the common controller visible. Individual playback actions affect one clip and release sync; common actions affect both, respecting the current sync state. Keep zoom sliders compact.
