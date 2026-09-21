@@ -8,7 +8,9 @@ export function mediaRate(fileFps, shotFps = fileFps) {
 export const clipRate = clip => mediaRate(clip.fps, clip.shotFps ?? clip.fps);
 export const realTime = (time, clip) => time / clipRate(clip);
 export const fileTime = (time, clip) => time * clipRate(clip);
-export const frameNumber = (time, fps, duration = Infinity) => Math.min(lastFrame(duration,fps), Math.max(0, Math.floor(time * fps + 0.00001)));
+// Browser seeks can round media timestamps down to microseconds. Preserve the
+// requested frame label without treating ordinary between-frame times as later frames.
+export const frameNumber = (time, fps, duration = Infinity) => Math.min(lastFrame(duration,fps), Math.max(0, Math.floor((time + 0.000001) * fps + 1e-7)));
 export const seconds = time => Number.isFinite(time) ? time.toFixed(3) : '—';
 export function frameStamp(time, clip) {
   return `${seconds(realTime(time, clip))} s · F${frameNumber(time, clip.fps, clip.video?.duration)}`;

@@ -35,3 +35,9 @@ This is a build-free, browser-only application. Keep production entirely static:
 ## Conventions
 
 Use readable ES modules and browser APIs; there is no build step. Keep uploaded files as local object URLs and revoke them when removed. Low-confidence pose measurements must remain null. Compute angles in pixel coordinates, not normalized coordinates, and never claim 3D accuracy or an inferred swing score. Sync tests should cover positive/negative offsets and unequal clip durations. Document functional changes and run the relevant unit/browser checks before deploying.
+
+### Visual key moments
+- Preserve the visible six-frame gallery after analysis. It is a core result, not an optional tab or PDF-only feature. Desktop portrait videos use a tall player plus 2×3 gallery; landscape/comparison use a filmstrip; phones keep it after the player controls.
+- `keyframes.js` proposes ordered pose-based frames but never labels sampled fallback frames as detected golf phases. Keep Estimate / Your mark / Range preview provenance clear. Manual marks override all suggestions, and reanalysis/cancellation must preserve edits.
+- `keyframe-views.js` uses independent local decoders and bounded canvas caches. Preparing previews must never seek the main players, change synchronization or trigger common controls. Frame editing respects File FPS/Shot FPS and file-time storage.
+- Preserve the enlarged single/A-B inspection view, direct frame jumps, play/draw actions, full-frame aspect ratio and overlay/drawing alignment. Avoid per-playback-frame canvas redraws for unchanged previews. PDF export includes the visual moments with provenance labels. Never mutate live suggestions when constructing reports.

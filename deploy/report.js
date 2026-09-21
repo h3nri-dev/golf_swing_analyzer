@@ -1,4 +1,4 @@
-import { MOMENTS } from './moments.js';
+import { PRIMARY_MOMENTS as MOMENTS } from './keyframes.js';
 import { seconds, frameNumber } from './timing.js';
 
 let library;
@@ -93,6 +93,20 @@ export async function createPdfReport(report) {
       [label,Number.isFinite(clip.marks[key])?seconds(real(clip.marks[key],clip)):'-',angle(values?.elbow),angle(values?.knee),angle(values?.lean)].forEach((value,j)=>text(value,columns[j],y+5.5,9));
     });
     text(clip.tempo===null?'Tempo requires ordered address, top and impact marks.':`Tempo ${clip.tempo.toFixed(2)} : 1  |  Backswing ${seconds(real(clip.marks.top-clip.marks.address,clip))} s  /  Downswing ${seconds(real(clip.marks.impact-clip.marks.top,clip))} s`,16,278,9,green,true);
+  }
+  for(const clip of report.clips) {
+    if(!clip.visualMoments?.length)continue;
+    doc.addPage();header(`Swing ${clip.name} / Visual moments`,'A closer look, frame by frame');filename(clip.file,16,47,178);
+    text('Your marks take priority. Estimates use hand motion; verify impact in the video.',16,61,9,muted);
+    text('Range previews are sampled frames when swing phases could not be identified.',16,67,9,muted);
+    clip.visualMoments.forEach((entry,i)=>{
+      const x=16+(i%2)*93,y=76+Math.floor(i/2)*66;
+      image(entry.image,x,y,85,50);
+      text(entry.label,x,y+56,10,green,true);
+      const source={marked:'Your mark',estimated:'Estimate',sampled:'Range preview'}[entry.source];
+      text(`${stamp(entry.time,clip)}  /  ${source}`,x,y+62,8,muted);
+    });
+    rect(16,274,178,6,pale);text('Open Key moments on the site to enlarge, edit, play or draw on these frames.',19,278,8,muted);
   }
   const count=doc.getNumberOfPages();
   for(let page=1;page<=count;page++) {

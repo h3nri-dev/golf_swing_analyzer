@@ -132,3 +132,13 @@ The video, pose overlay, and manual drawings share one transformed image plane, 
 `deploy/viewport.js` contains bounded view geometry, controls, and mouse/touch interactions. Tests verify playback persistence, independent comparison views, pointer-anchored zoom, pan bounds, frame stepping, resizing, mirror/drawing alignment, touch gestures, and image export.
 
 Removing or replacing a clip with drawings, moments or analysis asks before clearing its work. Cancel keeps the current clip and its state. This protects against accidental changes; it does not save a session across page reloads. **View results** focuses completed analysis in the sidebar, and the **Results** section explains how to begin when no analysis exists.
+
+## Visual key moments
+
+After **Analyze**, six visual previews appear alongside the player: Address, Top of backswing, Downswing, Impact, Follow-through and Finish. Portrait videos use a tall player beside a two-column gallery on wide desktops. Landscape videos use a filmstrip below the player; comparison pairs A/B images for each moment. Phones place the gallery after playback controls, followed by the expanded sidebar sections.
+
+Click an image to jump that player to its frame. **Enlarge & edit** (or a card heading) opens a large single/paired view with frame numbers, real-time timestamps, available angles, previous/next frame, Set from player, Play from here and Draw on frame. Editing a frame saves a manual mark. The Moments menus beside Play also jump to the previews. The six-moment editor includes Downswing and Follow-through; the sidebar retains the four primary marks used for tempo. User marks override suggestions and survive reanalysis and FPS changes.
+
+Phase suggestions use a confidence-gated, torso-relative rise/drop/rise of the hands, with bounded gaps and ordered frames. These are explicitly labeled **Estimate**, not verified ball contact or a trained golf-event detector. Short, static, occluded or incomplete swings get six labeled **Range previews** instead. Analysis does not automatically set tempo from uncertain suggestions. Tightening the analysis range around one complete swing improves the chance of useful estimates.
+
+`deploy/keyframes.js` contains pure selection/merge logic. `deploy/keyframe-views.js` decodes only the needed thumbnails using separate local video elements, so thumbnail preparation never seeks the main players or changes synchronization. Canvas caches are bounded and released on replacement. Views show the full frame with the current mirror, pose visibility and applicable drawings; the main player's zoom is preserved separately. PDF reports include an additional visual-moments page with source labels and annotated frames. No video or image leaves the device.

@@ -1,6 +1,6 @@
 import { frameNumber, frameStamp, lastFrame, markedFrame } from './timing.js';
 
-export const MOMENTS = [['address','Address'],['top','Top of backswing'],['impact','Impact'],['finish','Finish']];
+import { KEY_MOMENTS as MOMENTS, keyMomentEntries } from './keyframes.js';
 
 export function createMoments({slots, state, controlClip, pause, seek, changed}) {
   const dialog = document.createElement('dialog');
@@ -62,8 +62,9 @@ export function createMoments({slots, state, controlClip, pause, seek, changed})
     s.get('.clip-play').after(select); s.get('.clip-moments');
     select.onchange = () => {
       const key = select.value; select.value = '';
-      if (key === 'edit' || !Number.isFinite(s.marks[key])) open(index,key === 'edit' ? null : key);
-      else controlClip(index,()=>seek(s.marks[key]));
+      const entry=keyMomentEntries(s).find(e=>e.key===key);
+      if (key === 'edit' || !Number.isFinite(entry?.time)) open(index,key === 'edit' ? null : key);
+      else controlClip(index,()=>seek(entry.time));
     };
   });
   function render() {
@@ -72,8 +73,9 @@ export function createMoments({slots, state, controlClip, pause, seek, changed})
       const select = s.get('.clip-moments'); select.disabled = !s.ready || busy;
       const after = mode === 'single' && index === 0 ? document.getElementById('play') : s.get('.clip-play');
       if (after.nextElementSibling !== select) after.after(select);
-      const options = [['',`Moments${Object.keys(s.marks).length ? ` (${Object.keys(s.marks).length})` : ''}`],
-        ...MOMENTS.map(([key,label]) => [key,Number.isFinite(s.marks[key]) ? `${label} · ${frameStamp(s.marks[key],s)}` : `+ Mark ${label}`]),['edit','Add / edit moments…']];
+      const entries=keyMomentEntries(s),count=entries.filter(e=>Number.isFinite(e.time)).length;
+      const options = [['',`Moments${count ? ` (${count})` : ''}`],
+        ...entries.map(({key,label,time,source}) => [key,Number.isFinite(time) ? `${label}${source==='estimated'?' (estimate)':''} · ${frameStamp(time,s)}` : `+ Mark ${label}`]),['edit','Add / edit moments…']];
       const signature = JSON.stringify(options);
       if (select.dataset.options !== signature) {
         select.replaceChildren(...options.map(([value,label]) => new Option(label,value)));

@@ -62,3 +62,10 @@ test('fractional and non-divisible frame rates do not accumulate alignment drift
   for (let i=0; i<1000; i++) times = model.step(times, -1);
   near(times[0], 0); near(times[1], .137);
 });
+
+test('microsecond-rounded browser seeks retain their requested frame number',()=>{
+ for(const fps of [24,29.97,30,59.94,60,120,240]){
+  assert.equal(frameNumber(Math.floor(38/fps*1e6)/1e6,fps),38);
+  assert.equal(frameNumber(38/fps-.0001,fps),37);
+ }
+});

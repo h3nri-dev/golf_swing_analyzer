@@ -66,7 +66,7 @@ for(const [width,height] of [[320,568],[844,390]]) {
     expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width);
     expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(height);
     expect(await dialog.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
-    expect(await dialog.evaluate(e=>e.scrollHeight<=e.clientHeight)).toBe(true);
+    await page.screenshot({path:`/tmp/moment-editor-${width}.png`});expect(await dialog.evaluate(e=>e.scrollHeight<=e.clientHeight),JSON.stringify(await dialog.evaluate(e=>({h:e.clientHeight,sh:e.scrollHeight})))).toBe(true);
     await page.screenshot({path:`/tmp/moment-editor-${width}.png`});
     await dialog.locator('.moment-edit-row').last().getByRole('button',{name:'Set here'}).click();
     await page.getByRole('button',{name:'Close moment editor'}).click();

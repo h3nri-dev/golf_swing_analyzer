@@ -1,6 +1,8 @@
 import { clamp, visible, measurements, frameTime, tempo, nearestSample, smoothSamples } from './analysis.js';
 import { mediaRate, synchronization, realTime, fileTime, frameStamp, frameNumber, seconds, markedFrame } from './timing.js';
-import { createMoments, MOMENTS } from './moments.js';
+import { createMoments } from './moments.js';
+import { PRIMARY_MOMENTS, suggestKeyMoments, keyMomentEntries } from './keyframes.js';
+import { createKeyframeViews } from './keyframe-views.js';
 import { createAnnotations } from './annotations.js';
 import { createViewport } from './viewport.js';
 import { createRangeSelector, analysisRangeError, MAX_ANALYSIS_SECONDS } from './range.js';
@@ -9,11 +11,11 @@ import { createTaskHelp, confirmDiscard } from './ux.js';
 let annotations = null;
 let rangeSelector = null;
 let studioScreen = null;
-let moments = null;
+let moments = null, keyframeViews = null;
 const $ = id => document.getElementById(id);
 const names = ['A', 'B'];
 const frameRates = [23.976,24,25,29.97,30,50,59.94,60,100,120,240];
-const phases = MOMENTS;
+const phases = PRIMARY_MOMENTS;
 const connections = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[27,29],[29,31],[28,30],[30,32]];
 let mode = 'single', active = 0, linked = true, offset = 0, aligned = false, job = null;
 // With sync off, the common controller owns its last group command. Local
@@ -34,7 +36,7 @@ const slots = names.map((name, index) => {
   // Controls keep their identity when the screen layout moves them into a panel.
   const controlCache = new Map();
   const get = selector => { const element = card.querySelector(selector); if (element) controlCache.set(selector, element); return element || controlCache.get(selector); };
-  const slot = { card, video: get('video'), canvas: get('canvas'), stage: get('.stage'), input: get('.file-input'), drop: get('.dropzone'), get, ready: false, url: null, version: 0, playGeneration: 0, fps: 30, shotFps: null, speed: 1, hand: 'right', samples: [], marks: {}, anchor: null, start: 0, end: 0, tolerance: 0.1, status: 'Add a video to get started.' };
+  const slot = { card, video: get('video'), canvas: get('canvas'), stage: get('.stage'), input: get('.file-input'), drop: get('.dropzone'), get, ready: false, url: null, version: 0, playGeneration: 0, fps: 30, shotFps: null, speed: 1, hand: 'right', samples: [], keyMoments: [], analysisVersion: 0, marks: {}, anchor: null, start: 0, end: 0, tolerance: 0.1, status: 'Add a video to get started.' };
   slot.drop.onclick = () => slot.input.click();
   get('.replace').onclick = () => slot.input.click();
   get('.remove').onclick = async () => { if (await confirmDiscard(slot, 'Remove', hasSavedWork(slot, index))) resetSlot(index); };
@@ -138,7 +140,7 @@ function resetSlot(index) {
   pauseControlled(index); const s = slots[index]; s.version++; s.ready = false; s.video.onerror = null;
   s.video.removeAttribute('src'); s.video.load();
   if (s.url) URL.revokeObjectURL(s.url);
-  Object.assign(s, { url: null, samples: [], analyzedRange: null, analysisAttempted: false, marks: {}, anchor: null, start: 0, end: 0, status: 'Add a video to get started.' });
+  Object.assign(s, { url: null, samples: [], keyMoments: [], analyzedRange: null, analysisAttempted: false, marks: {}, anchor: null, start: 0, end: 0, status: 'Add a video to get started.' });
   s.fps = 30; s.shotFps = null; s.speed = 1;
   s.get('.fps').value = '30'; s.get('.shot-fps').value = 'same';
   for (const option of s.get('.shot-fps').options) option.disabled = option.value !== 'same' && Number(option.value) < 30;
@@ -262,6 +264,7 @@ function updatePhases() {
   $('tempoNote').textContent = ratio !== null ? `${seconds(realTime(s.marks.top - s.marks.address,s))} s backswing / ${seconds(realTime(s.marks.impact - s.marks.top,s))} s downswing. Real time from your marks.` : ['address','top','impact'].every(k => k in s.marks) ? 'Marks must follow this order: address → top → impact.' : 'Mark address, top and impact to measure your tempo.';
   $('export').disabled = !!job || !s.ready;
   moments?.render();
+  keyframeViews?.render(JSON.stringify(slots.map((s,i)=>annotations?.data(i))));
 }
 function seekActive(time, reference = active) {
   if (!Number.isFinite(time) || job || !slots[active].ready) return;
@@ -369,6 +372,7 @@ function render() {
   $('coverage').innerHTML = `${s.samples.length ? Math.round(count / s.samples.length * 100) : '—'}<small>%</small>`;
   annotations?.render();
   rangeSelector?.renderPlayhead();
+  keyframeViews?.render(JSON.stringify(slots.map((s,i)=>annotations?.data(i))));
 }
 function draw(s, index) {
   s.get('.clip-time').textContent = frameStamp(s.video.currentTime,s);
@@ -473,8 +477,9 @@ async function analyze() {
     if (!token.cancelled) {
       s.samples = smoothSamples(samples); s.tolerance = interval * 0.6;
       s.analyzedRange = [start, s.end];
+      s.keyMoments = suggestKeyMoments(s.samples,start,s.end,s.fps); s.analysisVersion++;
       const valid = samples.filter(x => x.points && [11,12,23,24].every(i => visible(x.points[i]))).length;
-      s.status = valid === 0 ? 'No clear pose found. Try a well-lit clip with your whole body visible.' : `Analysis ready · ${samples.length} samples. ${valid / samples.length < 0.5 ? 'Low pose coverage: try better lighting or a clearer view.' : 'Scrub the video to explore your angles and hand path.'}`;
+      s.status = valid === 0 ? 'No clear pose found. Try a well-lit clip with your whole body visible.' : `Analysis ready · ${samples.length} samples. ${valid / samples.length < 0.5 ? 'Low pose coverage: try better lighting or a clearer view.' : 'Your key-moment previews are beside the player. Click a frame to review it.'}`;
     }
   } catch (error) {
     if (!token.cancelled) console.error('Pose analysis failed:', error);
@@ -518,7 +523,7 @@ export function reportData(index = active) {
     viewport:s.viewport.state(), mirrored:s.stage.classList.contains('mirrored'), drawings:annotations.data(index),
     currentTime:s.video.currentTime, duration:s.video.duration, currentMeasurements:values(s.video.currentTime),
     range:s.analyzedRange || [s.start,s.end], selectedRange:[s.start,s.end], analyzedRange:s.analyzedRange ?? null,
-    marks:{...s.marks}, tempo:tempo(s.marks), coverage:s.samples.length ? Math.round(valid/s.samples.length*100) : 0,
+    marks:{...s.marks}, keyMoments:keyMomentEntries(s), tempo:tempo(s.marks), coverage:s.samples.length ? Math.round(valid/s.samples.length*100) : 0,
     momentMeasurements:Object.fromEntries(phases.map(([key])=>[key,values(s.marks[key])])),
     measurements:s.samples.map(sample=>({time:sample.time,realSeconds:realTime(sample.time,s),frame:frameNumber(sample.time,s.fps),...values(sample.time)})),
   };
@@ -551,6 +556,13 @@ $('export').onclick = async () => {
         await seekDecoded(s.video,s.marks[key]);render();
         clip.momentImages[key]=annotations.capture(index,1020,660).toDataURL('image/jpeg',.92);
       }
+      clip.visualMoments = (s.keyMoments.length || Number.isFinite(s.marks.downswing) || Number.isFinite(s.marks.follow)) ? clip.keyMoments.filter(entry=>Number.isFinite(entry.time)) : [];
+      for(const entry of clip.visualMoments) {
+        if(token.cancelled)return;
+        reportDialog.querySelector('p').textContent=`Preparing swing ${names[index]}: ${entry.label.toLowerCase()}…`;
+        await seekDecoded(s.video,entry.time);render();
+        entry.image=annotations.capture(index,1020,600).toDataURL('image/jpeg',.92);
+      }
     }
     if(token.cancelled)return;
     reportDialog.querySelector('p').textContent='Laying out your report…';
@@ -579,5 +591,6 @@ annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!j
 rangeSelector = createRangeSelector({ slots, state: () => ({ active, busy: !!job }), seek: seekRangeBoundary, pause: pauseControlled, changed: updateAnalysisControls });
 studioScreen = createStudioScreen({ slots, state: () => ({ active, mode, linked, busy: !!job }), changed: () => { annotations?.interrupt(); slots.forEach(s => s.viewport?.cancelGesture()); render(); } });
 moments = createMoments({slots, state:()=>({mode,busy:!!job}), controlClip, pause:pauseControlled, seek:seekActive, changed:updatePhases});
+keyframeViews = createKeyframeViews({slots, state:()=>({mode,busy:!!job}), controlClip, seek:seekActive, play:togglePlay, changed:updatePhases, paintDrawings:annotations.paintFrame, focusVideo:()=>studioScreen.focus()});
 createTaskHelp({screen: studioScreen, compare: () => setMode('compare')});
 setMode('single'); requestAnimationFrame(playbackLoop);

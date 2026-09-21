@@ -124,7 +124,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
   toolbar.querySelectorAll('[data-drawing-slot]').forEach(b=>b.onclick=()=>{ cancelDraft(); selection=null; selectSlot(Number(b.dataset.drawingSlot)); render(); });
   $('drawingWidth').onchange=e=>setStyle('width',Number(e.target.value));
   $('drawingScope').onchange=e=>setStyle('scope',e.target.value);
-  $('drawingVisibility').onclick=()=>{ visible=!visible; draft=null; gesture=null; selection=null; render(); };
+  $('drawingVisibility').onclick=()=>{ visible=!visible; draft=null; gesture=null; selection=null; render(); changed(); };
   $('drawingUndo').onclick=()=>historyAction('undo'); $('drawingRedo').onclick=()=>historyAction('redo');
   $('drawingDelete').onclick=()=>{ if(selection){ const {slot,id}=selection; selection=null; commit(slot,histories[slot].items.filter(s=>s.id!==id)); } };
   $('drawingClear').onclick=()=>{ draft=null; selection=null; gesture=null; commit(state().active,[]); toast('Drawings cleared from this clip. Undo brings them back.'); };
@@ -233,6 +233,9 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
   }
   return {
     render,
+    paintFrame(ctx,i,time,w,h,mirror) {
+      if(visible)for(const shape of histories[i].items.filter(shape=>isDrawingVisible(shape,time)))paintShape(ctx,shape,w,h,mirror);
+    },
     capture(i,width=960,height=720) {
       const s=slots[i],view=s.viewport.geometry(),w=view.image.width,h=view.image.height;
       const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
