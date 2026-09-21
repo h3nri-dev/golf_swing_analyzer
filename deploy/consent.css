@@ -1,0 +1,32 @@
+/* Keep the optional choice beside the introduction, never over the players. */
+.intro { gap: 24px; }
+[data-consent-banner]:empty { display: none; }
+.cookie-banner { max-width: 490px; border-left: 3px solid #96ae73; padding-left: 18px; }
+.cookie-banner p { font-size: 16px; line-height: 1.4; margin: 0 0 8px; }
+.cookie-banner .cookie-actions { gap: 8px; }
+.cookie-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.cookie-actions button, .cookie-close { border: 1px solid #85967b; border-radius: 7px; padding: 9px 14px; min-height: 44px; background: #fff; font-size: 16px; }
+.cookie-actions button { flex: 1; white-space: nowrap; }
+.cookie-actions button:hover { background: #eaf0df; }
+.cookie-banner a { color: var(--ink); font-size: 14px; align-self: center; padding: 8px 0; }
+.legal-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.legal-links a, .legal-links button { font-size: 16px; color: var(--ink); line-height: 1.5; }
+.legal-links button { padding: 0; }
+.legal-links a { text-underline-offset: 3px; }
+footer .legal-links { justify-content: flex-end; }
+#cookieDialog { width: min(560px, calc(100% - 24px)); max-width: 560px; max-height: calc(100dvh - 32px); padding: 24px; overflow: auto; }
+.cookie-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.cookie-heading h2 { font-size: 26px; margin: 0; }
+#cookieDialog p { font-size: 16px; line-height: 1.55; }
+.cookie-description { border-block: 1px solid var(--line); padding-block: 4px; margin-block: 20px; }
+.cookie-status { color: #425b37; min-height: 1.5em; }
+.consent-notice { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 20; background: var(--dark); color: white; padding: 12px 18px; border-radius: 8px; width: max-content; max-width: calc(100% - 32px); font-size: 16px; pointer-events: none; }
+@media (max-width: 1100px) {
+  .intro { flex-wrap: wrap; }
+  .cookie-banner { max-width: none; }
+}
+@media (max-width: 600px) {
+  .cookie-banner { padding-left: 12px; }
+  footer .legal-links { justify-content: flex-start; }
+  #cookieDialog { padding: 18px; }
+}

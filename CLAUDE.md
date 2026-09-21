@@ -2,11 +2,12 @@
 
 Repository: `h3nri-dev/golf_swing_analyzer`. Existing production host: Cloudflare Pages project `freegolfswinganalyzer`, serving `deploy/` at `freegolfswinganalyzer.com`.
 
-This is a build-free, browser-only application. Keep production entirely static: no backend, secret, database or video upload. Do not add application analytics; the existing hosting-injected Cloudflare beacon is disclosed in the privacy dialog. Do not add a server runtime to support analysis. Node dependencies are development/testing/deployment tools only.
+This is a build-free, browser-only application. Keep production entirely static: no backend, secret, database or video upload. Preserve the original Google Analytics property G-MG3PW4FRFM, gated by explicit opt-in in `consent.js`, along with the privacy policy, terms and persistent cookie-settings links. The Google tag must not load before consent; all advertising features remain off. The separate hosting-injected Cloudflare beacon is disclosed in the privacy policy. Do not add a server runtime to support analysis. Node dependencies are development/testing/deployment tools only.
 
 ## Files
 
 - `deploy/index.html`, `styles.css`: semantic responsive interface.
+- `deploy/consent.js`, `consent.css`, `privacy.html`, `terms.html`, `legal.css`: optional analytics consent and full policies. Preserve the original `golf_cookie_consent` preference, stop GA collection and clear accessible GA cookies on withdrawal, and propagate changes across tabs without losing a video session. Legal links must remain visible in the footer and available in workspace Help. Never remove these during a UI rewrite; protect consent behavior with `tests/consent.spec.js`.
 - `deploy/screen.js`, `deploy/screen.css`, `deploy/sidebar.css`, `deploy/review-layout.css`: viewport-sized studio, permanent expanded right sidebar and native scroll snapping. Draw, Video, Results and Moments must remain expanded in the right sidebar without tabs. Range belongs immediately above the common player, with its A/B selector and Analyze/Cancel together. Keep normal desktop controls within the viewport; allow internal sidebar scrolling on short/narrow desktop screens or at high text zoom. On phones, stack the expanded sections below the players without covering them.
 - `deploy/ux.js`, `deploy/ux.css`: task help, session-work confirmation and interaction refinements. `UX_REVIEW.md` records the research basis and task checks.
 - `deploy/app.js`: two local video slots, single/compare modes, playback synchronization, lazy MediaPipe inference and export.

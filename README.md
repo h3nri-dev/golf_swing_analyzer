@@ -62,7 +62,13 @@ Changing the range preserves earlier results and marks, with a reminder to analy
 
 ## Analysis and privacy
 
-The app lazy-loads pinned MediaPipe Tasks Vision 0.10.21 and the Pose Landmarker Lite model. Code/WASM comes from jsDelivr and model weights come from Google's public storage; **video pixels stay in browser memory**. A network connection is required for uncached model assets. Regular video review works without the model. Fonts are served locally; the application has no analytics code, cookie storage, or video upload endpoint. The existing Cloudflare Pages host injects its own web analytics beacon for page visits and performance data, disclosed in the privacy dialog. It receives no video content or swing measurements.
+The app lazy-loads pinned MediaPipe Tasks Vision 0.10.21 and the Pose Landmarker Lite model. Code/WASM comes from jsDelivr and model weights come from Google's public storage; **video pixels stay in browser memory**. A network connection is required for uncached model assets. Regular video review works without the model. Fonts are served locally and there is no video upload endpoint.
+
+Optional Google Analytics uses the original property **G-MG3PW4FRFM**. `consent.js` implements [basic consent mode](https://developers.google.com/tag-platform/security/concepts/consent-mode): it loads no Google tag until the visitor opts in. The original `golf_cookie_consent` local-storage choices remain valid; missing, malformed or unavailable storage defaults to off. Ad storage, ad user data, ad personalization and Google signals remain disabled. The explicit page view uses a URL without query/fragment and a referrer origin only. The application does not add local filenames, videos, drawings or measurements to analytics events. Analytics blockers or storage failures must never prevent video review.
+
+Cookie settings are always available in the footer and workspace Help. Withdrawal immediately sets Google's [analytics opt-out flag](https://developers.google.com/tag-platform/security/guides/privacy), updates consent and expires accessible first-party GA cookies without reloading the app. Changes propagate to other open tabs. Withdrawal does not delete previously collected data. The first-visit choice sits beside the introduction, outside the players. [Privacy Policy](https://freegolfswinganalyzer.com/privacy.html) and [Terms & conditions](https://freegolfswinganalyzer.com/terms.html) are standalone static pages; studio links open them separately to preserve the swing session. Their wording restores the original policies with current implementation details, without asserting an unverified GA retention configuration.
+
+The existing Cloudflare Pages host separately injects its own cookie-free web analytics beacon for page visits and performance data. This hosting service is disclosed in the privacy policy and is not controlled by the Google Analytics preference. It receives no video content or swing measurements. Browser consent tests stub Google's script so test visits do not pollute the production analytics property; normal model/PDF tests run with Google Analytics off.
 
 Each run uses a fresh CPU model, scans at up to 30 samples per file second with a maximum of 240 samples, and downscales inference images to a 640-pixel longest edge. Model timestamps are calibrated to real elapsed time. Analysis yields between samples, supports cancellation (including stalled model initialization), times out stalled downloads/seeks, and preserves prior results when cancelled. Object URLs are revoked when clips are replaced or removed.
 
@@ -75,6 +81,8 @@ References: [MediaPipe web guide](https://ai.google.dev/edge/mediapipe/solutions
 ## Source layout
 
 - `deploy/index.html` — semantic layout, single/compare modes, privacy details.
+- `deploy/consent.js`, `consent.css` — consent-gated GA4, cookie choices and cross-tab withdrawal.
+- `deploy/privacy.html`, `terms.html`, `legal.css` — full privacy policy and terms, with readable standalone layouts.
 - `deploy/styles.css` — base studio design.
 - `deploy/screen.js`, `deploy/screen.css`, `deploy/sidebar.css`, `deploy/review-layout.css` — viewport workspace, permanent expanded sidebar and scroll snapping.
 - `deploy/ux.js`, `deploy/ux.css` — task help, session-work confirmation and interaction refinements.
