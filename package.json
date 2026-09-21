@@ -1,0 +1,15 @@
+{
+  "name": "fairway-swing-studio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080 --directory deploy",
+    "test": "node --test tests/analysis.test.js",
+    "test:browser": "playwright test",
+    "deploy": "wrangler pages deploy deploy --project-name freegolfswinganalyzer --branch main"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "wrangler": "4.135.0"
+  }
+}

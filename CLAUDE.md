@@ -1,89 +1,26 @@
-# CLAUDE.md - Golf Swing Analyzer
+# Golf Swing Analyzer / Swing Studio
 
-This file provides guidance for AI assistants working on this codebase.
+Repository: `h3nri-dev/golf_swing_analyzer`. Existing production host: Cloudflare Pages project `freegolfswinganalyzer`, serving `deploy/` at `freegolfswinganalyzer.com`.
 
-## Project Overview
+This is a build-free, browser-only application. Keep production entirely static: no backend, secret, database, analytics or video upload. Do not add a server runtime to support analysis. Node dependencies are development/testing/deployment tools only.
 
-Golf Swing Analyzer is a new project for analyzing golf swings. The repository is in its initial setup phase — no source code, dependencies, or CI/CD pipelines have been established yet.
+## Files
 
-**Repository**: `h3nri-dev/golf_swing_analyzer`
+- `deploy/index.html`, `styles.css`: semantic responsive interface.
+- `deploy/app.js`: two local video slots, single/compare modes, playback synchronization, lazy MediaPipe inference and export.
+- `deploy/analysis.js`: pure calculation helpers; unit-test changes here.
+- `tests/analysis.test.js`, `tests/studio.spec.js`: unit and Chrome browser tests.
+- `tests/fixtures/`: synthetic MP4s with different orientations and durations.
+- `README.md`: workflow, limitations, data privacy and deployment details.
 
-## Repository Status
+## Commands
 
-This is a freshly initialized repository. The following still need to be set up:
+- `npm ci`
+- `npm start` (Python 3 static server, port 8080)
+- `npm test`
+- `npm run test:browser` (installed Chrome; optional `POSE_FIXTURE` for real inference)
+- `npm run deploy` (existing Cloudflare login required)
 
-- [ ] Choose tech stack (language, framework, libraries)
-- [ ] Initialize project structure and dependencies
-- [ ] Set up linting and formatting
-- [ ] Set up testing framework
-- [ ] Add CI/CD pipeline
-- [ ] Create README.md with project documentation
+## Conventions
 
-## Project Structure
-
-```
-golf_swing_analyzer/
-├── CLAUDE.md          # This file — AI assistant guidance
-└── .git/              # Git repository
-```
-
-As the project grows, update this section to reflect the actual directory layout.
-
-## Development Workflow
-
-### Getting Started
-
-No dependencies or build steps exist yet. When the project is initialized:
-
-1. Document installation steps here
-2. Document how to run the application
-3. Document how to run tests
-
-### Git Conventions
-
-- **Branch naming**: Feature branches use the pattern `claude/<description>-<session-id>`
-- **Commits**: Use clear, descriptive commit messages
-- **Push**: Always use `git push -u origin <branch-name>`
-
-### Code Style
-
-No linting or formatting tools are configured yet. When they are added, document:
-
-- Linter and formatter commands
-- Configuration file locations
-- Pre-commit hooks if any
-
-### Testing
-
-No test framework is configured yet. When tests are added, document:
-
-- How to run the full test suite
-- How to run individual tests
-- Test file naming conventions
-- Coverage requirements
-
-### Building / Running
-
-No build system exists yet. When one is added, document:
-
-- Build commands
-- Run commands
-- Environment variables required
-
-## Key Conventions
-
-When contributing to this project, follow these principles:
-
-1. **Keep changes minimal** — only modify what is necessary for the task at hand
-2. **Don't over-engineer** — avoid premature abstractions and unnecessary complexity
-3. **Test what you build** — add tests alongside new functionality
-4. **Document as you go** — update this file when adding new tools, commands, or conventions
-
-## Updating This File
-
-This CLAUDE.md should be kept up to date as the project evolves. When you:
-
-- Add a new dependency or tool, document the relevant commands
-- Change the project structure, update the directory layout
-- Establish a new convention, add it here
-- Set up CI/CD, document the pipeline and how to run checks locally
+Use readable ES modules and browser APIs; there is no build step. Keep uploaded files as local object URLs and revoke them when removed. Low-confidence pose measurements must remain null. Compute angles in pixel coordinates, not normalized coordinates, and never claim 3D accuracy or an inferred swing score. Sync tests should cover positive/negative offsets and unequal clip durations. Document functional changes and run the relevant unit/browser checks before deploying.
