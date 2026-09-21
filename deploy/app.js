@@ -1,5 +1,6 @@
 import { clamp, visible, measurements, syncBounds, frameTime, tempo, nearestSample, smoothSamples } from './analysis.js';
 import { createAnnotations } from './annotations.js';
+import { createViewport } from './viewport.js';
 let annotations = null;
 const $ = id => document.getElementById(id);
 const names = ['A', 'B'];
@@ -57,7 +58,7 @@ function resetSlot(index) {
   s.input.value = ''; s.get('.file-name').textContent = index ? 'Reference swing' : 'Your swing';
   s.video.hidden = true; s.drop.hidden = false; s.canvas.hidden = true;
   s.stage.classList.remove('mirrored'); s.get('.mirror').setAttribute('aria-pressed', false);
-  annotations?.reset(index); invalidateSync(); update();
+  s.viewport?.reset(); annotations?.reset(index); invalidateSync(); update();
 }
 async function loadFile(index, file) {
   if (job) return toast('Finish or cancel analysis before replacing a video.');
@@ -88,7 +89,7 @@ async function loadFile(index, file) {
 }
 function setMode(next) {
   if (job) return;
-  annotations?.interrupt(); pauseAll(); mode = next; if (mode === 'single') active = 0;
+  slots.forEach(s => s.viewport?.cancelGesture()); annotations?.interrupt(); pauseAll(); mode = next; if (mode === 'single') active = 0;
   $('singleMode').setAttribute('aria-pressed', mode === 'single'); $('compareMode').setAttribute('aria-pressed', mode === 'compare');
   $('comparisonBar').hidden = $('analysisTarget').hidden = mode !== 'compare';
   $('videoGrid').classList.toggle('compare', mode === 'compare');
@@ -170,6 +171,7 @@ async function togglePlay() {
 function step(direction) { const s = slots[active]; if (s.ready) seekActive(frameTime(s.video.currentTime, direction, s.fps, 0, s.video.duration)); }
 function render() {
   const s = slots[active];
+  slots.forEach(slot => slot.viewport?.apply());
   $('timeline').max = s.ready ? s.video.duration : 1; $('timeline').value = s.video.currentTime || 0;
   $('time').textContent = `${(s.video.currentTime || 0).toFixed(2)} / ${(s.ready ? s.video.duration : 0).toFixed(2)} s`;
   slots.forEach((slot, i) => { if (slot.ready && (mode === 'compare' || i === 0)) draw(slot, i); });
@@ -307,12 +309,19 @@ $('clearMarks').onclick = () => { slots[active].marks = {}; updatePhases(); };
 $('analyze').onclick = analyze; $('cancel').onclick = () => { if (job) { job.cancelled = true; job.controller.abort(); $('status').textContent = 'Cancelling… finishing the current model operation.'; } };
 $('export').onclick = () => {
   const s = slots[active];
-  const data = { version: 2, drawings: annotations.data(active), drawingCoordinates: 'normalized, unmirrored video coordinates', file: s.get('.file-name').textContent, hand: s.hand, frameRate: s.fps, frameRateSource: 'user-selected', range: [s.start,s.end], marks: s.marks, tempo: tempo(s.marks), measurements: s.samples.map(sample => ({ time: sample.time, ...measurements(sample.points,s.video.videoWidth,s.video.videoHeight,s.hand) })), note: '2D image-plane estimates. Missing or low-confidence measurements are null. Frame rate is user-selected.' };
+  const data = { version: 3, viewport: s.viewport.state(), drawings: annotations.data(active), drawingCoordinates: 'normalized, unmirrored video coordinates', file: s.get('.file-name').textContent, hand: s.hand, frameRate: s.fps, frameRateSource: 'user-selected', range: [s.start,s.end], marks: s.marks, tempo: tempo(s.marks), measurements: s.samples.map(sample => ({ time: sample.time, ...measurements(sample.points,s.video.videoWidth,s.video.videoHeight,s.hand) })), note: '2D image-plane estimates. Missing or low-confidence measurements are null. Frame rate is user-selected.' };
   const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], { type: 'application/json' }));
   const a = document.createElement('a'); a.href = url; a.download = `swing-${names[active].toLowerCase()}-analysis.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
 };
 $('privacy').onclick = () => $('privacyDialog').showModal(); $('closePrivacy').onclick = () => $('privacyDialog').close();
 document.addEventListener('keydown', e => { if (job || $('privacyDialog').open || e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input,select,textarea,button,a,[contenteditable]')) return; if (e.code === 'Space') { e.preventDefault(); togglePlay(); } if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1); } });
 window.addEventListener('resize', render);
+slots.forEach((slot, index) => {
+  slot.viewport = createViewport(slot, index, {
+    busy: () => !!job, viewing: () => annotations?.isViewing() ?? true,
+    enterView: () => annotations?.view(),
+    changed: () => { annotations?.interrupt(); render(); },
+  });
+});
 annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!job }), selectSlot, pauseAll, seekActive, toast, changed: updatePhases });
 setMode('single'); requestAnimationFrame(playbackLoop);

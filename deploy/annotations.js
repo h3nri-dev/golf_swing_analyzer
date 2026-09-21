@@ -24,7 +24,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, seekActi
   slots.forEach((slot,i)=>{
     const canvas=document.createElement('canvas'); canvas.className='annotation-canvas'; canvas.hidden=true;
     canvas.setAttribute('aria-label',`Drawing surface for swing ${i?'B':'A'}`);
-    slot.stage.append(canvas); slot.annotationCanvas=canvas;
+    slot.plane.append(canvas); slot.annotationCanvas=canvas;
     canvas.addEventListener('pointerdown',e=>pointerDown(e,i));
     canvas.addEventListener('pointermove',e=>pointerMove(e,i));
     canvas.addEventListener('pointerup',e=>pointerUp(e,i));
@@ -141,6 +141,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, seekActi
     if(busy && (draft || gesture)) {draft=null;gesture=null;}
     const s=slots[active], history=current(), selected=selectedShape();
     slots.forEach((slot,i)=>{
+      slot.viewport.apply();
       const canvas=slot.annotationCanvas; canvas.hidden=!slot.ready;
       canvas.classList.toggle('drawing-active',!busy && visible && tool!=='view');
       canvas.classList.toggle('select-tool',tool==='select');
@@ -196,13 +197,18 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, seekActi
       const ctx=canvas.getContext('2d');ctx.fillStyle='#17251f';ctx.fillRect(0,0,canvas.width,canvas.height);
       indices.forEach((i,column)=>{
         const s=slots[i],left=column*(cellWidth+gap);
-        ctx.fillStyle='#d6ee9c';ctx.font='600 22px sans-serif';ctx.fillText(`Swing ${i?'B':'A'}  ·  ${s.video.currentTime.toFixed(2)} s`,left+22,40);
-        const scale=Math.min(cellWidth/s.video.videoWidth,imageHeight/s.video.videoHeight),w=s.video.videoWidth*scale,h=s.video.videoHeight*scale;
-        const x=left+(cellWidth-w)/2,y=header+(imageHeight-h)/2;
-        ctx.save();ctx.translate(x,y);
-        if(mirrored(i)){ctx.translate(w,0);ctx.scale(-1,1);}
+        const view=s.viewport.geometry(),w=view.image.width,h=view.image.height;
+        ctx.fillStyle='#d6ee9c';ctx.font='600 22px sans-serif';ctx.fillText(`Swing ${i?'B':'A'}  ·  ${s.video.currentTime.toFixed(2)} s  ·  ${view.zoom.toFixed(2)}×`,left+22,40);
+        // Export the same cropped viewport the user is inspecting. Clip before
+        // scaling so enlarged video and drawings cannot cover the other panel.
+        const scale=Math.min(cellWidth/view.stage.width,imageHeight/view.stage.height);
+        const sw=view.stage.width*scale,sh=view.stage.height*scale;
+        const x=left+(cellWidth-sw)/2,y=header+(imageHeight-sh)/2;
+        ctx.save();ctx.beginPath();ctx.rect(x,y,sw,sh);ctx.clip();
+        ctx.translate(x+sw/2+view.offset.x*scale,y+sh/2+view.offset.y*scale);
+        ctx.scale(scale*view.zoom,scale*view.zoom);ctx.translate(-w/2,-h/2);
+        ctx.save();if(mirrored(i)){ctx.translate(w,0);ctx.scale(-1,1);}
         ctx.drawImage(s.video,0,0,w,h);ctx.drawImage(s.canvas,0,0,w,h);ctx.restore();
-        ctx.save();ctx.translate(x,y);
         for(const shape of displayed(i)) paintShape(ctx,shape,w,h,mirrored(i));
         ctx.restore();
       });
@@ -215,6 +221,8 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, seekActi
   }
   return {
     render,
+    isViewing: () => tool === 'view' || !visible,
+    view: () => setTool('view'),
     reset(i){histories[i].reset();if(selection?.slot===i)selection=null;draft=null;gesture=null;render();},
     interrupt(){draft=null;gesture=null;selection=null;},
     data(i){return histories[i].items.map(s=>({...clone(s),angle:s.tool==='angle'?angleDegrees(s.points,slots[i].video.videoWidth,slots[i].video.videoHeight):undefined}));},

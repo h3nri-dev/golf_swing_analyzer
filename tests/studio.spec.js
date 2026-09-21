@@ -44,8 +44,10 @@ test('real MediaPipe model detects a pose locally',async({page})=>{
   test.setTimeout(120000);
   const requests=[]; page.on('request',r=>requests.push({method:r.method(),url:r.url()}));
   await page.goto('/'); await clip(page,0).locator('input[type=file]').setInputFiles(process.env.POSE_FIXTURE); await expect(page.locator('#analyze')).toBeEnabled();
+  await clip(page,0).locator('.zoom-slider').fill('2');
   await page.locator('#rangeEnd').fill('0.3'); await page.locator('#analyze').click();
   await expect(page.locator('#status')).toContainText('Analysis ready',{timeout:100000});
+  await expect(clip(page,0).locator('.zoom-value')).toHaveText('2.00×');
   await expect(page.locator('#coverage')).not.toContainText('—');
   await expect(page.locator('#elbow')).not.toContainText('—');
   expect(requests.filter(r=>r.method!=='GET')).toEqual([]);

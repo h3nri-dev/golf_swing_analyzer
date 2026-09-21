@@ -1042,3 +1042,40 @@ input[type=checkbox] { width: 16px; height: 16px; }
 /* Keep the video still while the angle tool changes its step-by-step hint. */
 .drawing-footer p { min-height: 42px; }
 @media (max-width: 600px) { .drawing-footer p { min-height: 63px; } }
+/* One transformed plane keeps the video, pose and drawing layers registered. */
+.video-plane { position: absolute; transform-origin: center; }
+.video-plane > video, .video-plane > canvas { position: absolute; inset: 0; }
+.stage .corner-label { z-index: 3; }
+.stage.zoom-panning { cursor: grab; touch-action: none; user-select: none; }
+.stage.zoom-dragging { cursor: grabbing; }
+.zoom-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px; color: #e4eddf; background: #203128; border-top: 1px solid #ffffff12; }
+.zoom-controls button { border: 1px solid #ffffff30; background: #ffffff09; color: #e4eddf; border-radius: 6px; padding: 5px 10px; font-size: 16px; min-width: 36px; }
+.zoom-controls button[aria-pressed=true] { color: #233829; background: var(--lime); border-color: var(--lime); }
+.zoom-label { font-size: 14px; }
+.zoom-controls .zoom-in, .zoom-controls .zoom-out { font-size: 22px; line-height: 1; }
+.zoom-slider { flex: 1; min-width: 55px; width: 80px; max-width: 200px; accent-color: var(--lime); }
+.zoom-value { font: 14px monospace; min-width: 5ch; }
+.zoom-help { flex-basis: 100%; font-size: 14px; color: #bfd0ba; line-height: 1.4; min-height: 40px; }
+@media (max-width: 600px) {
+  .compare .zoom-controls { gap: 6px; padding: 10px 8px; }
+  .compare .zoom-label { flex: 1; }
+  .compare .zoom-value { order: 0; }
+  .compare .zoom-out { order: 1; }
+  .compare .zoom-slider { order: 2; min-width: 30px; }
+  .compare .zoom-in { order: 3; }
+  .compare .zoom-pan { order: 4; flex: 1; }
+  .compare .zoom-fit { order: 5; flex: 1; }
+  .compare .zoom-help { order: 6; min-height: 80px; }
+  .compare .zoom-controls button { padding: 5px 8px; }
+}
+@media (max-width: 600px) {
+  .compare .zoom-controls { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; }
+  .compare .zoom-label { grid-column: 1; grid-row: 1; }
+  .compare .zoom-value { grid-column: 2 / 4; grid-row: 1; justify-self: end; }
+  .compare .zoom-out { grid-column: 1; grid-row: 2; }
+  .compare .zoom-slider { grid-column: 2; grid-row: 2; width: 100%; min-width: 0; margin: 0; }
+  .compare .zoom-in { grid-column: 3; grid-row: 2; }
+  .compare .zoom-pan { grid-column: 1 / 3; grid-row: 3; }
+  .compare .zoom-fit { grid-column: 3; grid-row: 3; padding: 5px 3px; }
+  .compare .zoom-help { grid-column: 1 / 4; grid-row: 4; }
+}
