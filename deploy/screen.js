@@ -18,9 +18,6 @@ export function createStudioScreen({ slots, state, changed }) {
   const help = document.createElement('button');
   help.id = 'workspaceHelp'; help.className = 'workspace-help'; help.textContent = 'Help';
   help.setAttribute('aria-haspopup','dialog'); heading.append(help);
-  const alignmentHelp = document.createElement('p'); alignmentHelp.id = 'alignmentHelp'; alignmentHelp.hidden = true;
-  alignmentHelp.textContent = 'Find impact in each video, then choose Align frames.';
-  alignmentHelp.setAttribute('role', 'status');
   const footer = studio.querySelector('.transport'); footer.classList.add('screen-transport');
   // Synchronization and alignment belong with the player that controls both clips.
   footer.prepend($('comparisonBar'));
@@ -30,7 +27,7 @@ export function createStudioScreen({ slots, state, changed }) {
   context.title = 'Change the analysis range'; context.onclick = () => focusSection('range');
   commands.append(context, $('analyze'), $('cancel')); footer.querySelector('.transport-row').append(commands);
   const notice = document.createElement('div'); notice.className = 'screen-notice';
-  notice.append(alignmentHelp, $('status'), $('drawingHint'), $('progress')); footer.append(notice);
+  notice.append($('status'), $('drawingHint'), $('progress')); footer.append(notice);
   const resultsAction = document.createElement('button'); resultsAction.id = 'viewResults'; resultsAction.textContent = 'View results'; resultsAction.hidden = true;
   resultsAction.onclick = () => focusSection('pose');
   notice.append(resultsAction);

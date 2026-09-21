@@ -26,16 +26,17 @@ test('first use provides task help and one playback control per scope',async({pa
   await expect(slot(page,0).locator('.clip-speed')).toBeVisible();
   await expect(slot(page,1).locator('.clip-speed')).toBeVisible();
 });
-test('alignment guides the two current frames without hidden prerequisites',async({page})=>{
+test('Sync Videos aligns the displayed frames in one click from either sync state',async({page})=>{
   await page.goto('/');await page.locator('#compareMode').click();await load(page,0);await load(page,1);
-  await expect(page.locator('#align')).toBeEnabled();await page.locator('#align').click();
-  await expect(page.locator('#independent')).toHaveAttribute('aria-pressed','true');
-  await expect(page.locator('#alignmentHelp')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Sync Videos',exact:true})).toBeEnabled();
+  await page.locator('#independent').click();
   await slot(page,0).locator('.clip-timeline').fill('0.7');await slot(page,1).locator('.clip-timeline').fill('1.2');
   await page.locator('#align').click();await expect(page.locator('#linked')).toHaveAttribute('aria-pressed','true');
   await page.locator('#next').click();
   const times=await page.locator('video').evaluateAll(v=>v.map(x=>x.currentTime));expect(times[1]-times[0]).toBeCloseTo(.5,2);
-  await expect(page.locator('#alignmentHelp')).toBeHidden();await expect(page.locator('#syncHint')).toContainText('Aligned');
+  await expect(page.locator('#syncHint')).toContainText('Aligned');
+  await page.locator('#align').click();await expect(page.locator('#linked')).toHaveAttribute('aria-pressed','true');
+  const alignedTimes=await page.locator('video').evaluateAll(v=>v.map(x=>x.currentTime));expect(alignedTimes[1]-alignedTimes[0]).toBeCloseTo(.5,2);
 });
 test('expanded sections have natural keyboard access and help focuses the requested controls',async({page})=>{
   await page.goto('/');await load(page,0);
@@ -76,7 +77,7 @@ test('selected clip and interval are explicit and completed analysis has a resul
 for(const [width,height] of [[390,844],[320,568],[844,390]]) {
   test(`independent playback and alignment stay usable at ${width}×${height}`,async({page})=>{
     await page.setViewportSize({width,height});await page.goto('/');await page.locator('#compareMode').click();await load(page,0);await load(page,1);
-    await page.locator('#align').click();
+    await page.locator('#independent').click();
     for(const i of [0,1]){
       const b=await slot(page,i).locator('.stage').boundingBox();expect(b.height).toBeGreaterThan(70);
       await slot(page,i).locator('.clip-speed').selectOption('0.25');await slot(page,i).locator('.clip-next').click();

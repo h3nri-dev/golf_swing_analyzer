@@ -11,7 +11,7 @@ const $ = id => document.getElementById(id);
 const names = ['A', 'B'];
 const phases = [['address', 'Address'], ['top', 'Top of backswing'], ['impact', 'Impact'], ['finish', 'Finish']];
 const connections = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[27,29],[29,31],[28,30],[30,32]];
-let mode = 'single', active = 0, linked = true, offset = 0, aligned = false, aligning = false, job = null;
+let mode = 'single', active = 0, linked = true, offset = 0, aligned = false, job = null;
 const slots = names.map((name, index) => {
   const card = document.createElement('section');
   card.className = `video-card${index === 0 ? ' selected' : ''}`;
@@ -68,7 +68,7 @@ function setSpeed(speed, both = false) {
 }
 function setLinked(next) {
   if (job || linked === next) return;
-  if (next) { aligning = false; pauseAll(); }
+  if (next) pauseAll();
   // Unlink without interrupting playback; pending group play requests no longer own both clips.
   else slots.forEach(s => s.playGeneration++);
   linked = next;
@@ -84,7 +84,7 @@ function controlClip(index, action) {
   }
   selectSlot(index); action();
 }
-function invalidateSync() { offset = 0; aligned = false; aligning = false; }
+function invalidateSync() { offset = 0; aligned = false; }
 function hasSavedWork(s, index) { return !!(s.samples.length || Object.keys(s.marks).length || annotations?.count(index)); }
 function resetSlot(index) {
   if (job) return;
@@ -130,7 +130,7 @@ async function loadFile(index, file) {
 }
 function setMode(next) {
   if (job) return;
-  slots.forEach(s => s.viewport?.cancelGesture()); annotations?.interrupt(); pauseAll(); aligning = false; mode = next; if (mode === 'single') active = 0;
+  slots.forEach(s => s.viewport?.cancelGesture()); annotations?.interrupt(); pauseAll(); mode = next; if (mode === 'single') active = 0;
   $('singleMode').setAttribute('aria-pressed', mode === 'single'); $('compareMode').setAttribute('aria-pressed', mode === 'compare');
   $('comparisonBar').hidden = $('analysisTarget').hidden = mode !== 'compare';
   $('videoGrid').classList.toggle('compare', mode === 'compare');
@@ -184,9 +184,6 @@ function update() {
   $('clearMarks').disabled = !s.ready || busy;
   $('export').disabled = busy || (!s.samples.length && !Object.keys(s.marks).length && !annotations?.count(active));
   $('align').disabled = busy || !slots.every(x => x.ready);
-  $('align').textContent = linked ? 'Set alignment' : 'Align frames';
-  $('align').title = linked ? 'Pause and position each swing at the same event' : 'Synchronize the two frames currently shown';
-  $('alignmentHelp').hidden = !aligning || busy;
   $('cancel').hidden = !busy; $('progress').hidden = !busy;
   $('hand').value = s.hand;
   $('status').textContent = s.status; $('activeLabel').textContent = mode === 'compare' ? 'BOTH' : 'SWING A';
@@ -421,15 +418,10 @@ $('linked').onclick = () => setLinked(true); $('independent').onclick = () => se
 $('align').onclick = () => {
   if (job || !slots.every(s => s.ready)) return;
   pauseAll();
-  if (linked) {
-    aligning = true; setLinked(false); studioScreen.focus();
-    slots[0].get('.clip-timeline').focus({preventScroll:true});
-    return;
-  }
   const next = slots[1].video.currentTime - slots[0].video.currentTime;
   if (!syncBounds(slots[0].video.duration,slots[1].video.duration,next)) return toast('Choose frames with video remaining in both clips.');
   slots.forEach(s => { s.anchor = s.video.currentTime; });
-  offset = next; aligned = true; aligning = false; linked = true;
+  offset = next; aligned = true; linked = true;
   setSpeed(slots[active].video.playbackRate);
   slots.forEach(s => { s.video.currentTime = s.anchor; });
   update(); toast('Aligned to these frames. Play both to compare.');
