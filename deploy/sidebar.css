@@ -4,6 +4,7 @@
 .persistent-sidebar .studio-heading { grid-column: 1 / -1; }
 .persistent-sidebar .workspace { grid-column: 1; grid-row: 2; grid-template-columns: minmax(0,1fr); overflow: hidden; }
 .persistent-sidebar .screen-transport { grid-column: 1; grid-row: 3; min-width: 0; }
+.persistent-sidebar .screen-transport .comparison-bar { grid-column: 1 / -1; min-height: 44px; padding: 0 0 4px; gap: 8px; justify-content: flex-start; }
 .persistent-sidebar .workspace-help { margin-left: auto; }
 .persistent-sidebar .analysis-panel { grid-column: 2; grid-row: 2 / 4; position: static; width: auto; max-width: none; min-width: 0; padding: 0; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: #f0f3eb; box-shadow: none; overflow: auto; overscroll-behavior: contain; scroll-padding-top: 56px; }
 .sidebar-heading { position: sticky; top: 0; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: #f0f3eb; border-bottom: 1px solid #dbe3d1; }
@@ -100,7 +101,8 @@
 }
 @media (max-width: 900px) {
   html { scroll-snap-type: y proximity; }
-  .studio.persistent-sidebar { height: auto; grid-template-columns: minmax(0,1fr); grid-template-rows: auto calc(100dvh - 180px) auto auto; overflow: visible; }
+  .studio.persistent-sidebar { --sync-row-space: 0px; height: auto; grid-template-columns: minmax(0,1fr); grid-template-rows: auto calc(100dvh - 180px - var(--sync-row-space)) auto auto; overflow: visible; }
+  .studio.persistent-sidebar.is-compare { --sync-row-space: 48px; }
   .persistent-sidebar .workspace { overflow: hidden; }
   .persistent-sidebar .analysis-panel { grid-column: 1; grid-row: 4; overflow: visible; border-left: 0; border-top: 1px solid var(--line); }
   .sidebar-heading { position: static; }
@@ -117,5 +119,8 @@
 }
 
 @media (max-width: 900px) and (min-width: 601px) and (max-height: 500px) {
-  .studio.persistent-sidebar { grid-template-rows: auto calc(100dvh - 128px) auto auto; }
+  .studio.persistent-sidebar { grid-template-rows: auto calc(100dvh - 128px - var(--sync-row-space)) auto auto; }
+  .studio.persistent-sidebar.is-compare { --sync-row-space: 36px; }
+  .persistent-sidebar .screen-transport .comparison-bar { min-height: 32px; padding: 0; }
+  .persistent-sidebar .screen-transport .comparison-bar .segmented { padding: 1px; }
 }

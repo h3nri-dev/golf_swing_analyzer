@@ -22,6 +22,8 @@ export function createStudioScreen({ slots, state, changed }) {
   alignmentHelp.textContent = 'Find impact in each video, then choose Align frames.';
   alignmentHelp.setAttribute('role', 'status');
   const footer = studio.querySelector('.transport'); footer.classList.add('screen-transport');
+  // Synchronization and alignment belong with the player that controls both clips.
+  footer.prepend($('comparisonBar'));
   studio.append(footer);
   const commands = document.createElement('div'); commands.className = 'screen-commands';
   const context = document.createElement('button'); context.id = 'reviewContext'; context.className = 'review-context';
