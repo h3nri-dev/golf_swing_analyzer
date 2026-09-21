@@ -21,7 +21,8 @@ test('comparison aligns offsets, steps together, plays independently and pauses 
   let ts = await times(page); expect(ts[1]-ts[0]).toBeCloseTo(.7,2);
   await page.locator('#next').click(); ts=await times(page); expect(ts[1]-ts[0]).toBeCloseTo(.7,2);
   await page.locator('#play').click(); await page.waitForTimeout(400); ts=await times(page); expect(Math.abs(ts[1]-ts[0]-.7)).toBeLessThan(.09);
-  await page.locator('#independent').click(); const before=await times(page); await clip(page,0).locator('.clip-play').click(); await page.waitForTimeout(250); ts=await times(page); expect(ts[0]).toBeGreaterThan(before[0]); expect(ts[1]).toBeCloseTo(before[1],2);
+  await page.locator('#independent').click(); expect(await page.locator('video').evaluateAll(v=>v.every(x=>!x.paused))).toBe(true);
+  await clip(page,1).locator('.clip-play').click(); const before=await times(page); await page.waitForTimeout(250); ts=await times(page); expect(ts[0]).toBeGreaterThan(before[0]); expect(ts[1]).toBeCloseTo(before[1],2);
   await page.locator('#singleMode').click(); expect(await page.locator('video').evaluateAll(v=>v.every(x=>x.paused))).toBe(true);
   await page.locator('#compareMode').click(); await page.screenshot({path:'/tmp/swing-compare.png',fullPage:true});
 });
@@ -63,9 +64,11 @@ test('negative sync offsets respect overlap with unequal clip lengths',async({pa
   expect(await page.locator('video').evaluateAll(v=>v.every(x=>x.paused))).toBe(true);
   ts=await times(page); expect(ts[0]).toBeLessThan(2.85); expect(ts[1]).toBeLessThanOrEqual(2);
 });
-test('independent mode plays only the requested clip and replacement clears marks',async({page})=>{
+test('independent videos can both play and replacement clears only its own marks',async({page})=>{
   await page.goto('/'); await load(page,0); await page.locator('#compareMode').click(); await load(page,1); await page.locator('#independent').click();
-  await clip(page,0).locator('.clip-play').click(); await clip(page,1).locator('.clip-play').click(); expect(await clip(page,0).locator('video').evaluate(v=>v.paused)).toBe(true);
+  await clip(page,0).locator('.clip-speed').selectOption('0.25');
+  await clip(page,0).locator('.clip-play').click(); await clip(page,1).locator('.clip-play').click(); expect(await page.locator('video').evaluateAll(v=>v.every(x=>!x.paused))).toBe(true);
   await page.locator('#mark-address').click(); await expect(page.locator('#phase-address')).not.toHaveText('—'); await load(page,1); await expect(page.locator('#phase-address')).toHaveText('—');
+  expect(await clip(page,0).locator('video').evaluate(v=>v.paused)).toBe(false);
   await page.locator('#rangeStart').fill('3'); await page.locator('#rangeEnd').fill('1'); await page.locator('#analyze').click(); await expect(page.locator('#toast')).toContainText('Choose a range'); await expect(page.locator('#play')).toBeEnabled();
 });

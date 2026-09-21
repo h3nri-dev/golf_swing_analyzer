@@ -347,6 +347,20 @@ h1 em {
   font-size:14px}
 .video-bottom .fps-label {
   margin-left:auto}
+.clip-transport { padding: 12px; border-top: 1px solid #ffffff20; color: #e4eddf; background: #203128; }
+.clip-timeline-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.clip-duration { font: 14px monospace; white-space: nowrap; }
+.clip-timeline { display: block; width: 100%; margin: 8px 0; height: 28px; accent-color: var(--lime); }
+.clip-frame-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.clip-frame-controls button { min-width: 44px; min-height: 44px; border: 1px solid #ffffff30; background: #ffffff09; color: #e4eddf; border-radius: 6px; font-size: 18px; }
+.clip-frame-controls label { display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 16px; }
+.clip-frame-controls select { font-size: 16px; background: var(--dark); border-color: #ffffff30; color: #e4eddf; min-height: 44px; }
+@media (max-width: 600px) {
+  .clip-transport { padding: 10px 8px; }
+  .clip-frame-controls { gap: 6px; }
+  .clip-frame-controls button { flex: 1; }
+  .clip-frame-controls label { width: 100%; justify-content: space-between; }
+}
 .clip-time {
   font:14px monospace}
 .transport {

@@ -6,7 +6,7 @@ const $ = id => document.getElementById(id);
 const names = ['A', 'B'];
 const phases = [['address', 'Address'], ['top', 'Top of backswing'], ['impact', 'Impact'], ['finish', 'Finish']];
 const connections = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[27,29],[29,31],[28,30],[30,32]];
-let mode = 'single', active = 0, linked = true, offset = 0, aligned = false, job = null, playGeneration = 0;
+let mode = 'single', active = 0, linked = true, offset = 0, aligned = false, job = null;
 const slots = names.map((name, index) => {
   const card = document.createElement('section');
   card.className = `video-card${index === 0 ? ' selected' : ''}`;
@@ -15,10 +15,11 @@ const slots = names.map((name, index) => {
   card.innerHTML = `<div class="video-top"><span class="slot-badge">${name}</span><span class="file-name">${index ? 'Reference swing' : 'Your swing'}</span><button class="replace" hidden>Replace</button><button class="remove" aria-label="Remove swing ${name}" hidden>×</button></div>
     <div class="stage"><video muted playsinline preload="auto" hidden></video><canvas class="pose-canvas" hidden></canvas><button class="dropzone" aria-label="Add swing ${name} video"><span class="upload-icon">↥</span><strong>${index ? 'A different perspective' : 'Meet your next breakthrough'}</strong><span class="drop-description">${index ? 'Your earlier swing, or a swing to learn from.' : 'Drop your swing video here, or browse your files.'}</span><span class="upload-cta">${index ? 'Add reference video' : 'Choose a video'} <span aria-hidden="true">↗</span></span><span class="file-types">MP4 · MOV · WEBM / BROWSER-SUPPORTED VIDEO</span></button><span class="corner-label" hidden>LOCAL VIDEO · <span class="clip-time">0.00 s</span></span></div>
     <input class="file-input" type="file" accept="video/*,.mov,.mp4,.webm" hidden aria-label="Swing ${name} video file">
-    <div class="video-bottom"><button class="clip-play" disabled aria-label="Play swing ${name}">▶ Play ${name}</button><button class="sync-mark" disabled title="Use this moment as the synchronization point" hidden>Mark sync point</button><button class="mirror" disabled aria-pressed="false">Mirror</button><label class="fps-label">FPS <select class="fps" aria-label="Swing ${name} frame rate">${[24,25,30,50,60,120,240].map(n => `<option${n === 30 ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>`;
+    <div class="video-bottom"><button class="clip-play" disabled aria-label="Play swing ${name}">▶ Play ${name}</button><button class="sync-mark" disabled title="Use this moment as the synchronization point" hidden>Mark sync point</button><button class="mirror" disabled aria-pressed="false">Mirror</button><label class="fps-label">FPS <select class="fps" aria-label="Swing ${name} frame rate">${[24,25,30,50,60,120,240].map(n => `<option${n === 30 ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>
+    <div class="clip-transport" hidden aria-label="Independent swing ${name} controls"><div class="clip-timeline-row"><span>SWING ${name}</span><output class="clip-duration">0.00 / 0.00 s</output></div><input class="clip-timeline" type="range" min="0" max="1" step="0.001" value="0" aria-label="Swing ${name} timeline" disabled><div class="clip-frame-controls"><button class="clip-previous" aria-label="Previous frame swing ${name}" title="Previous frame" disabled>Ⅰ‹</button><button class="clip-next" aria-label="Next frame swing ${name}" title="Next frame" disabled>›Ⅰ</button><label>Speed <select class="clip-speed" aria-label="Swing ${name} playback speed" disabled>${[0.25,0.5,1,1.5].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}×</option>`).join('')}</select></label></div></div>`;
   $('videoGrid').append(card);
   const get = selector => card.querySelector(selector);
-  const slot = { card, video: get('video'), canvas: get('canvas'), stage: get('.stage'), input: get('.file-input'), drop: get('.dropzone'), get, ready: false, url: null, version: 0, fps: 30, hand: 'right', samples: [], marks: {}, anchor: null, start: 0, end: 0, tolerance: 0.1, status: 'Add a video to get started.' };
+  const slot = { card, video: get('video'), canvas: get('canvas'), stage: get('.stage'), input: get('.file-input'), drop: get('.dropzone'), get, ready: false, url: null, version: 0, playGeneration: 0, fps: 30, hand: 'right', samples: [], marks: {}, anchor: null, start: 0, end: 0, tolerance: 0.1, status: 'Add a video to get started.' };
   slot.drop.onclick = () => slot.input.click();
   get('.replace').onclick = () => slot.input.click();
   get('.remove').onclick = () => resetSlot(index);
@@ -27,7 +28,11 @@ const slots = names.map((name, index) => {
   slot.stage.addEventListener('dragleave', () => slot.drop.classList.remove('dragover'));
   slot.stage.addEventListener('drop', e => { e.preventDefault(); slot.drop.classList.remove('dragover'); if (e.dataTransfer.files[0]) loadFile(index, e.dataTransfer.files[0]); });
   get('.clip-play').onclick = () => { selectSlot(index); togglePlay(); };
-  get('.sync-mark').onclick = () => { pauseAll(); slot.anchor = slot.video.currentTime; aligned = false; offset = 0; update(); toast(`Swing ${name} sync point marked at ${slot.anchor.toFixed(2)} s.`); };
+  get('.clip-timeline').oninput = e => { const time = Number(e.target.value); selectSlot(index); seekActive(time); };
+  get('.clip-previous').onclick = () => { selectSlot(index); step(-1); };
+  get('.clip-next').onclick = () => { selectSlot(index); step(1); };
+  get('.clip-speed').onchange = e => { const speed = Number(e.target.value); selectSlot(index); setSpeed(speed); };
+  get('.sync-mark').onclick = () => { pauseControlled(index); slot.anchor = slot.video.currentTime; aligned = false; offset = 0; update(); toast(`Swing ${name} sync point marked at ${slot.anchor.toFixed(2)} s.`); };
   get('.mirror').onclick = () => { const on = slot.stage.classList.toggle('mirrored'); get('.mirror').setAttribute('aria-pressed', on); render(); };
   get('.fps').onchange = e => { slot.fps = Number(e.target.value); };
   card.addEventListener('click', e => { if (!e.target.closest('button,input,select')) selectSlot(index); });
@@ -42,16 +47,31 @@ for (const [index, [key, name]] of phases.entries()) {
   const row = document.createElement('div'); row.className = 'phase-row';
   row.innerHTML = `<span class="phase-number">0${index + 1}</span><span>${name}</span><button class="phase-time" id="phase-${key}" aria-label="Go to ${name}" disabled>—</button><button id="mark-${key}" aria-label="Mark ${name}" disabled>+ Mark</button>`;
   $('phases').append(row);
-  $(`mark-${key}`).onclick = () => { pauseAll(); slots[active].marks[key] = slots[active].video.currentTime; updatePhases(); };
+  $(`mark-${key}`).onclick = () => { pauseControlled(); slots[active].marks[key] = slots[active].video.currentTime; updatePhases(); };
   $(`phase-${key}`).onclick = () => seekActive(slots[active].marks[key]);
 }
 function toast(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toast.timer); toast.timer = setTimeout(() => $('toast').hidden = true, 4500); }
 function isLinked() { return mode === 'compare' && linked && slots.every(s => s.ready); }
-function pauseAll() { playGeneration++; slots.forEach(s => s.video.pause()); }
+function pauseSlots(targets) { targets.forEach(s => { s.playGeneration++; s.video.pause(); }); }
+function pauseAll() { pauseSlots(slots); }
+function pauseControlled(index = active) { pauseSlots(isLinked() ? slots : [slots[index]]); }
+function setSpeed(speed) {
+  (isLinked() ? slots : [slots[active]]).forEach(s => s.video.playbackRate = speed);
+  update();
+}
+function setLinked(next) {
+  if (job || linked === next) return;
+  if (next) pauseAll();
+  // Unlink without interrupting playback; pending group play requests no longer own both clips.
+  else slots.forEach(s => s.playGeneration++);
+  linked = next;
+  if (isLinked()) { setSpeed(slots[active].video.playbackRate); seekActive(slots[active].video.currentTime); }
+  update();
+}
 function invalidateSync() { offset = 0; aligned = false; }
 function resetSlot(index) {
   if (job) return;
-  pauseAll(); const s = slots[index]; s.version++; s.ready = false; s.video.onerror = null;
+  pauseControlled(index); const s = slots[index]; s.version++; s.ready = false; s.video.onerror = null;
   s.video.removeAttribute('src'); s.video.load();
   if (s.url) URL.revokeObjectURL(s.url);
   Object.assign(s, { url: null, samples: [], marks: {}, anchor: null, start: 0, end: 0, status: 'Add a video to get started.' });
@@ -78,9 +98,10 @@ async function loadFile(index, file) {
     if (s.version !== version) return;
     if (!Number.isFinite(s.video.duration) || s.video.duration <= 0 || !s.video.videoWidth) throw new Error('This video has no readable duration. Try exporting it as an MP4.');
     s.ready = true; s.video.hidden = false; s.drop.hidden = true;
-    s.end = Math.min(20, s.video.duration); s.video.playbackRate = Number($('speed').value);
+    s.end = Math.min(20, s.video.duration);
+    if (isLinked()) s.video.playbackRate = slots[1 - index].video.playbackRate;
     s.status = s.video.duration > 20 ? 'Choose the 20-second section containing your swing, then analyze.' : 'Ready when you are. Analyze to see your movement.';
-    s.video.onerror = () => { if (s.ready) { pauseAll(); s.status = 'Video decoding failed. Replace this clip with an H.264 MP4.'; s.ready = false; update(); } };
+    s.video.onerror = () => { if (s.ready) { pauseControlled(index); s.status = 'Video decoding failed. Replace this clip with an H.264 MP4.'; s.ready = false; update(); } };
     update();
   } catch (error) {
     if (s.version !== version) return;
@@ -95,6 +116,7 @@ function setMode(next) {
   $('videoGrid').classList.toggle('compare', mode === 'compare');
   slots[1].card.hidden = mode !== 'compare';
   slots.forEach(s => s.get('.sync-mark').hidden = mode !== 'compare');
+  if (isLinked()) { setSpeed(slots[active].video.playbackRate); seekActive(slots[active].video.currentTime); }
   $('modeCaption').textContent = mode === 'compare' ? 'Same moment. A new perspective.' : 'A little perspective goes a long way.';
   update();
 }
@@ -111,7 +133,9 @@ function update() {
   document.querySelectorAll('[data-select]').forEach(b => { b.disabled = busy; b.setAttribute('aria-pressed', Number(b.dataset.select) === active); });
   slots.forEach((slot, i) => {
     slot.card.classList.toggle('selected', i === active);
-    for (const selector of ['.clip-play','.mirror','.sync-mark']) slot.get(selector).disabled = !slot.ready || busy;
+    for (const selector of ['.clip-play','.mirror','.sync-mark','.clip-timeline','.clip-previous','.clip-next','.clip-speed']) slot.get(selector).disabled = !slot.ready || busy;
+    slot.get('.clip-transport').hidden = mode !== 'compare' || linked;
+    slot.get('.clip-speed').value = String(slot.video.playbackRate);
     slot.get('.replace').hidden = slot.get('.remove').hidden = !slot.ready;
     slot.get('.replace').disabled = slot.get('.remove').disabled = slot.get('.fps').disabled = busy;
     slot.drop.disabled = busy; slot.get('.corner-label').hidden = !slot.ready;
@@ -124,8 +148,9 @@ function update() {
   $('hand').value = s.hand; $('rangeStart').value = s.start.toFixed(2); $('rangeEnd').value = s.end.toFixed(2);
   $('rangeStart').max = $('rangeEnd').max = s.ready ? s.video.duration : 0;
   $('status').textContent = s.status; $('activeLabel').textContent = `SWING ${names[active]}`;
+  $('speed').value = String(s.video.playbackRate);
   $('linked').setAttribute('aria-pressed', linked); $('independent').setAttribute('aria-pressed', !linked);
-  $('syncHint').textContent = !linked ? 'Each clip plays on its own. Select A or B to use the main controls.' : aligned ? `Aligned to your marks · B offset ${offset >= 0 ? '+' : ''}${offset.toFixed(2)} s · playback stops at the shared range end.` : 'Linked by elapsed time. Mark the same moment in both clips, then align.';
+  $('syncHint').textContent = !linked ? 'Sync is off. Play either video or both at once. Each has its own timeline, frame steps and speed.' : aligned ? `Aligned to your marks · B offset ${offset >= 0 ? '+' : ''}${offset.toFixed(2)} s · playback stops at the shared range end.` : 'Sync is on. Both clips play together. Mark the same moment in each clip to align, or choose Sync off for separate controls.';
   updatePhases(); updatePlayback(); render();
 }
 function updatePhases() {
@@ -141,7 +166,7 @@ function updatePhases() {
 }
 function seekActive(time) {
   if (!Number.isFinite(time) || job || !slots[active].ready) return;
-  pauseAll();
+  pauseControlled();
   if (isLinked()) {
     const bounds = syncBounds(slots[0].video.duration, slots[1].video.duration, offset);
     if (!bounds) return toast('These sync points have no shared playback range. Mark new points.');
@@ -153,7 +178,7 @@ function seekActive(time) {
 async function togglePlay() {
   if (job || !slots[active].ready) return;
   const targets = isLinked() ? slots : [slots[active]];
-  if (targets.some(s => !s.video.paused)) { targets.forEach(s => s.video.pause()); playGeneration++; return; }
+  if (targets.some(s => !s.video.paused)) { pauseSlots(targets); return; }
   if (isLinked()) {
     const bounds = syncBounds(slots[0].video.duration, slots[1].video.duration, offset);
     if (!bounds) return toast('No shared playback range. Re-mark your sync points.');
@@ -161,11 +186,12 @@ async function togglePlay() {
     if (time < bounds.start || time >= bounds.end - 0.02) time = bounds.start;
     slots[0].video.currentTime = time; slots[1].video.currentTime = time + offset;
   } else if (targets[0].video.ended || targets[0].video.currentTime >= targets[0].video.duration - 0.02) targets[0].video.currentTime = 0;
-  if (!isLinked()) slots.filter(s => s !== slots[active]).forEach(s => s.video.pause());
-  const generation = ++playGeneration;
+  const generations = targets.map(s => ++s.playGeneration);
   const results = await Promise.allSettled(targets.map(s => s.video.play()));
-  if (generation !== playGeneration) return;
-  if (results.some(r => r.status === 'rejected')) { pauseAll(); toast('Playback could not start. Try pressing Play again or use another video format.'); }
+  if (results.some((r, i) => r.status === 'rejected' && generations[i] === targets[i].playGeneration)) {
+    pauseSlots(targets.filter((s, i) => generations[i] === s.playGeneration));
+    toast('Playback could not start. Try pressing Play again or use another video format.');
+  }
   updatePlayback();
 }
 function step(direction) { const s = slots[active]; if (s.ready) seekActive(frameTime(s.video.currentTime, direction, s.fps, 0, s.video.duration)); }
@@ -174,6 +200,11 @@ function render() {
   slots.forEach(slot => slot.viewport?.apply());
   $('timeline').max = s.ready ? s.video.duration : 1; $('timeline').value = s.video.currentTime || 0;
   $('time').textContent = `${(s.video.currentTime || 0).toFixed(2)} / ${(s.ready ? s.video.duration : 0).toFixed(2)} s`;
+  slots.forEach(slot => {
+    slot.get('.clip-timeline').max = slot.ready ? slot.video.duration : 1;
+    slot.get('.clip-timeline').value = slot.video.currentTime || 0;
+    slot.get('.clip-duration').textContent = `${(slot.video.currentTime || 0).toFixed(2)} / ${(slot.ready ? slot.video.duration : 0).toFixed(2)} s`;
+  });
   slots.forEach((slot, i) => { if (slot.ready && (mode === 'compare' || i === 0)) draw(slot, i); });
   const sample = nearestSample(s.samples, s.video.currentTime, s.tolerance);
   const values = measurements(sample?.points, s.video.videoWidth, s.video.videoHeight, s.hand);
@@ -297,11 +328,11 @@ async function analyze() {
 }
 $('singleMode').onclick = () => setMode('single'); $('compareMode').onclick = () => setMode('compare');
 document.querySelectorAll('[data-select]').forEach(b => b.onclick = () => selectSlot(Number(b.dataset.select)));
-$('linked').onclick = () => { pauseAll(); linked = true; update(); }; $('independent').onclick = () => { pauseAll(); linked = false; update(); };
-$('align').onclick = () => { pauseAll(); const next = slots[1].anchor - slots[0].anchor; if (!syncBounds(slots[0].video.duration,slots[1].video.duration,next)) return toast('Choose points with some video remaining after them.'); offset = next; aligned = true; linked = true; slots.forEach(s => s.video.currentTime = s.anchor); update(); toast('Both swings are aligned to your marked moments.'); };
+$('linked').onclick = () => setLinked(true); $('independent').onclick = () => setLinked(false);
+$('align').onclick = () => { pauseAll(); const next = slots[1].anchor - slots[0].anchor; if (!syncBounds(slots[0].video.duration,slots[1].video.duration,next)) return toast('Choose points with some video remaining after them.'); offset = next; aligned = true; linked = true; setSpeed(slots[active].video.playbackRate); slots.forEach(s => s.video.currentTime = s.anchor); update(); toast('Both swings are aligned to your marked moments.'); };
 $('timeline').oninput = e => seekActive(Number(e.target.value)); $('play').onclick = togglePlay;
 $('previous').onclick = () => step(-1); $('next').onclick = () => step(1); $('restart').onclick = () => seekActive(0);
-$('speed').onchange = e => slots.forEach(s => s.video.playbackRate = Number(e.target.value));
+$('speed').onchange = e => setSpeed(Number(e.target.value));
 $('hand').onchange = e => { slots[active].hand = e.target.value; render(); };
 for (const [id, field] of [['rangeStart','start'],['rangeEnd','end']]) $(id).onchange = e => { slots[active][field] = Number(e.target.value); };
 for (const id of ['skeleton','trail','guideLines']) $(id).onchange = render;
