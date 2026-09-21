@@ -12,6 +12,7 @@ This is a build-free, browser-only application. Keep production entirely static:
 - `deploy/app.js`: two local video slots, single/compare modes, playback synchronization, lazy MediaPipe inference and export.
 - Compare mode must keep both individual players and the common controller visible. Individual playback actions affect one clip and release sync; common actions affect both, respecting the current sync state. Keep zoom sliders compact.
 - Group related controls together to minimize mouse travel. Keep Sync on/off and Sync Videos next to each other immediately before the common playback controls, below the videos. Apply this proximity principle to future interface changes.
+- Keep File FPS and Shot FPS visible on each player. `deploy/timing.js` maps file seconds to a shared real-time clock: normal different-FPS clips retain equal playback speed; constant slow-motion footage uses recording FPS / file FPS. Shared steps use the lower recording FPS. Preserve file-time marks, ranges and drawings when retiming, and test both normal and slow-motion comparisons.
 - `deploy/analysis.js`: pure calculation helpers; unit-test changes here.
 - `deploy/viewport.js`: per-clip zoom/pan. Keep video and both overlays on the same transformed plane, and never pause playback for view changes.
 - `deploy/drawing.js`, `deploy/annotations.js`: annotation geometry/history, pointer tools and PNG export. Keep coordinates normalized to the unmirrored video image, not the stage.

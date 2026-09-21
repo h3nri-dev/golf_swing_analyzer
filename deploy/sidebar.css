@@ -5,6 +5,9 @@
 .persistent-sidebar .workspace { grid-column: 1; grid-row: 2; grid-template-columns: minmax(0,1fr); overflow: hidden; }
 .persistent-sidebar .screen-transport { grid-column: 1; grid-row: 3; min-width: 0; }
 .persistent-sidebar .screen-transport .comparison-bar { grid-column: 1 / -1; min-height: 44px; padding: 0 0 4px; gap: 8px; justify-content: flex-start; }
+.clip-timing { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; padding: 4px 8px; color: #e4eddf; border-top: 1px solid #ffffff18; }
+.clip-timing label { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
+.clip-timing select { min-width: 0; width: 78px; min-height: 32px; padding: 3px; font-size: 16px; color: #e4eddf; background: #1b2e25; border: 1px solid #ffffff30; }
 .persistent-sidebar .workspace-help { margin-left: auto; }
 .persistent-sidebar .analysis-panel { grid-column: 2; grid-row: 2 / 4; position: static; width: auto; max-width: none; min-width: 0; padding: 0; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: #f0f3eb; box-shadow: none; overflow: auto; overscroll-behavior: contain; scroll-padding-top: 56px; }
 .sidebar-heading { position: sticky; top: 0; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: #f0f3eb; border-bottom: 1px solid #dbe3d1; }
@@ -80,6 +83,8 @@
 .persistent-sidebar .export-button { margin-top: 6px; padding: 5px; min-height: 32px; font-size: 14px; }
 /* Preserve room for both video players as the inspector becomes permanent. */
 @media (max-width: 1500px) and (min-width: 901px) {
+  .clip-timing { gap: 6px; padding: 4px 6px; }
+  .clip-timing select { width: 73px; font-size: 14px; }
   .persistent-sidebar .video-editor { grid-template-columns: 50px minmax(0,1fr); padding: 6px; gap: 6px; }
   .persistent-sidebar .drawing-tools button { flex-direction: column; padding: 4px 0; font-size: 14px; gap: 2px; }
   .persistent-sidebar .drawing-history button { padding: 3px; font-size: 0; justify-content: center; }
@@ -110,6 +115,9 @@
   .persistent-sidebar .drawing-instruction { display: none; }
 }
 @media (max-width: 600px) {
+  .clip-timing { gap: 4px; padding: 3px; }
+  .clip-timing label { flex-direction: column; align-items: stretch; gap: 2px; }
+  .clip-timing select { width: 100%; min-height: 28px; font-size: 14px; padding: 2px 0; }
   .sidebar-sections { grid-template-columns: minmax(0,1fr); }
   .persistent-sidebar #panel-draw, .persistent-sidebar #panel-video, .persistent-sidebar #panel-range, .persistent-sidebar #panel-pose, .persistent-sidebar #panel-moments { grid-column: 1; }
   .persistent-sidebar #panel-draw { display: block; }
@@ -123,4 +131,19 @@
   .studio.persistent-sidebar.is-compare { --sync-row-space: 36px; }
   .persistent-sidebar .screen-transport .comparison-bar { min-height: 32px; padding: 0; }
   .persistent-sidebar .screen-transport .comparison-bar .segmented { padding: 1px; }
+  .clip-timing { padding-block: 2px; }
+  .clip-timing select { min-height: 28px; font-size: 14px; }
+  .persistent-sidebar .clip-transport { grid-template-columns: 28px auto 28px minmax(20px,1fr) 28px 65px; gap: 4px; }
+  .persistent-sidebar .clip-timeline-row, .persistent-sidebar .clip-frame-controls { display: contents; }
+  .persistent-sidebar .clip-duration { display: none; }
+  .persistent-sidebar .clip-previous { grid-column: 1; grid-row: 1; }
+  .persistent-sidebar .clip-frame-controls .clip-play { grid-column: 2; grid-row: 1; font-size: 0; }
+  .persistent-sidebar .clip-play::after { content: attr(data-short-label); font-size: 14px; }
+  .persistent-sidebar .clip-next { grid-column: 3; grid-row: 1; }
+  .persistent-sidebar .clip-timeline-row .clip-timeline { grid-column: 4; grid-row: 1; width: 100%; }
+  .persistent-sidebar .clip-restart { grid-column: 5; grid-row: 1; }
+  .persistent-sidebar .clip-frame-controls .clip-speed-label { grid-column: 6; grid-row: 1; margin: 0; }
+}
+@media (max-width: 600px) and (max-height: 640px) {
+  .studio.persistent-sidebar { grid-template-rows: auto calc(100dvh - 156px - var(--sync-row-space)) auto auto; }
 }

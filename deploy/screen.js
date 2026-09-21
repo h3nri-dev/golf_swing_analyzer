@@ -46,7 +46,7 @@ export function createStudioScreen({ slots, state, changed }) {
   resultsEmpty.textContent = 'Choose a range, then Analyze. You can play and draw without analysis.';
   panels.pose.append(pieces.hand, resultsEmpty, pieces.overlays, pieces.metrics, pieces.note);
   panels.moments.append(pieces.momentsHeading, pieces.momentsCopy, pieces.phases, pieces.tempo, pieces.tempoNote, pieces.export);
-  const videoNote=document.createElement('p');videoNote.className='screen-panel-help';videoNote.textContent='Match Frame rate to your video for accurate stepping.';panels.video.append(videoNote);
+  const videoNote=document.createElement('p');videoNote.className='screen-panel-help';videoNote.textContent='Each player has File FPS and Shot FPS. For slow-motion exports, set Shot FPS to the camera’s recording rate; otherwise leave Same. Speeds then use real time.';panels.video.append(videoNote);
   slots.forEach((s,i)=>{
     const group=document.createElement('div');group.dataset.settingsSlot=i;group.className='screen-video-settings';
     const title=document.createElement('h3');title.textContent=`Swing ${i?'B':'A'}`;group.append(title);
@@ -57,10 +57,13 @@ export function createStudioScreen({ slots, state, changed }) {
     s.get('.slot-badge').replaceWith(review);
     s.get('.clip-timeline-row').insertBefore(s.get('.clip-timeline'), s.get('.clip-duration'));
     s.get('.clip-speed').closest('label').className = 'clip-speed-label';
-    s.get('.fps-label').firstChild.textContent = 'Frame rate ';
+    s.get('.fps-label').firstChild.textContent = 'File FPS ';
+    s.get('.fps-label').title = 'Frame rate saved in the video file. Use Shot FPS for the camera’s recording rate when this is a slow-motion export.';
+    s.get('.clip-timing').prepend(s.get('.fps-label'));
+    s.get('.zoom-controls').before(s.get('.clip-timing'));
     // Warm the selectors before moving their nodes out of the video card.
     for(const selector of ['.mirror','.fps','.fps-label','.zoom-pan','.zoom-fit']) s.get(selector);
-    group.append(s.get('.mirror'), s.get('.fps-label'), s.get('.zoom-pan'), s.get('.zoom-fit'));
+    group.append(s.get('.mirror'), s.get('.zoom-pan'), s.get('.zoom-fit'));
     panels.video.append(group);
     s.get('.clip-transport').setAttribute('aria-label', `Swing ${i?'B':'A'} playback controls`);
     s.get('.clip-frame-controls').insertBefore(s.get('.clip-play'),s.get('.clip-next'));

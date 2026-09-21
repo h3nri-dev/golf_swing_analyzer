@@ -28,9 +28,27 @@ See [UX_REVIEW.md](UX_REVIEW.md) for the task review, research sources, observed
 - **Common controller:** Sync on/off and **Sync Videos** sit next to each other directly above the common timeline and playback buttons, below both videos. This controller always operates on both. With Sync on it preserves the alignment offset and shared playback limits. With Sync off, Play both starts both at their current positions and speeds, frame stepping advances each by its own frame rate, and seeking moves both by the same time change until a clip reaches its boundary. The timeline clock identifies A or B. Restart uses the shared range start when linked, otherwise each clip’s beginning; the common speed selector sets both rates and displays Mixed when they differ. Common controls become available when both files are loaded.
 - **Sync on/off:** turning sync off preserves current playback and zoom. Turning it on pauses and aligns both at the selected clip’s position within the shared range, preserves the alignment offset, and uses the selected clip’s speed; press Play both to resume. With sync off, marking, replacing or reaching the end of one clip leaves the other playing.
 - Select a clip using its A/B badge or its card. The selection chooses the drawing, analysis and moment-marker target; the bottom playback controller still acts on both videos.
-- Use **Video** to set the selected clip's Frame rate, mirror, Pan or Fit. Speed lives beside the appropriate playback controls. Match Frame rate to the source rate. Arrow keys step and Space toggles playback when focus is outside interactive controls. Variable-frame-rate video and browser seeking do not guarantee exact encoded-frame access; stepping is time-based at the selected rate.
+- Each player has **File FPS** and **Shot FPS** beside its playback controls. Use **Video** for mirror, Pan or Fit. Speed lives beside the appropriate playback controls. Arrow keys step and Space toggles playback when focus is outside interactive controls.
 - Use **Moments** to mark address, top, impact and finish manually. Ordered address/top/impact marks produce the backswing-to-downswing tempo ratio. Export saves the selected clip's marks and sampled measurements as JSON. Refresh clears the session.
 - Video decoding depends on the browser and codec. H.264 MP4 and WebM are recommended. A MOV extension alone does not guarantee support.
+
+## Frame rates and slow-motion comparison
+
+Set **File FPS** to each file's encoded frame rate. It defaults to 30; it is not automatically detected. Leave **Shot FPS** at **Same** for ordinary videos. For a constant-rate slow-motion export, choose the original camera recording rate in Shot FPS. For example:
+
+| Footage | File FPS | Shot FPS | Playback at 1× real time |
+| --- | --- | --- | --- |
+| Normal 30 FPS | 30 | Same | 1× file speed |
+| Normal 60 FPS | 60 | Same | 1× file speed |
+| Recorded at 120 FPS, slowed to 30 FPS | 30 | 120 | 4× file speed |
+
+Position both clips at a shared event and choose **Sync Videos**. Linked playback and seeking preserve that event's offset on a common real-time clock. Shared frame steps use the lower recording rate: with ordinary 30/60 FPS clips, one step spans one frame of A and two of B. Selecting a different clip does not change this interval. Independent controls still step one file frame at a time and release sync. All speed selectors apply to real time after the FPS settings, so choosing 0.25× slows both calibrated clips equally.
+
+Changing timing preserves moment marks, drawings and analysis timestamps; the stored alignment frames are used to recalculate the common offset. Timeline labels, ranges and exported timestamps remain **file seconds**. The tempo ratio is unchanged by a constant slow-motion factor, while displayed backswing/downswing durations use real seconds. JSON also records the selected file/recording rates and their conversion factor. Replacing a clip resets only that clip's timing settings.
+
+The rate correction assumes a constant slow-motion factor. Keep Shot FPS at Same if an export already plays at real speed, even if the camera originally recorded at a higher rate. Variable-speed edits need to be exported as a constant-speed section first. Variable-frame-rate files and browser seeking do not guarantee exact encoded-frame access; stepping is time-based at the selected rates.
+
+Timing follows the distinction between file and capture rates described in [Kinovea's time calibration](https://www.kinovea.org/help/en/measurement/time.html) and [synchronized comparison](https://www.kinovea.org/help/en/observation/comparison.html). Browser seek positions use [media time in seconds](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/currentTime).
 
 ## Selecting an analysis range
 
@@ -60,6 +78,7 @@ References: [MediaPipe web guide](https://ai.google.dev/edge/mediapipe/solutions
 - `deploy/ux.js`, `deploy/ux.css` — task help, session-work confirmation and interaction refinements.
 - `deploy/app.js` — file lifecycle, playback, synchronized seeking, overlays, lazy inference and exports.
 - `deploy/analysis.js` — pure geometry, confidence filtering, smoothing, timing helpers.
+- `deploy/timing.js` — recording/file FPS conversion, shared real-time clock, frame stepping and overlapping playback limits.
 - `deploy/range.js` — range selection, boundary previews and validation.
 - `deploy/fonts/` — locally hosted DM Sans and Manrope, with their OFL licenses.
 - `tests/` — unit and browser tests plus generated fixtures.
