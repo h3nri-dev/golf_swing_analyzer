@@ -1,7 +1,7 @@
 import { DrawingHistory, clone, isDrawingVisible, toVideoPoint, hitShape, movePoints, paintShape, angleDegrees } from './drawing.js';
 
 const tools = [
-  ['view','View','<path d="m8 4 12 8-12 8z"/>'],
+  ['view','View','<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'],
   ['select','Select','<path d="m5 3 14 11-8 1-4 7z"/>'],
   ['pen','Pen','<path d="m4 17-1 4 4-1L21 6l-4-4zM14 5l5 5"/>'],
   ['line','Line','<path d="m4 20 16-16"/><circle cx="4" cy="20" r="1"/><circle cx="20" cy="4" r="1"/>'],
@@ -10,17 +10,22 @@ const tools = [
   ['angle','Angle','<path d="M5 3v17h16M5 14a6 6 0 0 1 6 6M5 11l13-8"/>'],
 ];
 const palette = [['#dcf59c','Lime'],['#ffca62','Gold'],['#ff7995','Pink'],['#7edbff','Blue'],['#ffffff','White']];
-export function createAnnotations({ slots, state, selectSlot, pauseAll, seekActive, toast, changed }) {
+export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseControlled, seekActive, toast, changed }) {
   const $ = id => document.getElementById(id);
   const histories = slots.map(() => new DrawingHistory());
   let tool='view', color=palette[0][0], width=3, scope='clip', visible=true, selection=null, draft=null, gesture=null;
-  const toolbar = $('drawingToolbar');
-  toolbar.innerHTML = `
-    <div class="drawing-heading"><div><span class="drawing-eyebrow">MAKE IT VISIBLE</span><h3>Drawing tools</h3></div><div class="drawing-target" aria-label="Drawing target"><span>Editing</span><button data-drawing-slot="0" aria-pressed="true">Swing A</button><button data-drawing-slot="1" aria-pressed="false" hidden>Swing B</button></div></div>
+  const toolbar = $('videoEditor');
+  $('drawingToolbar').innerHTML = `
+    <h3 class="drawing-rail-title">Draw</h3>
     <div class="drawing-tools" role="group" aria-label="Drawing tools">${tools.map(([key,label,path])=>`<button data-tool="${key}" aria-pressed="${key==='view'}" title="${label}"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg><span>${label}</span></button>`).join('')}</div>
-    <div class="drawing-settings"><div class="drawing-colors" role="group" aria-label="Drawing color">${palette.map(([hex,name])=>`<button data-color="${hex}" aria-label="${name} drawing color" aria-pressed="${hex===color}" style="--swatch:${hex}"><span></span></button>`).join('')}</div><label>Stroke <select id="drawingWidth"><option value="2">Thin</option><option value="3" selected>Medium</option><option value="5">Bold</option></select></label><label>Show on <select id="drawingScope"><option value="clip">Entire clip</option><option value="frame">This frame</option></select></label><button id="drawingVisibility" aria-pressed="true">Hide drawings</button></div>
-    <div class="drawing-actions"><div><button id="drawingUndo" title="Undo (⌘/Ctrl Z)">↶ Undo</button><button id="drawingRedo" title="Redo (⌘/Ctrl Shift Z)">↷ Redo</button><button id="drawingDelete">Delete selected</button><button id="drawingClear">Clear clip</button></div><div><button id="drawingCopy" hidden>Copy to B</button><button id="drawingSnapshot" class="snapshot-button">↓ Save image</button></div></div>
-    <div class="drawing-footer"><p id="drawingHint" role="status"></p><span id="drawingCount">0 drawings</span></div><div id="drawingFrames" class="drawing-frames" aria-label="Annotated frames"></div>`;
+    <div class="drawing-history"><button id="drawingUndo" title="Undo (⌘/Ctrl Z)"><span aria-hidden="true">↶</span> Undo</button><button id="drawingRedo" title="Redo (⌘/Ctrl Shift Z)"><span aria-hidden="true">↷</span> Redo</button></div>`;
+  $('drawingSettings').innerHTML = `
+    <div class="drawing-context"><div class="drawing-target" aria-label="Drawing target"><span>Editing</span><button data-drawing-slot="0" aria-pressed="true">Swing A</button><button data-drawing-slot="1" aria-pressed="false" hidden>Swing B</button></div>
+    <div class="drawing-settings"><div class="drawing-colors" role="group" aria-label="Drawing color">${palette.map(([hex,name])=>`<button data-color="${hex}" aria-label="${name} drawing color" aria-pressed="${hex===color}" style="--swatch:${hex}"><span></span></button>`).join('')}</div><label>Stroke <select id="drawingWidth"><option value="2">Thin</option><option value="3" selected>Medium</option><option value="5">Bold</option></select></label><label>Show on <select id="drawingScope"><option value="clip">Entire clip</option><option value="frame">This frame</option></select></label></div></div>
+    <p id="drawingHint" class="drawing-instruction" role="status"></p>`;
+  $('drawingActions').innerHTML = `
+    <div class="drawing-actions"><div><button id="drawingVisibility" aria-pressed="true">Hide drawings</button><button id="drawingDelete">Delete selected</button><button id="drawingClear">Clear clip</button></div><div><button id="drawingCopy" hidden>Copy to B</button><button id="drawingSnapshot" class="snapshot-button">↓ Save image</button></div></div>
+    <div class="drawing-footer"><span id="drawingCount">0 drawings</span><div id="drawingFrames" class="drawing-frames" aria-label="Annotated frames"></div></div>`;
   slots.forEach((slot,i)=>{
     const canvas=document.createElement('canvas'); canvas.className='annotation-canvas'; canvas.hidden=true;
     canvas.setAttribute('aria-label',`Drawing surface for swing ${i?'B':'A'}`);
@@ -45,7 +50,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, seekActi
   function cancelDraft() { draft=null; gesture=null; render(); }
   function setTool(next) {
     draft=null; gesture=null; tool=next;
-    if(next!=='view') { pauseAll(); visible=true; }
+    if(next!=='view') { pauseControlled(); visible=true; }
     if(next!=='select') selection=null;
     render();
   }
@@ -56,7 +61,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, seekActi
     e.preventDefault();
     if(gesture) return;
     if(draft && draft.slot!==i) draft=null;
-    pauseAll(); selectSlot(i); invalidateSelection();
+    pauseControlled(i); selectSlot(i); invalidateSelection();
     const p=point(e,i), canvas=slots[i].annotationCanvas, rect=canvas.getBoundingClientRect();
     if(tool==='angle') {
       if(!draft) draft={slot:i,shape:newShape(i,[p])};

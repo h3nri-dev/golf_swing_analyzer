@@ -15,7 +15,7 @@ const slots = names.map((name, index) => {
   card.dataset.slot = index;
   card.setAttribute('aria-label', `Swing ${name}`);
   card.innerHTML = `<div class="video-top"><span class="slot-badge">${name}</span><span class="file-name">${index ? 'Reference swing' : 'Your swing'}</span><button class="replace" hidden>Replace</button><button class="remove" aria-label="Remove swing ${name}" hidden>×</button></div>
-    <div class="stage"><video muted playsinline preload="auto" hidden></video><canvas class="pose-canvas" hidden></canvas><button class="dropzone" aria-label="Add swing ${name} video"><span class="upload-icon">↥</span><strong>${index ? 'A different perspective' : 'Meet your next breakthrough'}</strong><span class="drop-description">${index ? 'Your earlier swing, or a swing to learn from.' : 'Drop your swing video here, or browse your files.'}</span><span class="upload-cta">${index ? 'Add reference video' : 'Choose a video'} <span aria-hidden="true">↗</span></span><span class="file-types">MP4 · MOV · WEBM / BROWSER-SUPPORTED VIDEO</span></button><span class="corner-label" hidden>LOCAL VIDEO · <span class="clip-time">0.00 s</span></span></div>
+    <div class="stage"><video muted playsinline preload="auto" hidden></video><canvas class="pose-canvas" hidden></canvas><button class="dropzone" aria-label="Add swing ${name} video"><span class="upload-icon">↥</span><strong>${index ? 'Reference swing' : 'Your swing'}</strong><span class="drop-description">${index ? 'Your earlier swing, or a swing to learn from.' : 'Drop your swing video here, or browse your files.'}</span><span class="upload-cta">Choose video <span aria-hidden="true">↗</span></span><span class="file-types">MP4 · MOV · WEBM / BROWSER-SUPPORTED VIDEO</span></button><span class="corner-label" hidden>LOCAL VIDEO · <span class="clip-time">0.00 s</span></span></div>
     <input class="file-input" type="file" accept="video/*,.mov,.mp4,.webm" hidden aria-label="Swing ${name} video file">
     <div class="video-bottom"><button class="clip-play" disabled aria-label="Play swing ${name}">▶ Play ${name}</button><button class="sync-mark" disabled title="Use this moment as the synchronization point" hidden>Mark sync point</button><button class="mirror" disabled aria-pressed="false">Mirror</button><label class="fps-label">FPS <select class="fps" aria-label="Swing ${name} frame rate">${[24,25,30,50,60,120,240].map(n => `<option${n === 30 ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>
     <div class="clip-transport" hidden aria-label="Independent swing ${name} controls"><div class="clip-timeline-row"><span>SWING ${name}</span><output class="clip-duration">0.00 / 0.00 s</output></div><input class="clip-timeline" type="range" min="0" max="1" step="0.001" value="0" aria-label="Swing ${name} timeline" disabled><div class="clip-frame-controls"><button class="clip-previous" aria-label="Previous frame swing ${name}" title="Previous frame" disabled>Ⅰ‹</button><button class="clip-next" aria-label="Next frame swing ${name}" title="Next frame" disabled>›Ⅰ</button><label>Speed <select class="clip-speed" aria-label="Swing ${name} playback speed" disabled>${[0.25,0.5,1,1.5].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}×</option>`).join('')}</select></label></div></div>`;
@@ -127,7 +127,11 @@ function updatePlayback() {
   if (!slots.length) return;
   const playing = isLinked() ? slots.some(s => !s.video.paused) : !slots[active].video.paused;
   $('play').textContent = playing ? 'Ⅱ' : '▶'; $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
-  slots.forEach((s, i) => { s.get('.clip-play').textContent = `${s.video.paused ? '▶ Play' : 'Ⅱ Pause'} ${names[i]}`; s.get('.clip-play').setAttribute('aria-label', `${s.video.paused ? 'Play' : 'Pause'} swing ${names[i]}`); });
+  slots.forEach((s, i) => {
+    const paused = isLinked() ? !playing : s.video.paused;
+    s.get('.clip-play').textContent = `${paused ? '▶ Play' : 'Ⅱ Pause'} ${isLinked() ? 'both' : names[i]}`;
+    s.get('.clip-play').setAttribute('aria-label', `${paused ? 'Play' : 'Pause'} ${isLinked() ? 'both swings' : `swing ${names[i]}`}`);
+  });
 }
 function updateAnalysisControls() {
   const s = slots[active];
@@ -348,6 +352,14 @@ async function analyze() {
   }
 }
 $('singleMode').onclick = () => setMode('single'); $('compareMode').onclick = () => setMode('compare');
+$('toggleInsights').onclick = () => {
+  const hidden = !$('analysisPanel').hidden;
+  annotations?.interrupt(); slots.forEach(s => s.viewport?.cancelGesture());
+  $('analysisPanel').hidden = hidden; $('workspace').classList.toggle('insights-hidden', hidden);
+  $('toggleInsights').setAttribute('aria-expanded', !hidden);
+  $('toggleInsights').textContent = hidden ? 'Show insights' : 'Hide insights';
+  render();
+};
 document.querySelectorAll('[data-select]').forEach(b => b.onclick = () => selectSlot(Number(b.dataset.select)));
 $('linked').onclick = () => setLinked(true); $('independent').onclick = () => setLinked(false);
 $('align').onclick = () => { pauseAll(); const next = slots[1].anchor - slots[0].anchor; if (!syncBounds(slots[0].video.duration,slots[1].video.duration,next)) return toast('Choose points with some video remaining after them.'); offset = next; aligned = true; linked = true; setSpeed(slots[active].video.playbackRate); slots.forEach(s => s.video.currentTime = s.anchor); update(); toast('Both swings are aligned to your marked moments.'); };
@@ -374,6 +386,6 @@ slots.forEach((slot, index) => {
     changed: () => { annotations?.interrupt(); render(); },
   });
 });
-annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!job }), selectSlot, pauseAll, seekActive, toast, changed: updatePhases });
+annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!job }), selectSlot, pauseAll, pauseControlled, seekActive, toast, changed: updatePhases });
 rangeSelector = createRangeSelector({ slots, state: () => ({ active, busy: !!job }), seek: seekRangeBoundary, pause: pauseControlled, changed: updateAnalysisControls });
 setMode('single'); requestAnimationFrame(playbackLoop);

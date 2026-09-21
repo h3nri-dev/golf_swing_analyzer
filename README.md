@@ -60,7 +60,9 @@ Cloudflare Pages deploys the static directory to `freegolfswinganalyzer`, branch
 
 ## Drawing and comparison
 
-The **Drawing tools** panel sits directly above the videos and works without pose analysis. Choose **Pen**, **Line**, **Arrow**, **Circle** (an adjustable ellipse), or **Angle**, then draw directly on either loaded video. Drawing pauses playback. For an angle, tap/click the first endpoint, the joint/vertex, and the other endpoint; the label is an image-plane angle in degrees.
+The vertical **Draw** rail sits beside the videos and follows page scrolling while you work, on desktop and phone. Choose **Pen**, **Line**, **Arrow**, **Circle** (an adjustable ellipse), or **Angle**, then draw directly on either loaded video. Undo and Redo are in the same rail. Drawing pauses the clip being edited; with Sync off, the other clip can keep playing. For an angle, tap/click the first endpoint, the joint/vertex, and the other endpoint; the label is an image-plane angle in degrees.
+
+Color, stroke, visibility duration and the A/B editing target sit in a compact strip above the footage. Copy, hide, delete and image export sit below it. Each clip's Play button is immediately below its frame and says **Play both** when synchronization is on. **Hide insights** in the workspace header gives the videos the sidebar's space without stopping playback, resetting zoom, or moving drawings. Show insights again to access pose results and moment markers. On smaller laptops the insights panel moves below the workspace so the videos and tool rail have enough room.
 
 - **Select** moves an existing drawing; white handles adjust endpoints and circle bounds. Pen strokes move as one object. The color and stroke selectors also edit a selected shape.
 - **Entire clip** keeps reference drawings visible throughout playback. **This frame** attaches a drawing to the current timestamp with a half-frame tolerance based on the selected source FPS. **Marked frames** buttons revisit these moments.
