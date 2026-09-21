@@ -25,7 +25,7 @@ export function createStudioScreen({ slots, state, changed }) {
   const commands = document.createElement('div'); commands.className = 'screen-commands';
   const context = document.createElement('button'); context.id = 'reviewContext'; context.className = 'review-context';
   context.title = 'Change the analysis range'; context.onclick = () => focusSection('range');
-  commands.append(context, $('analyze'), $('cancel')); footer.querySelector('.transport-row').append(commands);
+  commands.append(context, $('analyze'), $('cancel'));
   const notice = document.createElement('div'); notice.className = 'screen-notice';
   notice.append($('status'), $('drawingHint'), $('progress')); footer.append(notice);
   const resultsAction = document.createElement('button'); resultsAction.id = 'viewResults'; resultsAction.textContent = 'View results'; resultsAction.hidden = true;
@@ -40,13 +40,27 @@ export function createStudioScreen({ slots, state, changed }) {
   }));
   panels.draw.append($('drawingSettings'), $('drawingActions'));
   panels.draw.querySelector('.drawing-settings-panel').append(panels.draw.querySelector('.drawing-footer'));
+  panels.range.classList.add('range-dock');
+  panels.range.querySelector('h2').textContent='Analyze range';
+  const rangeTargets=document.createElement('div');rangeTargets.className='range-targets';
+  rangeTargets.setAttribute('role','group');rangeTargets.setAttribute('aria-label','Choose swing to analyze');
+  slots.forEach((s,i)=>{
+    const button=document.createElement('button');button.dataset.rangeSlot=i;button.textContent=i?'B':'A';
+    button.setAttribute('aria-label',`Analyze range for swing ${i?'B':'A'}`);
+    button.onclick=()=>document.querySelector(`[data-select="${i}"]`).click();rangeTargets.append(button);
+  });
+  panels.range.querySelector('.section-heading').append(rangeTargets, $('rangeReset'), commands);
   panels.range.append($('rangeSelection'), pieces.summary);
+  footer.prepend(panels.range);
+  const common=document.createElement('div');common.id='commonPlayer';common.className='common-player';
+  common.setAttribute('role','group');common.setAttribute('aria-label','Playback controls');
+  common.append($('comparisonBar'),footer.querySelector('.timeline-row'),footer.querySelector('.transport-row'));footer.insertBefore(common,notice);
   pieces.note.textContent='2D estimates at the playhead. Camera angle and visibility affect accuracy.';
   const resultsEmpty = document.createElement('p'); resultsEmpty.id = 'resultsEmpty'; resultsEmpty.className = 'screen-panel-help';
   resultsEmpty.textContent = 'Choose a range, then Analyze. You can play and draw without analysis.';
   panels.pose.append(pieces.hand, resultsEmpty, pieces.overlays, pieces.metrics, pieces.note);
   panels.moments.append(pieces.momentsHeading, pieces.momentsCopy, pieces.phases, pieces.tempo, pieces.tempoNote, pieces.export);
-  const videoNote=document.createElement('p');videoNote.className='screen-panel-help';videoNote.textContent='Each player has File FPS and Shot FPS. For slow-motion exports, set Shot FPS to the camera’s recording rate; otherwise leave Same. Speeds then use real time.';panels.video.append(videoNote);
+  const videoNote=document.createElement('p');videoNote.className='screen-panel-help';videoNote.textContent='Slow-motion export? Set Shot FPS to the camera’s recording rate. Otherwise leave Same.';panels.video.append(videoNote);
   slots.forEach((s,i)=>{
     const group=document.createElement('div');group.dataset.settingsSlot=i;group.className='screen-video-settings';
     const title=document.createElement('h3');title.textContent=`Swing ${i?'B':'A'}`;group.append(title);
@@ -63,7 +77,9 @@ export function createStudioScreen({ slots, state, changed }) {
     s.get('.zoom-controls').before(s.get('.clip-timing'));
     // Warm the selectors before moving their nodes out of the video card.
     for(const selector of ['.mirror','.fps','.fps-label','.zoom-pan','.zoom-fit']) s.get(selector);
-    group.append(s.get('.mirror'), s.get('.zoom-pan'), s.get('.zoom-fit'));
+    group.append(s.get('.mirror'), s.get('.zoom-pan'));
+    s.get('.zoom-controls').append(s.get('.zoom-fit'));
+    s.get('.zoom-fit').setAttribute('aria-label',`Fit swing ${i?'B':'A'} to view`);
     panels.video.append(group);
     s.get('.clip-transport').setAttribute('aria-label', `Swing ${i?'B':'A'} playback controls`);
     s.get('.clip-frame-controls').insertBefore(s.get('.clip-play'),s.get('.clip-next'));
@@ -74,12 +90,12 @@ export function createStudioScreen({ slots, state, changed }) {
   inspectorHeader.append(target);
   pieces.clearMarks.setAttribute('aria-label', 'Clear swing moments');
   panels.moments.querySelector('.section-heading').append(pieces.clearMarks);
-  const sections=document.createElement('div');sections.className='sidebar-sections';sections.append(...Object.values(panels));
+  const sections=document.createElement('div');sections.className='sidebar-sections';sections.append(...Object.entries(panels).filter(([id])=>id!=='range').map(([,panel])=>panel));
   inspector.replaceChildren(inspectorHeader,sections);
   inspector.hidden=false;studio.append(inspector);
   // A compact range editor stays readable even on a phone-sized controls panel.
   $('rangeTitle').textContent='Up to 20 seconds';
-  $('rangeSetStart').textContent=$('rangeSetEnd').textContent='Set here';
+  $('rangeSetStart').textContent=$('rangeSetEnd').textContent='Set';
   $('rangeSetStart').setAttribute('aria-label','Set analysis start at current frame');
   $('rangeSetEnd').setAttribute('aria-label','Set analysis end at current frame');
   $('rangeGoStart').textContent=$('rangeGoEnd').textContent='Go';
@@ -98,12 +114,24 @@ export function createStudioScreen({ slots, state, changed }) {
   // Track video geometry as controls reflow or the viewport changes.
   const observer=new ResizeObserver(()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;changed();});});
   slots.forEach(s=>observer.observe(s.stage));
+  const footerObserver=new ResizeObserver(()=>{
+    const total=Math.ceil(footer.getBoundingClientRect().height+heading.getBoundingClientRect().height+2);
+    studio.style.setProperty('--review-chrome-height',`${total}px`);
+  });
+  footerObserver.observe(footer);footerObserver.observe(heading);
   function update() {
     const {active,mode,linked,busy}=state();
     studio.classList.toggle('independent-playback',mode==='compare'&&!linked);
     studio.classList.toggle('is-compare',mode==='compare');studio.classList.toggle('is-analyzing',busy);
     panels.video.querySelectorAll('[data-settings-slot]').forEach(el=>el.hidden=Number(el.dataset.settingsSlot)!==active);
     const s = slots[active], hasResults = !!s.analyzedRange;
+    rangeTargets.hidden=mode!=='compare';
+    const resetBesideSummary=matchMedia('(max-width: 600px), (min-width: 1180px)').matches;
+    const reset=$('rangeReset'),resetParent=resetBesideSummary?panels.range.querySelector('.range-footer'):panels.range.querySelector('.section-heading');
+    if(reset.parentElement!==resetParent){
+      if(resetBesideSummary)resetParent.append(reset);else resetParent.insertBefore(reset,commands);
+    }
+    rangeTargets.querySelectorAll('button').forEach((button,i)=>{button.disabled=busy;button.setAttribute('aria-pressed',i===active);});
     $('resultsEmpty').hidden = hasResults;
     panels.video.querySelectorAll('[data-settings-slot] h3').forEach((title,i)=>{title.textContent=slots[i].get('.file-name').textContent;});
     pieces.metrics.hidden = !hasResults; pieces.note.hidden = !hasResults;

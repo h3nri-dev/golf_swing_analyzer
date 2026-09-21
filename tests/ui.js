@@ -5,7 +5,7 @@ export async function focusSection(page, name) {
 export async function settings(page, i, selector) {
   const target = page.locator(`[data-select="${i}"]`);
   if (await target.isVisible()) await target.click();
-  if(selector==='.fps' || selector==='.shot-fps') return page.locator(`[data-slot="${i}"] ${selector}`);
+  if(selector==='.zoom-fit' || selector==='.fps' || selector==='.shot-fps') return page.locator(`[data-slot="${i}"] ${selector}`);
   if(selector==='.clip-speed') return transport(page,'speed',i);
   await focusSection(page, 'video');
   return page.locator(`[data-settings-slot="${i}"] ${selector}`);

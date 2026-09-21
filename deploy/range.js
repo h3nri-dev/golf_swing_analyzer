@@ -45,6 +45,7 @@ export function createRangeSelector({ slots, state, seek, pause, changed }) {
     const show = time => format(realTime(time, s));
     const name = active ? 'B' : 'A';
     panel.querySelectorAll('input,button').forEach(el => el.disabled = !s.ready || busy);
+    $('rangeReset').disabled = !s.ready || busy;
     $('cancelSelection').hidden = !busy; $('cancelSelection').disabled = !busy;
     $('rangeStatus').hidden = !s.analysisAttempted; $('rangeStatus').textContent = s.status;
     $('analyzeSelection').disabled = !s.ready || busy || !!error;

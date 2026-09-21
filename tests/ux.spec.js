@@ -84,7 +84,17 @@ for(const [width,height] of [[390,844],[320,568],[844,390]]) {
       const bounds=await slot(page,i).locator('.clip-transport').evaluate(e=>({w:e.clientWidth,sw:e.scrollWidth}));expect(bounds.sw).toBeLessThanOrEqual(bounds.w+1);
     }
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    const footer=await page.locator('.screen-transport').boundingBox();expect(footer.y+footer.height).toBeLessThanOrEqual(height+1);
+    const footer=await page.locator('.screen-transport').boundingBox();
+    if(height>=800) expect(footer.y+footer.height).toBeLessThanOrEqual(height+1);
+    else {
+      // Tiny/landscape phones stack the controls rather than flattening the videos.
+      expect(footer.height).toBeLessThan(height);
+      await page.locator('#commonPlayer').scrollIntoViewIfNeeded();
+      await expect(page.locator('#play')).toBeInViewport();
+      await page.locator('#panel-range').scrollIntoViewIfNeeded();
+      await expect(page.locator('#rangeStart')).toBeInViewport();
+      await expect(page.locator('#analyze')).toBeInViewport();
+    }
     await page.screenshot({path:`/tmp/ux-after-independent-${width}.png`});
   });
 }
