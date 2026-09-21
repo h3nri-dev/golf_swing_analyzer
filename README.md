@@ -89,7 +89,7 @@ The studio fills one browser viewport. Opening a video brings it into view; nati
 
 Video frames use the remaining width and height, including large and ultrawide monitors. Panels start closed and a persistent Help button explains the three main tasks. The desktop inspector keeps its compact width so extra space goes to the videos. Resizing preserves the open panel. Resizing and opening panels preserve playback, zoom and drawing alignment.
 
-Each video has its own **− / +** buttons and **Zoom** slider, from **1× (Fit) to 4×**. Zooming or panning does not pause playback. The view is retained when playing, pausing, changing speed, scrubbing, stepping, running analysis, switching modes, or resizing the window. The two comparison videos keep independent views even when their playback is linked.
+Each video has its own **− / +** buttons and compact **Zoom** slider, from **1× (Fit) to 4×**. The slider is capped at 112 pixels and shrinks on narrow screens, keeping the buttons and zoom value together. Zooming or panning does not pause playback. The view is retained when playing, pausing, changing speed, scrubbing, stepping, running analysis, switching modes, or resizing the window. The two comparison videos keep independent views even when their playback is linked.
 
 When zoomed and using **View**, drag the video to pan. **Pan** returns from a drawing tool to view movement without pausing the video; press it again to disable dragging. Pinch with two fingers while Pan is active, or use Ctrl/⌘ + scroll over the video to zoom around the pointer. Ordinary scrolling moves between the page's snap sections; Ctrl/⌘ + scroll remains dedicated to video zoom. **Fit** restores 1× and centers that clip. Loading a replacement clip resets only its own view.
 
