@@ -68,6 +68,8 @@ Implementation: `deploy/drawing.js` contains pure annotation geometry, history a
 
 ## Zoom and pan
 
+The workspace fills the available screen width with modest outer margins. On desktop, video frames grow with the window's height and width in both single and comparison mode, including large and ultrawide monitors. The insights sidebar keeps its compact width so the extra space goes to the videos. Phone and tablet layouts retain smaller frames and readable controls. Resizing preserves playback, zoom and drawing alignment.
+
 Each video has its own **− / +** buttons and **Zoom** slider, from **1× (Fit) to 4×**. Zooming or panning does not pause playback. The view is retained when playing, pausing, changing speed, scrubbing, stepping, running analysis, switching modes, or resizing the window. The two comparison videos keep independent views even when their playback is linked.
 
 When zoomed and using **View**, drag the video to pan. **Pan** returns from a drawing tool to view movement without pausing the video; press it again to disable dragging. Pinch with two fingers while Pan is active, or use Ctrl/⌘ + scroll over the video to zoom around the pointer. Ordinary scrolling still scrolls the page. **Fit** restores 1× and centers that clip. Loading a replacement clip resets only its own view.

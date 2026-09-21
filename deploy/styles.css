@@ -52,9 +52,8 @@ button:hover:not(:disabled) {
 [hidden] {
   display:none!important}
 .site-header {
-  max-width:1500px;
   margin:auto;
-  padding:27px 5%;
+  padding:20px clamp(20px,2vw,64px);
   display:flex;
   justify-content:space-between;
   align-items:center;
@@ -103,9 +102,8 @@ button:hover:not(:disabled) {
   border-radius:50%;
   flex-shrink:0}
 main {
-  max-width:1500px;
   margin:auto;
-  padding:0 5%}
+  padding:0 clamp(20px,2vw,64px)}
 .intro {
   display:flex;
   justify-content:space-between;
@@ -671,8 +669,7 @@ input[type=checkbox] {
   color:#617057;
   margin:0}
 footer {
-  max-width:1350px;
-  margin:auto;
+  margin:0 clamp(20px,2vw,64px);
   border-top:1px solid var(--line);
   display:flex;
   justify-content:space-between;
@@ -956,8 +953,9 @@ input[type=checkbox] { width: 16px; height: 16px; }
 .shortcut-hint { display: none; }
 .workspace-caption { flex-wrap: wrap; }
 .workspace-label { display: none; }
-.stage { flex: none; min-height: 0; height: 520px; }
-.compare .stage { height: 520px; }
+/* Grow the actual viewing area with both screen dimensions, including ultrawide
+   displays. Smaller-screen rules below keep the existing phone/tablet layout. */
+.stage, .compare .stage { flex: none; min-height: 0; height: max(480px, min(68svh, 60vw)); }
 .video-grid { flex: none; }
 .review-area { justify-content: flex-start; }
 .workspace-caption { margin-top: auto; }
@@ -1000,7 +998,11 @@ input[type=checkbox] { width: 16px; height: 16px; }
 .drawing-frames:not(:empty) { margin-top: 12px; }
 .drawing-frames span { font-size: 14px; margin-right: 4px; }
 .drawing-frames button { border: 1px solid #cddabd; border-radius: 6px; background: #fff; font: 14px monospace; padding: 5px 9px; }
-@media (min-width: 1300px) { .review-area { align-self: start; position: sticky; top: 0; } }
+@media (min-width: 1151px) {
+  .intro { padding: 28px 0; }
+  .intro, .guide { max-width: 1440px; margin-inline: auto; }
+  .review-area { align-self: start; }
+}
 @media (max-width: 1150px) { .workspace { grid-template-columns: minmax(0,1fr) 330px; } .stage, .compare .stage { height: 430px; } }
 @media (max-width: 1000px) { .workspace { grid-template-columns: 1fr; } .analysis-panel { border-left: 0; border-top: 1px solid var(--line); } .metrics { grid-template-columns: repeat(4,1fr); } .phase-row { max-width: 450px; } }
 @media (max-width: 600px) {
