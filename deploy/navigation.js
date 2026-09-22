@@ -2,7 +2,7 @@ import {keyMomentEntries,MOMENT_COLORS,KEY_MOMENTS} from './keyframes.js';
 import {frameStamp,realTime,seconds} from './timing.js';
 import {timelineBounds,markerLayout} from './timeline.js';
 
-export function createMomentNavigation({slots,state,jump,jumpCommon,select,loop,changed,windowAt,windowDescription,scopeChanged}) {
+export function createMomentNavigation({slots,state,jump,jumpCommon,stepLocal,stepCommon,select,loop,changed,windowAt,windowDescription,scopeChanged}) {
   const $=id=>document.getElementById(id);
   const loopButton=document.createElement('button');loopButton.id='loopRange';loopButton.textContent='Loop window';loopButton.setAttribute('aria-pressed','false');
   $('restart').before(loopButton);loopButton.onclick=()=>{
@@ -26,8 +26,11 @@ export function createMomentNavigation({slots,state,jump,jumpCommon,select,loop,
       e.preventDefault();
       const controller=state().controller,index=item.slot?slots.indexOf(item.slot):controller.clock,s=slots[index];
       if(!s.ready)return;
+      if(e.key in directions&&!e.key.startsWith('Page')&&!e.shiftKey){
+        item.slot?stepLocal(index,directions[e.key]):stepCommon(directions[e.key]);return;
+      }
       const rate=item.slot?(s.shotFps??s.fps)/s.fps:controller.rate;
-      const step=e.key.startsWith('Page')||e.shiftKey?rate:1/(item.slot?s.fps:controller.fps);
+      const step=rate;
       const from=item.slot?s.video.currentTime:controller.time,bounds=timelineBounds(s,view.focused);
       const at=e.key==='Home'?bounds.start:e.key==='End'?bounds.end:Math.max(bounds.start,Math.min(bounds.end,from+directions[e.key]*step));
       item.slot?jump(index,at):jumpCommon(at);

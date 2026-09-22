@@ -10,7 +10,7 @@ test('single mode loads local video, steps, marks tempo and exports', async ({ p
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/'); await expect(clip(page,1)).toBeHidden(); await load(page,0);
   await (await transport(page,'next')).click(); expect((await times(page))[0]).toBeCloseTo(1/30,3);
-  await (await settings(page,0,'.fps')).selectOption('60'); await seek(page,0); await (await transport(page,'next')).click(); expect((await times(page))[0]).toBeCloseTo(1/60,3);
+  await (await settings(page,0,'.fps')).selectOption('60'); await seek(page,0); await (await transport(page,'next')).click(); expect((await times(page))[0]).toBeCloseTo(1/30,3);
   await seek(page,.2); await focusSection(page,'moments');await page.locator('.moment-cell.is-active[data-moment=address] .moment-mark').click(); await seek(page,1.1); await page.locator('.moment-cell.is-active[data-moment=top] .moment-mark').click(); await seek(page,1.4); await page.locator('.moment-cell.is-active[data-moment=impact] .moment-mark').click(); await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
   const download = page.waitForEvent('download'); await focusSection(page,'moments');await page.locator('#export').click(); expect((await download).suggestedFilename()).toBe('swing-report.pdf');
   await page.screenshot({path:'/tmp/swing-single.png',fullPage:true});

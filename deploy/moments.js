@@ -1,4 +1,5 @@
-import { frameNumber, frameStamp, lastFrame, markedFrame } from './timing.js';
+import { frameStamp, markedFrame } from './timing.js';
+import {sourceFrameNumber,sourceFrameTime,lastSourceFrame} from './source-frames.js';
 
 import { KEY_MOMENTS as MOMENTS, keyMomentEntries, MOMENT_COLORS } from './keyframes.js';
 
@@ -22,11 +23,11 @@ export function createMoments({slots, state, controlClip, pause, seek, changed})
     }
     input.onchange = () => {
       const frame = input.valueAsNumber, s = slots[editing];
-      if (!Number.isInteger(frame) || frame < 0 || frame > lastFrame(s.video.duration,s.fps)) {
-        const error = dialog.querySelector('.moment-error'); error.textContent = `Enter a whole frame from 0 to ${lastFrame(s.video.duration,s.fps)}.`; error.hidden = false;
+      if (!Number.isInteger(frame) || frame < 0 || frame > lastSourceFrame(s)) {
+        const error = dialog.querySelector('.moment-error'); error.textContent = `Enter a whole frame from 0 to ${lastSourceFrame(s)}.`; error.hidden = false;
         input.setAttribute('aria-invalid','true'); return;
       }
-      save(frame / s.fps);
+      save(sourceFrameTime(frame,s));
     };
     row.querySelector('.moment-set').onclick = () => save(markedFrame(slots[editing].video.currentTime,slots[editing]));
     row.querySelector('.moment-delete').onclick = () => { resetBackup=null; delete slots[editing].marks[key]; dialog.querySelector('.moment-error').hidden = true; changed(); renderEditor(); };
@@ -43,8 +44,8 @@ export function createMoments({slots, state, controlClip, pause, seek, changed})
       row.querySelector('.moment-jump').disabled = !exists;
       row.querySelector('.moment-jump').setAttribute('aria-label',`Jump to ${label}${suffix}`);
       row.querySelector('span').textContent = exists ? frameStamp(time,s) : 'Not marked';
-      input.value = exists ? frameNumber(time,s.fps) : '';
-      input.max = lastFrame(s.video.duration,s.fps); input.removeAttribute('aria-invalid');
+      input.value = exists ? sourceFrameNumber(time,s) : '';
+      input.max = lastSourceFrame(s); input.removeAttribute('aria-invalid');
       input.setAttribute('aria-label',`${label} frame${suffix}`);
       const reset=row.querySelector('.moment-delete');reset.disabled = !Number.isFinite(s.marks[key]);reset.textContent=s.keyMoments?.some(e=>e.key===key&&e.source==='estimated')?'↺':'×';
     });

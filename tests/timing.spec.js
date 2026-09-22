@@ -24,7 +24,7 @@ test('30/60 FPS files use equal elapsed time and shared steps ignore selected-vi
     await page.locator('#next').click();
   }
   let s = await state(page);
-  expect(s[0].time).toBeCloseTo(.3+4/30,4); expect(s[1].time).toBeCloseTo(.5+8/60,4);
+  expect(s[0].time).toBeCloseTo(.3+4/60,4); expect(s[1].time).toBeCloseTo(.5+4/60,4);
   expect(s.map(v=>v.rate)).toEqual([1,1]);
   await page.locator('#play').click(); await page.waitForTimeout(300);
   s = await state(page); expect(s.every(v=>!v.paused)).toBe(true); expect(s[1].time-s[0].time).toBeCloseTo(.2,1);
@@ -41,7 +41,7 @@ test('120 FPS footage saved at 30 FPS stays aligned through playback, seek, step
   await card(page,1).locator('.shot-fps').selectOption('120');
   await align(page,.3,.5);
   await page.locator('#next').click();
-  let s = await state(page); expect(s[0].time).toBeCloseTo(.3+1/30,4); expect(s[1].time).toBeCloseTo(2+4/30,4);
+  let s = await state(page); expect(s[0].time).toBeCloseTo(.3+1/120,4); expect(s[1].time).toBeCloseTo(2+1/30,4);
   expect(s.map(v=>v.rate)).toEqual([1,4]);
   await page.locator('#timeline').fill('0.75');
   s = await state(page); expect(s.map(v=>v.time)).toEqual([.55,3]);
@@ -65,7 +65,7 @@ test('retiming retains aligned file frames and moment marks, corrects tempo dura
   await page.locator('#linked').click();
   await card(page,1).locator('.shot-fps').selectOption('120');
   await page.locator('#next').click();
-  let s=await state(page);expect(s[0].time).toBeCloseTo(.5+1/30,4);expect(s[1].time).toBeCloseTo(2+4/30,4);
+  let s=await state(page);expect(s[0].time).toBeCloseTo(.5+1/120,4);expect(s[1].time).toBeCloseTo(2+1/30,4);
   await expect(page.locator('.moment-cell.is-active[data-moment=impact] .key-frame-time')).toContainText('0.500 s');
   await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
   await expect(page.locator('#tempoNote')).toHaveText('0.375 s backswing / 0.125 s downswing. Real time from your marks.');

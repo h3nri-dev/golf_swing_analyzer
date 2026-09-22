@@ -1,4 +1,5 @@
-import { clamp, frameTime, syncBounds } from './analysis.js';
+import { clamp, syncBounds } from './analysis.js';
+import {sourceFrameNumber,sourceFrameTime,adjacentSourceBoundary} from './source-frames.js';
 
 // Media seconds per real second. A 120 FPS recording saved at 30 FPS needs
 // four media seconds for each real second; ordinary 30/60 FPS files both use 1.
@@ -13,11 +14,11 @@ export const fileTime = (time, clip) => time * clipRate(clip);
 export const frameNumber = (time, fps, duration = Infinity) => Math.min(lastFrame(duration,fps), Math.max(0, Math.floor((time + 0.000001) * fps + 1e-7)));
 export const seconds = time => Number.isFinite(time) ? time.toFixed(3) : '—';
 export function frameStamp(time, clip) {
-  return `${seconds(realTime(time, clip))} s · F${frameNumber(time, clip.fps, clip.video?.duration)}`;
+  return `${seconds(realTime(time, clip))} s · F${sourceFrameNumber(time,clip)}`;
 }
 export function lastFrame(duration, fps) { return Number.isNaN(duration) ? 0 : Math.max(0, Math.ceil(duration * fps - 0.00001) - 1); }
 export function markedFrame(time, clip) {
-  return Math.min(frameNumber(time, clip.fps), lastFrame(clip.video.duration, clip.fps)) / clip.fps;
+  return sourceFrameTime(sourceFrameNumber(time,clip),clip);
 }
 
 // The shared clock uses real seconds relative to A's start. B's origin is
@@ -33,17 +34,19 @@ export function synchronization(clips, offset = 0) {
     return [target * rates[0], (target + offset) * rates[1]];
   };
   const shotRates = clips.map(c => c.shotFps ?? c.fps);
-  const reference = shotRates[0] <= shotRates[1] ? 0 : 1;
   return {
-    bounds, rates, commonTime, mediaTimes, reference,
-    stepSeconds: 1 / shotRates[reference],
+    bounds, rates, commonTime, mediaTimes,
     // Allow two source frames of drift, with a browser display-tick floor.
     driftTolerance: Math.max(1 / 60, 2 / Math.min(...shotRates)),
     endTolerance: .5 / Math.max(...shotRates),
     step(times, direction) {
-      const c = clips[reference];
-      const next = frameTime(times[reference], direction, c.fps, 0, c.duration);
-      return mediaTimes(commonTime(next, reference));
+      const now=commonTime(times[0],0);
+      const candidates=clips.map((clip,i)=>{
+        const next=adjacentSourceBoundary((now+(i?offset:0))*rates[i],direction,clip);
+        return next===null?null:commonTime(next,i);
+      }).filter(t=>t!==null&&(t-now)*direction>0.000002/Math.min(...rates));
+      const next=candidates.length?(direction>0?Math.min(...candidates):Math.max(...candidates)):now;
+      return mediaTimes(next);
     },
   };
 }

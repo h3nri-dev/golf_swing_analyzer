@@ -34,7 +34,7 @@ test('Sync on aligns first shared marker, retains edits/zoom and keeps different
   await expect(card(page, 0).locator('.zoom-value')).toHaveText(zoom);
   expect((await reports(page)).map(r => r.marks)).toEqual(before);
   await page.locator('#next').click();
-  let s = await states(page); expect(s[0].time).toBeCloseTo(1 / 30, 5); expect(s[1].time).toBeCloseTo(.4 + 2 / 60, 5);
+  let s = await states(page); expect(s[0].time).toBeCloseTo(1 / 60, 5); expect(s[1].time).toBeCloseTo(.4 + 1 / 60, 5);
   await page.locator('#play').click(); await page.waitForTimeout(150);
   s = await states(page); expect(s.every(v => !v.paused)).toBe(true); expect(s[1].time - s[0].time).toBeCloseTo(.4, 1);
   await page.locator('#play').click();
@@ -52,7 +52,7 @@ test('first shared marker handles negative offsets and slow motion; Sync off doe
   await expect(page.locator('#syncHint')).toContainText('Top of backswing');
   await expect(page.locator('#syncHint')).toContainText('-0.30 real s');
   await page.locator('#next').click();
-  const s = await states(page); expect(s[0].time).toBeCloseTo(2 + 4 / 30, 5); expect(s[1].time).toBeCloseTo(.2 + 1 / 30, 5);
+  const s = await states(page); expect(s[0].time).toBeCloseTo(2 + 1 / 30, 5); expect(s[1].time).toBeCloseTo(.2 + 1 / 120, 5);
   await page.locator('#independent').click(); expect(await states(page)).toEqual(s);
   await card(page, 1).locator('.fps').selectOption('60');
   await page.locator('#linked').click(); expect((await states(page)).map(v => v.time)).toEqual([2, .2]);

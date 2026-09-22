@@ -1,7 +1,8 @@
 import { trackUsage } from './consent.js';
-import { clamp, visible, measurements, frameTime, tempo, nearestSample, smoothSamples } from './analysis.js';
-import { mediaRate, synchronization, realTime, fileTime, frameStamp, frameNumber, seconds } from './timing.js';
+import { clamp, visible, measurements, tempo, nearestSample, smoothSamples } from './analysis.js';
+import { mediaRate, synchronization, realTime, fileTime, frameStamp, seconds } from './timing.js';
 import { detectFileFrameRate } from './file-fps.js';
+import {readSourceFrames,stepSourceFrame,sourceFrameNumber,frameSeekTime} from './source-frames.js';
 import { createMoments } from './moments.js';
 import { PRIMARY_MOMENTS, suggestKeyMoments, keyMomentEntries, phaseTimes, firstSharedMoment } from './keyframes.js';
 import { createKeyframeViews } from './keyframe-views.js';
@@ -77,7 +78,7 @@ const slots = names.map((name, index) => {
   return slot;
 });
 function toast(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toast.timer); toast.timer = setTimeout(() => $('toast').hidden = true, 4500); }
-function timingClips() { return slots.map(s => ({duration:s.video.duration, fps:s.fps, shotFps:s.shotFps ?? s.fps})); }
+function timingClips() { return slots.map(s => ({duration:s.video.duration, fps:s.fps, shotFps:s.shotFps ?? s.fps,sourceFps:s.sourceFps,sourceFrames:s.sourceFrames})); }
 function timingRate(s) { return mediaRate(s.fps, s.shotFps ?? s.fps); }
 function syncModel() { return synchronization(timingClips(), offset); }
 function syncOffset() { return (slots[1].anchor ?? 0) / timingRate(slots[1]) - (slots[0].anchor ?? 0) / timingRate(slots[0]); }
@@ -88,8 +89,8 @@ function updateFpsStatus(s) {
   const descriptions = {
     detecting: 'Reading the frame rate locally from your video file.',
     auto: 'File FPS was detected automatically. You can change it if needed.',
-    variable: 'Variable frame rate: File FPS shows the average. Frame stepping is approximate. You can change it if needed.',
-    average: 'File FPS was estimated from frame count and duration. Frame stepping is approximate. You can change it if needed.',
+    variable: 'Variable frame rate: File FPS shows the average for timing calibration. Frame buttons use the file’s actual timestamps when available.',
+    average: 'File FPS was estimated from frame count and duration. Frame buttons use the file’s actual timestamps when available.',
     manual: 'Using your chosen File FPS. Shot FPS controls slow-motion timing separately.',
     fallback: 'Could not detect File FPS. Using 30 temporarily; choose the file’s frame rate here.',
   };
@@ -185,6 +186,7 @@ function resetSlot(index) {
   if (job) return;
   pauseControlled(index); const s = slots[index]; s.version++; s.ready = false; s.video.onerror = null;
   s.fpsController?.abort(); s.fpsController = null; s.fpsSource = null;
+  s.sourceFps=30;s.sourceFrames=null;s.sourceSeeks=null;
   for (const option of s.get('.fps').querySelectorAll('[data-detected]')) option.remove();
   updateFpsStatus(s);
   s.video.removeAttribute('src'); s.video.load();
@@ -210,6 +212,7 @@ async function loadFile(index, file) {
   const controller = new AbortController(); s.fpsController = controller;
   s.fpsSource = 'detecting'; updateFpsStatus(s);
   const detection = detectFileFrameRate(file, { signal: controller.signal });
+  const frameIndex = readSourceFrames(file, { signal: controller.signal });
   s.url = URL.createObjectURL(file);
   selectSlot(index);
   try {
@@ -223,10 +226,11 @@ async function loadFile(index, file) {
       controller.signal.addEventListener('abort', aborted, { once: true });
       s.video.src = s.url;
     });
-    const [, detected] = await Promise.all([decoded, detection]);
+    const [, detected,sourceIndex] = await Promise.all([decoded, detection,frameIndex]);
     if (s.version !== version) return;
     if (!Number.isFinite(s.video.duration) || s.video.duration <= 0 || !s.video.videoWidth) throw new Error('This video has no readable duration. Try exporting it as an MP4.');
     s.fpsController = null;
+    s.sourceFps=detected?.fps||30;s.sourceFrames=sourceIndex?.times;s.sourceSeeks=sourceIndex?.seeks;
     if (detected) {
       s.fps = detected.fps;
       if (![...s.get('.fps').options].some(option => Number(option.value) === s.fps)) {
@@ -331,8 +335,9 @@ function update() {
   $('restart').title = $('restart').getAttribute('aria-label');
   $('restart').innerHTML = '<span aria-hidden="true">↺</span><span class="restart-word"> Restart</span>';
   $('linked').setAttribute('aria-pressed', linked); $('independent').setAttribute('aria-pressed', !linked);
-  const model = isLinked() ? syncModel() : null;
-  for (const id of ['previous','next']) $(id).title = model ? `Step both by ${(model.stepSeconds * 1000).toFixed(2)} ms of real time, using both frame rates` : `${id === 'next' ? 'Next' : 'Previous'} frame`;
+  const frameHint=slot=>slot.sourceFrames?.length?'One actual video frame, independent of FPS selections.':`Frame timestamps unavailable: approximate steps at the original ${slot.sourceFps||30} FPS estimate. FPS selections do not change steps.`;
+  for(const slot of slots)for(const selector of ['.clip-previous','.clip-next'])slot.get(selector).title=frameHint(slot);
+  for (const id of ['previous','next']) $(id).title = isLinked() ? `Move to the nearest frame boundary in either video while keeping sync. The slower video may hold its frame.${slots.every(s=>s.sourceFrames?.length)?'':' Stepping is approximate where frame timestamps are unavailable.'}` : frameHint(s);
   $('align').title = `Sync the displayed frames using each video's File FPS and Shot FPS. Use Sync off to position them first.`;
   rangeSelector?.render(); updateAnalysisControls(); updatePhases(); updatePlayback(); render();
 }
@@ -357,8 +362,8 @@ function seekActive(time, reference = active) {
     const model = syncModel();
     if (!model) return toast('These sync points have no shared playback range. Choose new sync frames.');
     const targets = model.mediaTimes(model.commonTime(time, reference));
-    slots.forEach((slot, i) => slot.video.currentTime = targets[i]);
-  } else slots[active].video.currentTime = clamp(time, 0, slots[active].video.duration);
+    slots.forEach((slot, i) => slot.video.currentTime = Math.min(slot.video.duration,frameSeekTime(targets[i],slot)));
+  } else slots[active].video.currentTime = clamp(frameSeekTime(time,slots[active]), 0, slots[active].video.duration);
   render();
 }
 async function togglePlay(both = false) {
@@ -389,7 +394,7 @@ async function togglePlay(both = false) {
   }
   updatePlayback();
 }
-function step(direction) { const s = slots[active]; if (s.ready) seekActive(frameTime(s.video.currentTime, direction, s.fps, 0, s.video.duration)); }
+function step(direction) { const s = slots[active]; if (s.ready) seekActive(stepSourceFrame(s.video.currentTime,direction,s)); }
 // Shared commands remain available with sync off, preserving individual speeds
 // and relative playheads until a clip reaches its own boundary.
 function seekBoth(time) {
@@ -400,7 +405,7 @@ function seekBoth(time) {
   slots.forEach(s=>s.playbackScope='common');
   commonTransport.following = true;
   pauseAll();
-  slots.forEach(s => { s.video.currentTime = clamp(s.video.currentTime + delta * timingRate(s), 0, s.video.duration); });
+  slots.forEach(s => { s.video.currentTime = clamp(frameSeekTime(s.video.currentTime + delta * timingRate(s),s), 0, s.video.duration); });
   updatePlayback(); render();
 }
 function stepBoth(direction) {
@@ -411,8 +416,8 @@ function stepBoth(direction) {
   pauseAll();
   if (isLinked()) {
     const targets = syncModel()?.step(slots.map(s => s.video.currentTime), direction);
-    if (targets) slots.forEach((s, i) => s.video.currentTime = targets[i]);
-  } else slots.forEach(s => { s.video.currentTime = frameTime(s.video.currentTime, direction, s.fps, 0, s.video.duration); });
+    if (targets) slots.forEach((s, i) => s.video.currentTime = Math.min(s.video.duration,frameSeekTime(targets[i],s)));
+  } else slots.forEach(s => { s.video.currentTime = frameSeekTime(stepSourceFrame(s.video.currentTime,direction,s),s); });
   updatePlayback(); render();
 }
 // Time jumps keep playing videos playing and paused videos paused. Local
@@ -452,7 +457,7 @@ function render() {
   slots.forEach(slot => slot.viewport?.apply());
   const controller = commonState(), clockName = mode === 'compare' ? names[controller.clock] + ' ' : '';
   const elapsed = controller.time / controller.rate, duration = controller.duration / controller.rate;
-  const frame = frameNumber(controller.time,controller.fps,controller.duration);
+  const frame = sourceFrameNumber(controller.time,slots[controller.clock]);
   $('timeline').setAttribute('aria-valuetext',`${seconds(elapsed)} real seconds, frame ${frame}`);
   $('timeline').setAttribute('aria-label', mode === 'compare' ? `Both videos timeline, swing ${names[controller.clock]} clock` : 'Video timeline');
   $('timeline').title = mode === 'compare' ? `Seek both by the same time change. Clock: swing ${names[controller.clock]}.` : 'Seek video';
@@ -533,7 +538,8 @@ function loopPlayback(endedIndex=null) {
 }
 const yieldFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
 async function seekDecoded(video, time) {
-  if (Math.abs(video.currentTime - time) < 0.0001 && video.readyState >= 2 && !video.seeking) return;
+  time=Math.min(video.duration,frameSeekTime(time,slots.find(s=>s.video===video)));
+  if (Math.abs(video.currentTime - time) < 0.0000005 && video.readyState >= 2 && !video.seeking) return;
   await new Promise((resolve, reject) => {
     const cleanup = () => { clearTimeout(timer); video.removeEventListener('seeked', done); video.removeEventListener('error', fail); };
     const done = () => { cleanup(); resolve(); };
@@ -638,7 +644,7 @@ function alignFrames(times=slots.map(s=>s.video.currentTime), label='') {
   slots.forEach((s,i) => { s.anchor = times[i]; });
   offset = next; aligned = true; alignmentLabel = label; linked = true;
   setSpeed(slots[active].speed);
-  slots.forEach(s => { s.video.currentTime = s.anchor; });
+  slots.forEach(s => { s.video.currentTime = frameSeekTime(s.anchor,s); });
   update(); toast(label ? `Aligned at ${label}, the first shared marker. Play both to compare.` : 'Aligned to these frames. Play both to compare.');
 }
 $('align').onclick=()=>alignFrames();
@@ -656,13 +662,13 @@ export function reportData(index = active) {
   const values = time => measurements(nearestSample(s.samples,time,s.tolerance)?.points,s.video.videoWidth,s.video.videoHeight,s.hand);
   const valid = s.samples.filter(sample=>sample.points && [11,12,23,24].every(i=>visible(sample.points[i]))).length;
   return { name:names[index], file:s.get('.file-name').textContent, hand:s.hand, crop:s.crop, quality:s.analysisQuality||s.quality, review:{...s.review}, observations:postureNotes(s,s.video.currentTime),
-    frameRate:s.fps, recordingFrameRate:s.shotFps ?? s.fps, mediaSecondsPerRealSecond:timingRate(s),
+    frameRate:s.fps, sourceFrameRate:s.sourceFps, exactFrameTimes:!!s.sourceFrames?.length, currentFrame:sourceFrameNumber(s.video.currentTime,s), recordingFrameRate:s.shotFps ?? s.fps, mediaSecondsPerRealSecond:timingRate(s),
     viewport:s.viewport.state(), mirrored:s.stage.classList.contains('mirrored'), drawings:annotations.data(index),
     currentTime:s.video.currentTime, duration:s.video.duration, currentMeasurements:values(s.video.currentTime), currentAnalysis:frameAnalysis(s,s.video.currentTime),
     range:s.analyzedRange || [s.start,s.end], selectedRange:[s.start,s.end], analyzedRange:s.analyzedRange ?? null,
-    marks:{...s.marks}, keyMoments:keyMomentEntries(s).map(entry=>({...entry,analysis:frameAnalysis(s,entry.time,entry)})), phaseTimes:phaseTimes(s), tempo:tempo(phaseTimes(s)), coverage:s.samples.length ? Math.round(valid/s.samples.length*100) : 0,
+    marks:{...s.marks}, keyMoments:keyMomentEntries(s).map(entry=>({...entry,frame:Number.isFinite(entry.time)?sourceFrameNumber(entry.time,s):null,analysis:frameAnalysis(s,entry.time,entry)})), phaseTimes:phaseTimes(s), tempo:tempo(phaseTimes(s)), coverage:s.samples.length ? Math.round(valid/s.samples.length*100) : 0,
     momentMeasurements:Object.fromEntries(phases.map(([key])=>[key,values(phaseTimes(s)[key])])),
-    measurements:s.samples.map(sample=>({time:sample.time,realSeconds:realTime(sample.time,s),frame:frameNumber(sample.time,s.fps),...values(sample.time)})),
+    measurements:s.samples.map(sample=>({time:sample.time,realSeconds:realTime(sample.time,s),frame:sourceFrameNumber(sample.time,s),...values(sample.time)})),
   };
 }
 const reportDialog = document.createElement('dialog');
@@ -733,7 +739,7 @@ rangeSelector = createRangeSelector({ slots, state: () => ({ active, mode, busy:
 moments = createMoments({slots, state:()=>({mode,busy:!!job}), controlClip, pause:pauseControlled, seek:seekActive, changed:updatePhases});
 keyframeViews = createKeyframeViews({slots, state:()=>({mode,busy:!!job}), controlClip, seek:seekActive, play:togglePlay, changed:updatePhases, paintDrawings:annotations.paintFrame, focusVideo:()=>studioScreen.focus(),markMoment:(i,key)=>moments.set(i,key),editMoments:i=>moments.open(i),alignMoment:key=>{const times=slots.map(s=>phaseTimes(s)[key]);if(times.every(Number.isFinite))alignFrames(times);}});
 reviewTools=createReviewTools({slots,state:()=>({active,mode,busy:!!job}),changed:()=>{render();updatePhases();},cropChanged});
-navigation=createMomentNavigation({slots,state:()=>({active,mode,busy:!!job,controller:commonState()}),jump:(i,time)=>controlClip(i,()=>seekActive(time)),jumpCommon:seekBoth,changed:render,select:selectSlot,
+navigation=createMomentNavigation({slots,state:()=>({active,mode,busy:!!job,controller:commonState()}),jump:(i,time)=>controlClip(i,()=>seekActive(time)),jumpCommon:seekBoth,stepLocal:(i,direction)=>controlClip(i,()=>step(direction)),stepCommon:stepBoth,changed:render,select:selectSlot,
   windowAt:rangeSelector.windowAt,windowDescription:rangeSelector.description,
   scopeChanged:index=>{
     const targets=index===null?(mode==='compare'?slots:[slots[active]]):[slots[index]];

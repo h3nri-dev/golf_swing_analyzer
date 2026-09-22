@@ -17,7 +17,11 @@ function pdfLibrary() {
 }
 
 const real = (time,clip) => time / clip.mediaSecondsPerRealSecond;
-const stamp = (time,clip) => `${seconds(real(time,clip))} real s  |  Frame ${frameNumber(time,clip.frameRate,clip.duration)}`;
+const stamp = (time,clip) => {
+  const saved=clip.keyMoments?.find(entry=>entry.time===time)?.frame;
+  const frame=saved??(time===clip.currentTime?clip.currentFrame:null)??frameNumber(time,clip.sourceFrameRate||clip.frameRate,clip.duration);
+  return `${seconds(real(time,clip))} real s  |  Frame ${frame}`;
+};
 const interval = (range,clip) => range ? `${seconds(real(range[0],clip))} - ${seconds(real(range[1],clip))} s` : 'Not analyzed';
 const angle = value => Number.isFinite(value) ? `${value.toFixed(1)}°` : '-';
 const change = value => Number.isFinite(value) ? `${value>0?'+':''}${value.toFixed(1)}°` : '-';

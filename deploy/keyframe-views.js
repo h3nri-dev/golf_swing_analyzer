@@ -1,5 +1,6 @@
 import { KEY_MOMENTS, keyMomentEntries, MOMENT_COLORS, momentSource, MOMENT_NAMES } from './keyframes.js';
-import { frameNumber, frameStamp, lastFrame } from './timing.js';
+import { frameStamp } from './timing.js';
+import {sourceFrameNumber,sourceFrameTime,lastSourceFrame,frameSeekTime} from './source-frames.js';
 import { drawReview, cropRegion, frameAnalysis, currentMoment } from './review.js';
 import { MEASUREMENTS } from './analysis.js';
 import { FEEDBACK_LABELS } from './coaching.js';
@@ -112,13 +113,13 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
     const save=frame=>{
       if(state().busy || !s.ready)return;
       const error=dialog.querySelector('.key-review-error');
-      if(!Number.isInteger(frame) || frame<0 || frame>lastFrame(s.video.duration,s.fps)) {error.textContent=`${state().mode==='compare'?`Swing ${name(index)}: enter`:'Enter'} a whole frame from 0 to ${lastFrame(s.video.duration,s.fps)}.`;error.hidden=false;input.setAttribute('aria-invalid','true');return;}
-      error.hidden=true;input.removeAttribute('aria-invalid');s.marks[KEY_MOMENTS[selected][0]]=frame/s.fps;changed();renderDialog();
+      if(!Number.isInteger(frame) || frame<0 || frame>lastSourceFrame(s)) {error.textContent=`${state().mode==='compare'?`Swing ${name(index)}: enter`:'Enter'} a whole frame from 0 to ${lastSourceFrame(s)}.`;error.hidden=false;input.setAttribute('aria-invalid','true');return;}
+      error.hidden=true;input.removeAttribute('aria-invalid');s.marks[KEY_MOMENTS[selected][0]]=sourceFrameTime(frame,s);changed();renderDialog();
     };
     input.onchange=()=>save(input.valueAsNumber);
     panel.querySelector('.key-frame-back').onclick=()=>save(Math.max(0,input.valueAsNumber-1));
-    panel.querySelector('.key-frame-next').onclick=()=>save(Math.min(lastFrame(s.video.duration,s.fps),input.valueAsNumber+1));
-    panel.querySelector('.key-set-current').onclick=()=>save(frameNumber(s.video.currentTime,s.fps,s.video.duration));
+    panel.querySelector('.key-frame-next').onclick=()=>save(Math.min(lastSourceFrame(s),input.valueAsNumber+1));
+    panel.querySelector('.key-set-current').onclick=()=>save(sourceFrameNumber(s.video.currentTime,s));
     panel.querySelector('.key-play-from').onclick=()=>{dialog.close();jump(index,selected,true);};
     panel.querySelector('.key-draw-frame').onclick=()=>{dialog.close();jump(index,selected,false);document.querySelector('[data-tool="line"]').click();};
     return panel;
@@ -155,7 +156,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
     try {
       await wait('loadeddata',()=>{decoder.src=url;});
       while(s.version===version && s.ready && !state().busy && (current=missing()[0])) {
-        if(decoder.seeking || Math.abs(decoder.currentTime-current.time)>.00001)await wait('seeked',()=>{decoder.currentTime=current.time;});
+        if(decoder.seeking || Math.abs(decoder.currentTime-current.time)>.00001)await wait('seeked',()=>{decoder.currentTime=frameSeekTime(current.time,s);});
         if(s.version!==version)break;
         const canvas=document.createElement('canvas'),scale=Math.min(1,1280/Math.max(decoder.videoWidth,decoder.videoHeight));
         canvas.width=Math.round(decoder.videoWidth*scale);canvas.height=Math.round(decoder.videoHeight*scale);
@@ -223,7 +224,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
       results.setAttribute('aria-label',`${entry.label} evaluation${suffix}`);
       if(results.dataset.phase!==entry.key){results.scrollTop=0;results.dataset.phase=entry.key;}
       showAnalysis(results,analysis);
-      const input=panel.querySelector('input');if(document.activeElement!==input)input.value=has?frameNumber(entry.time,s.fps):'';input.max=lastFrame(s.video.duration,s.fps);input.disabled=!s.ready||busy;
+      const input=panel.querySelector('input');if(document.activeElement!==input)input.value=has?sourceFrameNumber(entry.time,s):'';input.max=lastSourceFrame(s);input.disabled=!s.ready||busy;
       panel.querySelectorAll('button').forEach(b=>b.disabled=!s.ready||busy||(!has&&!b.classList.contains('key-set-current')));
     });
   }

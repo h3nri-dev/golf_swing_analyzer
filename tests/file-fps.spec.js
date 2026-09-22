@@ -20,19 +20,19 @@ test('real MP4, MOV and WebM metadata sets standard, fractional and unusual FPS 
     expect(report.frameRate).toBe(fps); expect(report.recordingFrameRate).toBe(fps);
     await expect.poll(() => card(page).locator('video').evaluate(v => v.playbackRate)).toBe(1);
     await page.locator('#next').click();
-    expect(await card(page).locator('video').evaluate(v => v.currentTime)).toBeCloseTo(1 / fps, 5);
+    expect(await card(page).locator('video').evaluate(v => v.currentTime)).toBeCloseTo(fps===48?.022:1 / fps, 5);
   }
   expect(network.some(r => r.url.endsWith('/MediaInfoModule.wasm'))).toBe(true);
   expect(network.filter(r => !r.url.startsWith('http://127.0.0.1:8080/') && !r.url.startsWith('blob:'))).toEqual([]);
   expect(network.every(r => r.method === 'GET')).toBe(true);
 });
 
-test('variable-rate video shows its detected average and explains approximate stepping', async ({ page }) => {
+test('variable-rate video shows its timing average and explains actual timestamp stepping', async ({ page }) => {
   await page.goto('/'); await load(page, 'fps-variable.mp4');
   await expect(card(page).locator('.fps-status')).toHaveText('Variable FPS');
   const fps = Number(await card(page).locator('.fps').inputValue());
   expect(fps).toBeGreaterThan(40); expect(fps).toBeLessThan(50);
-  await expect(card(page).locator('.fps')).toHaveAttribute('title', /average.*approximate/);
+  await expect(card(page).locator('.fps')).toHaveAttribute('title', /average.*actual timestamps/);
   await expect(card(page).locator('.shot-fps')).toHaveValue('same');
 });
 
@@ -42,7 +42,7 @@ test('manual corrections remain in effect; replacement and removal reset detecti
   await expect(card(page).locator('.fps-status')).toHaveText('Manual FPS');
   await card(page).locator('.shot-fps').selectOption('120');
   await page.locator('#next').click();
-  expect(await card(page).locator('video').evaluate(v => v.currentTime)).toBeCloseTo(1 / 60, 5);
+  expect(await card(page).locator('video').evaluate(v => v.currentTime)).toBeCloseTo(.022, 5);
   await expect(card(page).locator('.fps')).toHaveValue('60');
   await expect(card(page).locator('video')).toHaveJSProperty('playbackRate', 2);
   await load(page, 'timing-30.mp4');
