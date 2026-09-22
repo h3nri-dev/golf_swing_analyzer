@@ -39,11 +39,18 @@
 .range-dock #rangeReset[aria-pressed=true] { background: #354f3d; border-color: #354f3d; color: #fff; }
 /* One broad handle slides the complete analysis window. Exact boundaries stay
    available beside it, without requiring two tiny timeline targets. */
-.range-dock .range-rail { inset: 10px 24px; }
-.range-dock #rangeBand { border: 1px solid #93b46a; border-radius: 4px; }
+.range-dock .range-rail { inset: 10px 24px; overflow: visible; }
+.range-dock #rangeBand { border: 1px solid #93b46a; border-radius: 4px; background: #bdd68e70; }
+.range-dock .invalid-range #rangeBand { background: #e9b49b70; }
+/* Keep the current frame visible through the sliding window and its handle.
+   The marker spans the full 44px track and never intercepts dragging. */
+.range-dock #rangePlayhead { top: -10px; bottom: -10px; width: 3px; transform: translateX(-50%); z-index: 2; background: #17251f; box-shadow: 0 0 0 1px #ffffffd9; }
+.range-dock #rangePlayhead::before, .range-dock #rangePlayhead::after { content: ''; position: absolute; left: -3px; width: 9px; height: 3px; border-radius: 2px; background: inherit; }
+.range-dock #rangePlayhead::before { top: 0; }
+.range-dock #rangePlayhead::after { bottom: 0; }
 .range-dock #rangeWindow { pointer-events: auto; cursor: ew-resize; }
-.range-dock #rangeWindow::-webkit-slider-thumb { width: 48px; height: 40px; background: #354f3d url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpath d='M3 12h18M7 8l-4 4 4 4m10-8 4 4-4 4'/%3E%3C/svg%3E") center / 24px no-repeat; }
-.range-dock #rangeWindow::-moz-range-thumb { width: 48px; height: 40px; background: #354f3d url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpath d='M3 12h18M7 8l-4 4 4 4m10-8 4 4-4 4'/%3E%3C/svg%3E") center / 24px no-repeat; }
+.range-dock #rangeWindow::-webkit-slider-thumb { width: 48px; height: 40px; background: #354f3da6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpath d='M3 12h18M7 8l-4 4 4 4m10-8 4 4-4 4'/%3E%3C/svg%3E") center / 24px no-repeat; }
+.range-dock #rangeWindow::-moz-range-thumb { width: 48px; height: 40px; background: #354f3da6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpath d='M3 12h18M7 8l-4 4 4 4m10-8 4 4-4 4'/%3E%3C/svg%3E") center / 24px no-repeat; }
 .range-dock .screen-commands { margin: 0; gap: 4px; }
 .range-dock #reviewContext { display: none; }
 .range-dock .screen-commands #analyze, .range-dock #cancel { min-height: 32px; margin: 0; padding: 4px 10px; font-size: 16px; }
