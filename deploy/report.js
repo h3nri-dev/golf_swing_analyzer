@@ -20,6 +20,7 @@ const real = (time,clip) => time / clip.mediaSecondsPerRealSecond;
 const stamp = (time,clip) => `${seconds(real(time,clip))} real s  |  Frame ${frameNumber(time,clip.frameRate,clip.duration)}`;
 const interval = (range,clip) => range ? `${seconds(real(range[0],clip))} - ${seconds(real(range[1],clip))} s` : 'Not analyzed';
 const angle = value => Number.isFinite(value) ? `${value.toFixed(1)}°` : '-';
+const change = value => Number.isFinite(value) ? `${value>0?'+':''}${value.toFixed(1)}°` : '-';
 
 export async function createPdfReport(report) {
   const jsPDF = await pdfLibrary();
@@ -54,7 +55,7 @@ export async function createPdfReport(report) {
   }
   let pageNumber=0;
   for(const clip of report.clips) {
-    const frames=[{label:'Current frame',time:clip.currentTime,image:clip.currentImage,measurements:clip.currentMeasurements,observations:clip.observations},...(clip.visualMoments||[])];
+    const frames=[{label:'Current frame',time:clip.currentTime,image:clip.currentImage,measurements:clip.currentMeasurements,observations:clip.observations,analysis:clip.currentAnalysis},...(clip.visualMoments||[])];
     for(const frame of frames) {
       if(!frame.image)continue;
       const properties=doc.getImageProperties(frame.image),ratio=properties.width/properties.height;
@@ -84,10 +85,13 @@ export async function createPdfReport(report) {
       text(BRAND,imageX+imageWidth/2,imageY+imageHeight-3,watermarkSize,'#FFFFFF',true,{align:'center'});
       rect(imageX,imageY,imageWidth,1.4,accent);
       text('Frame measurements',statsX,46,11,green,true);
+      text('2D angle',statsX+statsWidth-20,51,8,muted,false,{align:'right'});
+      text('vs address',statsX+statsWidth-2,51,8,muted,false,{align:'right'});
       MEASUREMENTS.forEach(([key,label],i)=>{
-        const y=50+i*8;rect(statsX,y,statsWidth,8,i%2?'#FFFFFF':pale);
-        text(label,statsX+2,y+5.5,10);
-        text(angle(frame.measurements?.[key]),statsX+statsWidth-2,y+5.5,11,green,true,{align:'right'});
+        const y=53+i*8;rect(statsX,y,statsWidth,8,i%2?'#FFFFFF':pale);
+        text(label,statsX+2,y+5.5,9);
+        text(angle(frame.measurements?.[key]),statsX+statsWidth-20,y+5.5,10,green,true,{align:'right'});
+        text(change(frame.analysis?.changes[key]),statsX+statsWidth-2,y+5.5,9,muted,false,{align:'right'});
       });
       const autoTempo=['address','top','impact'].some(key=>!Number.isFinite(clip.marks[key]));
       text('Swing tempo',statsX,123,11,green,true);
@@ -102,7 +106,7 @@ export async function createPdfReport(report) {
       text(`Selected: ${interval(clip.selectedRange,clip)}`,statsX,174,9,muted);
       text(`Analyzed: ${interval(clip.analyzedRange,clip)}`,statsX,181,9,muted);
       if(clip.analyzedRange)text(`${clip.quality==='detailed'?'Detailed':'Fast'} / ${clip.measurements.length} samples / ${clip.coverage}% tracked`,statsX,188,8.5,muted);
-      const notes=[...(frame.observations||[])];
+      const notes=[frame.analysis?.guide,...(frame.analysis?.observations||frame.observations||[])].filter(Boolean);
       if(frame.source==='sampled')notes.unshift('Range preview: a sampled frame, not a detected swing phase.');
       else if(frame.source==='estimated')notes.unshift('Automatic phase estimate. Verify the event in your video.');
       if(!frame.source&&report.clips.length===2)notes.unshift(report.linked?'Videos synchronized at the selected event.':'Videos positioned independently.');
@@ -113,14 +117,9 @@ export async function createPdfReport(report) {
       const notesLimit=height-19;
       if(notes.length&&notesY+8<notesLimit) {
         text('What to review',notesX,notesY,11,green,true);notesY+=6;
-        for(const note of notes) {
-          doc.setFont('helvetica','normal');doc.setFontSize(9);
-          const lineHeight=9*.3528*1.25,lines=doc.splitTextToSize(note,notesWidth);
-          const available=Math.floor((notesLimit-notesY)/lineHeight);
-          if(available<=0)break;
-          if(lines.length>available) {lines.length=available;lines[available-1]=lines[available-1].replace(/.{3}$/,'...');}
-          notesY+=wrap(lines.join(' '),notesX,notesY,notesWidth,9)+3;
-        }
+        // Two phase-specific findings and their guide are shared with the
+        // frame viewer. Print every finding instead of silently truncating it.
+        for(const note of notes)notesY+=wrap(note,notesX,notesY,notesWidth,9)+2;
       }
     }
   }

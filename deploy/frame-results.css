@@ -1,0 +1,81 @@
+/* Results are part of each moment, visible without a Notes toggle. */
+.key-frame-results { flex:none; padding:2px 5px 5px; border-top:1px solid #d1ddc8; background:#f6f8f2; }
+.key-frame-results table { width:100%; border-collapse:collapse; font-size:14px; line-height:1.25; }
+.key-frame-results th { text-align:left; font-weight:400; }
+.key-frame-results td,.key-frame-results thead th:not(:first-child) { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.key-frame-results td { font-weight:650; }
+.key-frame-results th,.key-frame-results td { padding:2px 0; }
+.key-frame-results td+td { padding-left:5px; }
+.metric-compact-label { display:none; }
+.key-card.paired:not(.range-preview) .moment-assignment { display:none; }
+.key-frame-results button { min-height:28px; padding:1px 0; border:0; background:transparent; font-size:14px; white-space:nowrap; text-decoration:underline; text-underline-offset:3px; }
+.key-results-guide { font-size:14px; line-height:1.25; margin:4px 0 0; color:#4f6451; }
+.key-detail-results { padding:10px 12px 0; }
+.key-detail-results h4 { margin:0 0 5px; font-size:18px; }
+.key-phase-guide { margin:0 0 5px; padding:6px 8px; border-left:3px solid var(--moment-color); background:#f0f5e9; font-size:16px; }
+.key-detail-results .key-posture-notes { padding-left:20px; font-size:16px; line-height:1.4; margin:6px 0; }
+.key-detail-metrics { width:100%; border-collapse:collapse; font-size:16px; color:#253e2e; }
+.key-detail-metrics th { text-align:left; font-weight:400; }
+.key-detail-metrics td,.key-detail-metrics thead th:not(:first-child) { text-align:right; font-variant-numeric:tabular-nums; }
+.key-detail-metrics td,.key-detail-metrics th { padding:4px 6px; }
+.key-detail-metrics thead { background:#e8efdf; }
+.key-detail-metrics tbody tr:nth-child(even) { background:#f3f6ee; }
+/* Paired results use one table so labels do not repeat in narrow A/B cells.
+   The adjacent Results action opens both complete frame analyses together. */
+@media(min-width:901px) {
+  .is-compare .key-frame-results { padding:1px 3px 3px; }
+  .is-compare .key-frame-results tbody th { max-width:64px; }
+}
+@media(min-width:1351px) and (min-height:821px) and (max-height:1000px) {
+  .studio.persistent-sidebar.is-compare.has-key-moments { grid-template-columns:minmax(0,1fr) 420px; }
+}
+@media(min-width:1180px) and (max-height:820px) {
+  .is-compare .clip-view-settings { grid-template-columns:236px minmax(0,1fr); }
+  .persistent-sidebar.is-compare .clip-timing label { flex-direction:row; gap:3px; }
+  .persistent-sidebar.is-compare .clip-timing { gap:6px; padding:2px 4px; }
+  .persistent-sidebar.is-compare .clip-timing select { width:60px; font-size:14px; }
+  .persistent-sidebar.is-compare .zoom-controls { grid-template-columns:auto 28px 48px 28px 28px; gap:0 2px; padding:2px 0; }
+  .persistent-sidebar.is-compare .zoom-label { grid-column:1; grid-row:1; }
+  .persistent-sidebar.is-compare .zoom-out { grid-column:2; grid-row:1; }
+  .persistent-sidebar.is-compare .zoom-value { grid-column:3; grid-row:1; font-size:14px; }
+  .persistent-sidebar.is-compare .zoom-in { grid-column:4; grid-row:1; }
+  .persistent-sidebar.is-compare .zoom-fit { grid-column:5; grid-row:1; }
+  .persistent-sidebar.is-compare .zoom-slider { display:none; }
+  .is-compare .key-frame-time span:first-child { display:none; }
+  .persistent-sidebar.is-compare .clip-transport:not(.timeline-compact) .timeline-review { flex-basis:0; }
+  .persistent-sidebar.is-compare .clip-transport:not(.timeline-compact) .clip-duration { width:auto; font-family:inherit; font-size:14px; }
+  .persistent-sidebar.is-compare .clip-transport .timeline-moments button { min-height:12px; height:12px; }
+  .is-compare .key-frame-results .metric-full-label { display:none; }
+  .is-compare .key-frame-results .metric-compact-label { display:inline; }
+  .is-compare .key-frame-results tbody th { white-space:nowrap; }
+  .is-compare .key-frame-results table { table-layout:auto; }
+  .is-compare .key-frame-results td+td { padding-left:2px; }
+  .is-compare .key-frame-results thead button { font-size:14px; }
+  .is-compare .key-frame-results th,.is-compare .key-frame-results td { padding-block:1px; }
+}
+/* Full analysis belongs alongside the enlarged frame, with its edit controls.
+   This avoids pushing the measurements and navigation below a tall image. */
+@media(min-width:1000px) {
+  .key-review-panel { display:grid; grid-template-columns:minmax(0,1fr) minmax(310px,.85fr); align-content:start; }
+  .key-review-panel>h3 { grid-column:1/-1; }
+  .key-large-frame { grid-column:1; grid-row:2/6; height:100%; min-height:0; }
+  .key-large-frame canvas { position:absolute; inset:0; }
+  .key-detail-line { grid-column:2; grid-row:2; }
+  .key-detail-results { grid-column:2; grid-row:3; }
+  .key-edit-controls { grid-column:2; grid-row:4; }
+  .key-review-actions { grid-column:2; grid-row:5; }
+  .key-review-panel:has(canvas[hidden]) .key-large-frame { min-height:200px; }
+}
+@media(min-width:1000px) and (max-width:1399px) {
+  .paired-review .key-review-panel { display:block; }
+  .paired-review .key-large-frame { height:240px; }
+}
+@media(max-width:900px) {
+  .key-filmstrip { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .is-compare .key-card.paired .key-card-frames { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:420px) {
+  .is-compare .key-filmstrip { grid-template-columns:1fr; }
+  .key-detail-metrics { font-size:14px; }
+  .key-detail-metrics td,.key-detail-metrics th { padding:4px 3px; }
+}

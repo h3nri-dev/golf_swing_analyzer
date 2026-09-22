@@ -5,7 +5,7 @@ import { createMoments } from './moments.js';
 import { PRIMARY_MOMENTS, suggestKeyMoments, keyMomentEntries, phaseTimes } from './keyframes.js';
 import { createKeyframeViews } from './keyframe-views.js';
 import { createAnnotations } from './annotations.js';
-import { defaultReview, drawReview, drawPose, cropRegion, mapCropPoints, postureNotes } from './review.js';
+import { defaultReview, drawReview, drawPose, cropRegion, mapCropPoints, postureNotes, frameAnalysis } from './review.js';
 import { createReviewTools } from './review-tools.js';
 import { createMomentNavigation } from './navigation.js';
 import { createViewport } from './viewport.js';
@@ -559,9 +559,9 @@ export function reportData(index = active) {
   return { name:names[index], file:s.get('.file-name').textContent, hand:s.hand, crop:s.crop, quality:s.analysisQuality||s.quality, review:{...s.review}, observations:postureNotes(s,s.video.currentTime),
     frameRate:s.fps, recordingFrameRate:s.shotFps ?? s.fps, mediaSecondsPerRealSecond:timingRate(s),
     viewport:s.viewport.state(), mirrored:s.stage.classList.contains('mirrored'), drawings:annotations.data(index),
-    currentTime:s.video.currentTime, duration:s.video.duration, currentMeasurements:values(s.video.currentTime),
+    currentTime:s.video.currentTime, duration:s.video.duration, currentMeasurements:values(s.video.currentTime), currentAnalysis:frameAnalysis(s,s.video.currentTime),
     range:s.analyzedRange || [s.start,s.end], selectedRange:[s.start,s.end], analyzedRange:s.analyzedRange ?? null,
-    marks:{...s.marks}, keyMoments:keyMomentEntries(s), phaseTimes:phaseTimes(s), tempo:tempo(phaseTimes(s)), coverage:s.samples.length ? Math.round(valid/s.samples.length*100) : 0,
+    marks:{...s.marks}, keyMoments:keyMomentEntries(s).map(entry=>({...entry,analysis:frameAnalysis(s,entry.time,entry)})), phaseTimes:phaseTimes(s), tempo:tempo(phaseTimes(s)), coverage:s.samples.length ? Math.round(valid/s.samples.length*100) : 0,
     momentMeasurements:Object.fromEntries(phases.map(([key])=>[key,values(phaseTimes(s)[key])])),
     measurements:s.samples.map(sample=>({time:sample.time,realSeconds:realTime(sample.time,s),frame:frameNumber(sample.time,s.fps),...values(sample.time)})),
   };
@@ -601,8 +601,8 @@ $('export').onclick = async () => {
         reportDialog.querySelector('p').textContent=`Preparing ${mode === 'compare' ? `swing ${names[index]}` : 'your swing'}: ${entry.label.toLowerCase()}…`;
         await seekDecoded(s.video,entry.time);render();
         entry.image=annotations.capture(index).toDataURL('image/jpeg',.94);
-        entry.measurements=measurements(nearestSample(s.samples,entry.time,s.tolerance)?.points,s.video.videoWidth,s.video.videoHeight,s.hand);
-        entry.observations=postureNotes(s,entry.time);
+        entry.measurements=entry.analysis.measurements;
+        entry.observations=entry.analysis.observations;
       }
     }
     if(token.cancelled)return;

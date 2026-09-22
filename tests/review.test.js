@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {measurements} from '../deploy/analysis.js';
-import {cropRegion,mapCropPoints,currentMoment,postureNotes,drawReview,defaultReview} from '../deploy/review.js';
+import {cropRegion,mapCropPoints,currentMoment,postureNotes,frameAnalysis,drawReview,defaultReview} from '../deploy/review.js';
 import {hitShape,scaleShape} from '../deploy/drawing.js';
 const point=(x,y)=>({x,y,visibility:1});
 function pose(){const p=Array.from({length:33},()=>point(.5,.5));
@@ -31,6 +31,17 @@ test('observations describe measured change and stay unavailable across pose gap
  const slot={samples:[{time:0,points:p},{time:.2,points:p2},{time:.4,points:null}],tolerance:.05,fps:30,hand:'right',marks:{address:0,top:.2},keyMoments:[],video:{videoWidth:200,videoHeight:400}};
  assert.match(postureNotes(slot,.2).join(' '),/Lead elbow \+90° vs address/);
  assert.match(postureNotes(slot,.4)[0],/No reliable pose/);assert.match(postureNotes(slot,.8)[0],/No reliable pose/);
+});
+test('keyframe analysis uses its explicit phase, exact tracked frame and address baseline',()=>{
+ const p=pose(),p2=pose();p2[15]=point(.2,.6);
+ const slot={samples:[{time:0,points:p},{time:.2,points:p2},{time:.4,points:null}],tolerance:.05,fps:30,hand:'right',marks:{address:0,top:.2,impact:.2},keyMoments:[],video:{videoWidth:200,videoHeight:400}};
+ const impact=frameAnalysis(slot,.2,{key:'impact',source:'marked'});
+ assert.equal(impact.measurements.elbow,180);assert.equal(impact.changes.elbow,90);
+ assert.match(impact.guide,/ball contact/);assert.deepEqual(impact.highlights.map(h=>h.key),['elbow','wrist']);assert.match(impact.observations.join(' '),/\+90.0° vs address/);
+ slot.hand='left';assert.equal(frameAnalysis(slot,.2,{key:'impact',source:'marked'}).changes.elbow,0);
+ const gap=frameAnalysis(slot,.4,{key:'impact',source:'marked'});assert.equal(gap.tracked,false);assert.equal(gap.guide,null);assert.ok(Object.values(gap.changes).every(v=>v===null));
+ const preview=frameAnalysis(slot,.2,{key:'top',source:'sampled'});assert.equal(preview.guide,null);
+ slot.marks={};assert.ok(Object.values(frameAnalysis(slot,.2,{key:'impact',source:'marked'}).changes).every(v=>v===null));
 });
 test('head and both hand trajectories break across missing samples',()=>{
  const operations=[],ctx={save(){},restore(){},beginPath(){},stroke(){},moveTo(...a){operations.push(['move',...a]);},lineTo(...a){operations.push(['line',...a]);}};

@@ -15,14 +15,35 @@ export function currentMoment(slot,time=slot.video.currentTime) {
   return entries.reduce((a,b)=>Math.abs(a.time-time)<Math.abs(b.time-time)?a:b);
 }
 export const PHASE_GUIDES={address:'Use this setup frame as your reference.',backswing:'Compare the takeaway with your setup.',top:'Review hand height and the trail elbow at the top.',downswing:'Step toward impact to inspect how the arms unfold.',impact:'Verify ball contact visually before comparing impact.',follow:'Compare arm extension after impact.',finish:'Review your finish and balance in the video.'};
+// Each phase emphasizes two useful observations; the full eight measurements
+// remain available in the enlarged view and on that frame's report page.
+export const PHASE_METRICS={address:['lean','knee'],backswing:['elbow','wrist'],top:['trailElbow','lean'],downswing:['trailElbow','elbow'],impact:['elbow','wrist'],follow:['elbow','trailElbow'],finish:['lean','knee']};
+export function frameAnalysis(slot,time,entry=currentMoment(slot,time)) {
+  const points=Number.isFinite(time)?nearestSample(slot.samples,time,slot.tolerance)?.points:null;
+  const values=measurements(points,slot.video.videoWidth,slot.video.videoHeight,slot.hand);
+  const address=keyMomentEntries(slot).find(e=>e.key==='address'&&['marked','estimated'].includes(e.source)&&Number.isFinite(e.time));
+  const base=measurements(address?nearestSample(slot.samples,address.time,slot.tolerance)?.points:null,slot.video.videoWidth,slot.video.videoHeight,slot.hand);
+  const changes=Object.fromEntries(Object.keys(values).map(key=>[key,Number.isFinite(values[key])&&Number.isFinite(base[key])?values[key]-base[key]:null]));
+  const tracked=Object.values(values).some(Number.isFinite),phase=entry?.source==='sampled'?null:entry?.key;
+  const keys=PHASE_METRICS[phase]||['elbow','lean'];
+  const labels={elbow:'Lead elbow',trailElbow:'Trail elbow',knee:'Lead knee',lean:'Torso lean',wrist:'Lead wrist'};
+  const highlights=keys.map(key=>({key,label:labels[key],value:values[key],change:changes[key]}));
+  const guide=tracked&&phase?PHASE_GUIDES[phase]:null;
+  const observations=tracked?highlights.map(({label,value,change})=>{
+    if(!Number.isFinite(value))return `${label}: tracking unavailable at this frame.`;
+    const delta=Number.isFinite(change)&&entry?.key!=='address'?` (${change>=0?'+':''}${change.toFixed(1)}° vs address)`:'';
+    return `${label}: ${value.toFixed(1)}°${delta}.`;
+  }):[slot.samples.length?'No reliable pose at this frame. Step to a tracked frame or measure with Angle.':'Analyze this video to see measurements for this frame.'];
+  return {measurements:values,changes,highlights,guide,observations,tracked};
+}
 export function postureNotes(slot,time) {
   const points=nearestSample(slot.samples,time,slot.tolerance)?.points;
   const values=measurements(points,slot.video.videoWidth,slot.video.videoHeight,slot.hand);
   const moment=currentMoment(slot,time),notes=[];
   if(!Object.values(values).some(Number.isFinite))return ['No reliable pose at this frame. Step to a tracked frame or measure with Angle.'];
   if(moment)notes.push(PHASE_GUIDES[moment.key]);
-  const address=keyMomentEntries(slot).find(e=>e.key==='address'&&e.source!=='sampled');
-  const base=measurements(nearestSample(slot.samples,address?.time,slot.tolerance)?.points,slot.video.videoWidth,slot.video.videoHeight,slot.hand);
+  const address=keyMomentEntries(slot).find(e=>e.key==='address'&&['marked','estimated'].includes(e.source)&&Number.isFinite(e.time));
+  const base=measurements(address?nearestSample(slot.samples,address.time,slot.tolerance)?.points:null,slot.video.videoWidth,slot.video.videoHeight,slot.hand);
   const changes=[['elbow','Lead elbow'],['lean','Torso lean']].filter(([key])=>Number.isFinite(values[key])&&Number.isFinite(base[key])&&Math.abs(time-address.time)>1/slot.fps);
   if(changes.length)notes.push(changes.map(([key,label])=>`${label} ${values[key]-base[key]>=0?'+':''}${Math.round(values[key]-base[key])}° vs address`).join(' · ')+'.');
   else notes.push([['elbow','Lead elbow'],['trailElbow','Trail elbow'],['lean','Torso lean']].filter(([key])=>Number.isFinite(values[key])).map(([key,label])=>`${label} ${Math.round(values[key])}°`).join(' · ')+'.');
