@@ -7,7 +7,7 @@
   <meta name="description" content="A closer look at your golf swing. Analyze a video or compare two swings side by side with synchronized playback and private, on-device pose analysis.">
   <link rel="canonical" href="https://freegolfswinganalyzer.com">
   <meta name="theme-color" content="#f5f5ef">
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon.svg?v=golf" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="screen.css">
   <link rel="stylesheet" href="ux.css">
@@ -20,13 +20,13 @@
 </head>
 <body>
 <header class="site-header">
-  <a class="brand" href="./" aria-label="Swing Studio home"><span class="brand-mark">↗</span><span>SWING<span class="brand-light">STUDIO</span><small>FREE GOLF SWING ANALYZER</small></span></a>
+  <a class="brand" href="./" aria-label="Swing Studio home"><img class="brand-mark" src="favicon.svg?v=golf" width="39" height="39" alt=""><span>SWING<span class="brand-light">STUDIO</span><small>FREE GOLF SWING ANALYZER</small></span></a>
   <div class="header-right"><span class="privacy-dot"></span><span>On your device. On your terms.</span><button class="text-button" data-open-about aria-haspopup="dialog">About <span aria-hidden="true">↗</span></button></div>
 </header>
 <main>
   <section class="intro"><div><h1>Your swing. <em>A closer look.</em></h1><p class="intro-copy">Draw, slow down, and compare. Your videos stay on your device.</p></div><div data-consent-banner></div></section>
   <section class="studio" id="studio" aria-label="Swing workspace">
-    <div class="studio-heading"><div class="mode-switch" role="group" aria-label="Usage mode"><button id="singleMode" aria-pressed="true"><span>01</span> Single video</button><button id="compareMode" aria-pressed="false"><span>02</span> Compare videos</button></div><button id="workspaceBrand" class="studio-brand" data-open-about aria-haspopup="dialog" aria-label="About FreeGolfSwingAnalyzer.com"><img src="favicon.svg" width="28" height="28" alt=""><span>FreeGolfSwingAnalyzer.com</span><span class="brand-about">About</span></button><button id="toggleInsights" class="insights-toggle" aria-expanded="true" aria-controls="analysisPanel">Hide insights</button></div>
+    <div class="studio-heading"><div class="mode-switch" role="group" aria-label="Usage mode"><button id="singleMode" aria-pressed="true"><span>01</span> Single video</button><button id="compareMode" aria-pressed="false"><span>02</span> Compare videos</button></div><button id="workspaceBrand" class="studio-brand" data-open-about aria-haspopup="dialog" aria-label="About FreeGolfSwingAnalyzer.com"><img src="favicon.svg?v=golf" width="28" height="28" alt=""><span>FreeGolfSwingAnalyzer.com</span><span class="brand-about">About</span></button><button id="toggleInsights" class="insights-toggle" aria-expanded="true" aria-controls="analysisPanel">Hide insights</button></div>
     <div class="workspace" id="workspace">
       <div class="review-area">
         <div class="comparison-bar" id="comparisonBar" hidden><div><strong>Playback</strong><div class="segmented" role="group" aria-label="Video synchronization"><button id="linked" aria-pressed="true" title="Play and step both videos together">Sync on</button><button id="independent" aria-pressed="false" title="Control each video separately">Sync off</button></div></div><button id="align" class="text-button" title="Synchronize the two frames currently shown. Use Sync off to position each video first." disabled>Sync Videos</button><p id="syncHint">Pause each video at the same moment, then choose Sync Videos.</p></div>
@@ -75,7 +75,7 @@
 <footer id="studioFooter"><nav class="legal-links" aria-label="Privacy and terms"><a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a><a href="terms.html" target="_blank" rel="noopener">Terms & conditions</a><button class="text-button" data-cookie-settings>Cookie settings</button><button id="privacy" class="text-button">About your data ↗</button></nav></footer>
 <dialog id="aboutDialog" class="task-dialog" aria-labelledby="aboutTitle">
   <div class="task-dialog-heading"><h2 id="aboutTitle">About Swing Studio</h2><button id="closeAbout" autofocus>Close</button></div>
-  <p class="about-brand"><img src="favicon.svg" width="32" height="32" alt=""><strong>FreeGolfSwingAnalyzer.com</strong></p>
+  <p class="about-brand"><img src="favicon.svg?v=golf" width="32" height="32" alt=""><strong>FreeGolfSwingAnalyzer.com</strong></p>
   <p>A free space to take a closer look at your golf swing. Review one video, compare two swings, draw reference lines and explore key moments. Your videos stay on your device.</p>
   <section class="about-guide" aria-labelledby="aboutGuideTitle"><h3 id="aboutGuideTitle">Make your next session count</h3>
     <article><span aria-hidden="true">01</span><div><h4>Give yourself a clear view</h4><p>Film one swing with a steady camera, your whole body in frame and plenty of light. Face-on or down-the-line both work.</p></div></article>

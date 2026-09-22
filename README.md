@@ -84,6 +84,7 @@ References: [MediaPipe web guide](https://ai.google.dev/edge/mediapipe/solutions
 - `deploy/consent.js`, `consent.css` — consent-gated GA4, cookie choices and cross-tab withdrawal.
 - `deploy/privacy.html`, `terms.html`, `legal.css` — full privacy policy and terms, with readable standalone layouts.
 - `deploy/styles.css` — base studio design.
+- `deploy/favicon.svg` — shared golf-ball-and-tee logo with a swing arc, used in the browser tab, site/legal headers, workspace header, About and video branding. Keep it as a local vector so it stays sharp at small sizes.
 - `deploy/screen.js`, `deploy/screen.css`, `deploy/sidebar.css`, `deploy/review-layout.css` — viewport workspace, permanent expanded sidebar and scroll snapping.
 - `deploy/ux.js`, `deploy/ux.css` — task help, session-work confirmation and interaction refinements.
 - `deploy/app.js` — file lifecycle, playback, synchronized seeking, overlays, lazy inference and exports.

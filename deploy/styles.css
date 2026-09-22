@@ -67,15 +67,10 @@ button:hover:not(:disabled) {
   font:800 19px 'Manrope',sans-serif;
   letter-spacing:-1px}
 .brand-mark {
-  background:var(--green);
-  color:var(--lime);
-  border-radius:50%;
+  display:block;
+  flex:none;
   width:39px;
-  height:39px;
-  display:grid;
-  place-items:center;
-  font-size:28px;
-  font-weight:400}
+  height:39px}
 .brand-light {
   font-weight:400}
 .brand small {
