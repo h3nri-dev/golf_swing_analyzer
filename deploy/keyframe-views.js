@@ -9,16 +9,24 @@ const sourceLabel=momentSource;
 const name=i=>i?'B':'A';
 const angle=(value,delta=false)=>Number.isFinite(value)?`${delta&&value>0?'+':''}${Math.round(value)}°`:'—';
 const compactLabels={elbow:'Elbow',trailElbow:'Trail el.',lean:'Torso',knee:'Knee',wrist:'Wrist'};
-const analysisMarkup='<h4>Frame analysis</h4><ul class="key-posture-notes key-coaching"></ul><p class="key-coaching-basis"></p><h5>Supporting measurements</h5><p class="key-phase-guide"></p><table class="key-detail-metrics"><thead><tr><th>2D measurement</th><th>Angle</th><th>vs address</th></tr></thead><tbody></tbody></table>';
+const analysisMarkup='<h4>Swing evaluation</h4><p class="key-evaluation-summary"></p><ul class="key-posture-notes key-coaching"></ul><p class="key-coaching-basis"></p><h5>Supporting measurements</h5><p class="key-phase-guide"></p><table class="key-detail-metrics"><thead><tr><th>2D measurement</th><th>Angle</th><th>vs address</th></tr></thead><tbody></tbody></table>';
 function showAnalysis(element,analysis) {
   element.querySelector('.key-phase-guide').textContent=analysis.guide||'';
   element.querySelector('.key-phase-guide').hidden=!analysis.guide;
   const feedback=[...analysis.coaching.findings,{kind:'practice',body:analysis.coaching.practice}];
-  element.querySelector('.key-coaching').replaceChildren(...feedback.map(({kind,title,body})=>{
+  element.querySelector('.key-evaluation-summary').textContent=['good','check','info','unavailable'].map(kind=>{
+    const count=analysis.coaching.findings.filter(f=>f.kind===kind).length;
+    return count?`${count} ${FEEDBACK_LABELS[kind].toLowerCase()}`:null;
+  }).filter(Boolean).join(' · ');
+  element.querySelector('.key-coaching').replaceChildren(...feedback.map(({kind,title,body,key})=>{
     const li=document.createElement('li');li.className=`key-feedback key-feedback-${kind}`;
-    const label=document.createElement('span');label.className='key-feedback-label';label.textContent=`${FEEDBACK_LABELS[kind]}: `;li.append(label);
-    if(title){const heading=document.createElement('strong');heading.textContent=`${title}. `;li.append(heading);}
-    const explanation=document.createElement('span');explanation.textContent=body;li.append(explanation);return li;
+    if(key)li.dataset.checkpoint=key;
+    const icon=document.createElement('span');icon.className='key-feedback-icon';icon.setAttribute('aria-hidden','true');icon.textContent=({good:'✓',check:'!',info:'?',unavailable:'—',practice:'↗'})[kind];li.append(icon);
+    const content=document.createElement('div');content.className='key-feedback-content';li.append(content);
+    const line=document.createElement('div');line.className='key-feedback-heading';content.append(line);
+    const label=document.createElement('span');label.className='key-feedback-label';label.textContent=`${FEEDBACK_LABELS[kind]}: `;line.append(label);
+    if(title){const heading=document.createElement('strong');heading.textContent=`${title}. `;line.append(heading);}
+    const explanation=document.createElement('span');explanation.className='key-feedback-body';explanation.textContent=body;content.append(explanation);return li;
   }));
   element.querySelector('.key-coaching-basis').textContent=analysis.coaching.basis;
   element.querySelector('tbody').innerHTML=MEASUREMENTS.map(([key,label])=>`<tr data-frame-metric="${key}"><th scope="row">${label}</th><td>${angle(analysis.measurements[key])}</td><td>${angle(analysis.changes[key],true)}</td></tr>`).join('');
@@ -119,7 +127,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
     const entry=keyMomentEntries(slots[index])[position];if(!Number.isFinite(entry.time))return;
     controlClip(index,()=>{seek(entry.time);if(playing)play();});focusVideo();
   }
-  function open(position) {if(state().busy)return;selected=position;dialog.querySelector('.key-review-error').hidden=true;dialog.showModal();renderDialog();}
+  function open(position) {if(state().busy)return;selected=position;dialog.querySelector('.key-review-error').hidden=true;dialog.showModal();renderDialog();panels.forEach(panel=>panel.querySelector('.key-detail-results').scrollTop=0);}
   strip.querySelector('.key-enlarge').onclick=()=>open(selected);
   dialog.querySelector('.key-review-close').onclick=()=>dialog.close();
   dialog.addEventListener('keydown',e=>{
@@ -211,8 +219,10 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
       panel.querySelector('.key-large-frame p').textContent=success?'':has?(failed[index].has(cacheKey(s,entry.time))?'Preview unavailable. Open this frame in the player.':'Loading frame…'):`Analyze${suffix} or set this moment from the player.`;
       panel.querySelector('.key-detail-time').textContent=has?`${entry.label} · ${frameStamp(entry.time,s)}`:'Choose a frame';
       const analysis=frameAnalysis(s,entry.time,entry);
-      panel.querySelector('.key-detail-results').hidden=!has;
-      showAnalysis(panel.querySelector('.key-detail-results'),analysis);
+      const results=panel.querySelector('.key-detail-results');results.hidden=!has;results.tabIndex=0;
+      results.setAttribute('aria-label',`${entry.label} evaluation${suffix}`);
+      if(results.dataset.phase!==entry.key){results.scrollTop=0;results.dataset.phase=entry.key;}
+      showAnalysis(results,analysis);
       const input=panel.querySelector('input');if(document.activeElement!==input)input.value=has?frameNumber(entry.time,s.fps):'';input.max=lastFrame(s.video.duration,s.fps);input.disabled=!s.ready||busy;
       panel.querySelectorAll('button').forEach(b=>b.disabled=!s.ready||busy||(!has&&!b.classList.contains('key-set-current')));
     });

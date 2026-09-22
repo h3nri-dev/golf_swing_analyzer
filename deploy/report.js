@@ -36,6 +36,19 @@ export async function createPdfReport(report) {
     doc.setTextColor(color);doc.text(lines,x,y,{lineHeightFactor:1.25});
     return lines.length*size*.3528*1.25;
   }
+  const noteSize=9;
+  function noteHeight(note,width) {
+    doc.setFont('helvetica','normal');doc.setFontSize(noteSize);
+    return doc.splitTextToSize(String(note),width).length*noteSize*.3528*1.25+2;
+  }
+  function splitNotes(notes,width) {
+    let split=1,best=Infinity;
+    for(let i=1;i<=notes.length;i++){
+      const height=Math.max(...[notes.slice(0,i),notes.slice(i)].map(group=>group.reduce((n,note)=>n+noteHeight(note,width),0)));
+      if(height<best){split=i;best=height;}
+    }
+    return {columns:[notes.slice(0,split),notes.slice(split)],height:best};
+  }
   function rect(x,y,w,h,color) { doc.setFillColor(color);doc.rect(x,y,w,h,'F'); }
   // Keep ordinary filenames searchable; browser fonts also preserve Unicode
   // filenames without uploading them or fetching a font during export.
@@ -63,8 +76,20 @@ export async function createPdfReport(report) {
       if(pageNumber++)doc.addPage('a4',orientation);
       else {doc.deletePage(1);doc.addPage('a4',orientation);}
       const width=doc.internal.pageSize.getWidth(),height=doc.internal.pageSize.getHeight();
-      const margin=12,contentWidth=width-24,statsWidth=landscape?70:60;
-      const imageAreaWidth=contentWidth-statsWidth-8,imageAreaHeight=landscape?106:height-64;
+      const margin=12,contentWidth=width-24,notesLimit=height-19;
+      const notes=[frame.analysis?.guide,...(frame.analysis?.observations||frame.observations||[])].filter(Boolean);
+      if(frame.source==='sampled')notes.unshift('Range preview: not a detected swing phase.');
+      else if(frame.source==='estimated')notes.unshift('Automatic phase estimate. Verify the event in your video.');
+      if(!frame.source&&report.clips.length===2)notes.unshift(report.linked?'Videos synchronized at the selected event.':'Videos positioned independently.');
+      // Measure the full checklist before placing it. Give longer portrait
+      // evaluations a wider side column; landscape pages use two columns
+      // beneath the image. Never truncate findings or add a duplicate page.
+      let statsWidth=70;
+      if(!landscape)while(statsWidth<102&&notes.reduce((n,note)=>n+noteHeight(note,statsWidth),0)>notesLimit-158)statsWidth+=4;
+      const imageAreaWidth=contentWidth-statsWidth-8;
+      const noteColumns=landscape?splitNotes(notes,(imageAreaWidth-6)/2):{columns:[notes],height:0};
+      const notesY=landscape?notesLimit-noteColumns.height-6:152;
+      const imageAreaHeight=landscape?Math.min(106,notesY-50):height-64;
       const imageWidth=Math.min(imageAreaWidth,imageAreaHeight*ratio),imageHeight=imageWidth/ratio;
       const imageX=margin+(imageAreaWidth-imageWidth)/2,imageY=42;
       const statsX=width-margin-statsWidth;
@@ -88,41 +113,33 @@ export async function createPdfReport(report) {
       text('2D angle',statsX+statsWidth-20,51,8,muted,false,{align:'right'});
       text('vs address',statsX+statsWidth-2,51,8,muted,false,{align:'right'});
       MEASUREMENTS.forEach(([key,label],i)=>{
-        const y=53+i*8;rect(statsX,y,statsWidth,8,i%2?'#FFFFFF':pale);
-        text(label,statsX+2,y+5.5,9);
-        text(angle(frame.measurements?.[key]),statsX+statsWidth-20,y+5.5,10,green,true,{align:'right'});
-        text(change(frame.analysis?.changes[key]),statsX+statsWidth-2,y+5.5,9,muted,false,{align:'right'});
+        const y=53+i*6;rect(statsX,y,statsWidth,6,i%2?'#FFFFFF':pale);
+        text(label,statsX+2,y+4.2,9);
+        text(angle(frame.measurements?.[key]),statsX+statsWidth-20,y+4.2,10,green,true,{align:'right'});
+        text(change(frame.analysis?.changes[key]),statsX+statsWidth-2,y+4.2,9,muted,false,{align:'right'});
       });
       const autoTempo=['address','top','impact'].some(key=>!Number.isFinite(clip.marks[key]));
-      text('Swing tempo',statsX,123,11,green,true);
+      text('Swing tempo',statsX,107,10,green,true);
       if(Number.isFinite(clip.tempo)) {
-        text(`${clip.tempo.toFixed(2)} : 1${autoTempo?' (estimated)':''}`,statsX,130,12,green,true);
-        text(`Back ${seconds(real(clip.phaseTimes.top-clip.phaseTimes.address,clip))} s / Down ${seconds(real(clip.phaseTimes.impact-clip.phaseTimes.top,clip))} s`,statsX,136,9,muted);
-      } else text('Needs address, top and impact.',statsX,131,9,muted);
-      text('Video & analysis',statsX,146,11,green,true);
-      text(`File ${clip.frameRate} FPS / Shot ${clip.recordingFrameRate} FPS`,statsX,153,10);
-      text(`${clip.viewport.zoom.toFixed(2)}x zoom${clip.mirrored?' / Mirrored':''} / ${clip.hand==='left'?'Left':'Right'}-handed`,statsX,160,9,muted);
-      text(`Area: ${clip.crop==='left'?'Left half':clip.crop==='right'?'Right half':'Full frame'}`,statsX,167,9,muted);
-      text(`Selected: ${interval(clip.selectedRange,clip)}`,statsX,174,9,muted);
-      text(`Analyzed: ${interval(clip.analyzedRange,clip)}`,statsX,181,9,muted);
-      if(clip.analyzedRange)text(`${clip.quality==='detailed'?'Detailed':'Fast'} / ${clip.measurements.length} samples / ${clip.coverage}% tracked`,statsX,188,8.5,muted);
-      const notes=[frame.analysis?.guide,...(frame.analysis?.observations||frame.observations||[])].filter(Boolean);
-      if(frame.source==='sampled')notes.unshift('Range preview: a sampled frame, not a detected swing phase.');
-      else if(frame.source==='estimated')notes.unshift('Automatic phase estimate. Verify the event in your video.');
-      if(!frame.source&&report.clips.length===2)notes.unshift(report.linked?'Videos synchronized at the selected event.':'Videos positioned independently.');
-      // Landscape footage leaves room below the image; portrait footage uses
-      // the remaining statistics column. Notes always belong to this frame.
-      const notesX=landscape?margin:statsX,notesWidth=landscape?imageAreaWidth:statsWidth;
-      let notesY=landscape?imageY+imageHeight+8:201;
-      const notesLimit=height-19;
-      if(notes.length&&notesY+8<notesLimit) {
-        text('Coaching suggestions',notesX,notesY,11,green,true);notesY+=6;
-        // The wording and status labels match the online frame report.
-        // Color reinforces the written label; it never replaces it.
-        for(const note of notes){
-          const color=note.startsWith('Looks good:')?'#256842':note.startsWith('Check this:')?'#83500A':note.startsWith('Try next:')?'#225E70':muted;
-          notesY+=wrap(note,notesX,notesY,notesWidth,9,color)+2;
-        }
+        text(`${clip.tempo.toFixed(2)} : 1${autoTempo?' (estimated)':''}`,statsX+statsWidth,107,10,green,true,{align:'right'});
+        text(`Back ${seconds(real(clip.phaseTimes.top-clip.phaseTimes.address,clip))} s / Down ${seconds(real(clip.phaseTimes.impact-clip.phaseTimes.top,clip))} s`,statsX,112,9,muted);
+      } else text('Needs address, top and impact.',statsX,112,9,muted);
+      text(`File ${clip.frameRate} FPS / Shot ${clip.recordingFrameRate} FPS`,statsX,119,9);
+      text(`${clip.viewport.zoom.toFixed(2)}x zoom${clip.mirrored?' / Mirrored':''} / ${clip.hand==='left'?'Left':'Right'}-handed`,statsX,124,9,muted);
+      text(`Area: ${clip.crop==='left'?'Left half':clip.crop==='right'?'Right half':'Full frame'}`,statsX,129,9,muted);
+      text(`Selected: ${interval(clip.selectedRange,clip)}`,statsX,134,9,muted);
+      text(`Analyzed: ${interval(clip.analyzedRange,clip)}`,statsX,139,9,muted);
+      if(clip.analyzedRange)text(`${clip.quality==='detailed'?'Detailed':'Fast'} / ${clip.measurements.length} samples / ${clip.coverage}% tracked`,statsX,144,8.5,muted);
+      if(notes.length) {
+        const notesX=landscape?margin:statsX,notesWidth=landscape?(imageAreaWidth-6)/2:statsWidth;
+        text('Swing evaluation',notesX,notesY,11,green,true);
+        noteColumns.columns.forEach((column,index)=>{
+          let y=notesY+6;const x=notesX+index*(notesWidth+6);
+          for(const note of column){
+            const color=note.startsWith('Good:')?'#256842':note.startsWith('Needs attention:')?'#83500A':note.startsWith('Try next:')?'#225E70':muted;
+            y+=wrap(note,x,y,notesWidth,noteSize,color)+2;
+          }
+        });
       }
     }
   }

@@ -2,17 +2,48 @@ import {measurements, nearestSample, visible} from './analysis.js';
 import {fileTime} from './timing.js';
 import {keyMomentEntries} from './keyframes.js';
 
-export const FEEDBACK_LABELS={good:'Looks good',check:'Check this',info:'Before judging',practice:'Try next'};
+export const FEEDBACK_LABELS={good:'Good',check:'Needs attention',info:'Check visually',unavailable:'Not enough data',practice:'Try next'};
 const median=values=>[...values].sort((a,b)=>a-b)[Math.floor(values.length/2)];
 const finding=(kind,title,body)=>({kind,title,body});
-const PHASE_ADVICE={
-  address:{title:'Start relaxed',body:'Check that your arms hang comfortably and your knees are softly flexed. A still image cannot confirm tension or balance.',practice:'Take your grip, soften your knees, then let your arms hang before settling into setup.'},
-  backswing:{title:'Keep room for the swing',body:'Check that your chest turns with your arms, rather than your hands lifting on their own.',practice:'Make three slow half backswings with a relaxed lead arm. Turn your chest with your hands.'},
-  top:{title:'Choose a comfortable backswing',body:'Check whether your arms keep lifting after your chest stops turning. More length is not always more useful.',practice:'Rehearse a shorter backswing. Stop where your chest and arms can change direction together without strain.'},
-  downswing:{title:'Avoid rushing from the top',body:'Watch the motion into this frame. A still image cannot tell whether the transition is smooth or rushed.',practice:'Pause briefly at the top in a rehearsal, then swing down smoothly. Repeat before a slow half swing.'},
-  impact:{title:'Check actual contact',body:'Step through nearby frames to find ball contact. The automatic impact marker follows hand movement, not the ball.',practice:'Make short, easy swings, continuing your chest and arms through the ball. Avoid forcing a locked lead elbow.'},
-  follow:{title:'Keep moving through the ball',body:'Check that your chest keeps turning as your arms continue through. The elbows naturally fold later in the finish.',practice:'Rehearse a slow half swing through the ball, then continue into a comfortable finish without stopping at contact.'},
-  finish:{title:'Test your finish balance',body:'Can you hold this finish without a recovery step? One frame cannot establish balance or weight distribution.',practice:'After an easy swing, hold your finish for a count of three. Reduce speed if you need a recovery step.'}
+// Restore the original phase-by-phase checklist. A checkpoint stays visible
+// even when this camera view cannot measure it; that is not a failed check.
+const CHECKS={
+  posture:['Torso posture','Check your posture in nearby frames. A changing camera view can change the apparent tilt.'],
+  leadArm:['Lead arm','Keep comfortable swing width without forcing your lead elbow straight.'],
+  knees:['Knee flex','Look for soft knee flex and a comfortable stance, without a deep squat.'],
+  wrist:['Lead wrist','Review your grip and wrist action. Body landmarks cannot establish wrist cupping or clubface direction.'],
+  alignment:['Shoulder / hip alignment','Check your setup against your target line. Image slopes cannot establish whether your body is square.'],
+  shoulderTurn:['Shoulder turn','Watch your chest turn with your arms. The shoulder line on screen does not measure your full turn.'],
+  hipTurn:['Hip turn','Review how your hips turn with the swing. The hip line on screen does not measure rotation.'],
+  separation:['Shoulders and hips','Watch their movement together in slow playback. This view cannot measure three-dimensional separation.'],
+  hinge:['Wrist hinge','Review the club and hands together. Body landmarks alone cannot judge wrist hinge or retained lag.'],
+  trailFold:['Trail elbow','Check that your elbow folds comfortably at the top. This image cannot reliably judge whether it is tucked.'],
+  leadKnee:['Lead knee','Check that your lead knee supports a comfortable turn without forcing it straight or deeply bending it.'],
+  sequence:['Hip-led transition','Watch the transition in slow playback. A still frame cannot establish which body segment starts first.'],
+  trailArm:['Trail arm','Watch your trail arm unfold toward the ball and continue through, without forcing the elbow straight.'],
+  contact:['Contact frame','Check actual contact in nearby frames. The automatic impact marker follows hands, not the ball.'],
+  finishTurn:['Body turn','Check that your chest and hips continue into a comfortable finish; avoid stopping abruptly at contact.'],
+  balance:['Finish balance','Try holding the finish for three counts without a recovery step. A still frame cannot establish balance.'],
+  leadLeg:['Lead leg','Review how your lead leg supports the finish. Avoid forcing it into a locked position.'],
+  settled:['Settled setup','Pause briefly at setup with relaxed arms. Check that your shoulders, hips and feet settle before takeaway.']
+};
+export const PHASE_CHECKS={
+  address:['posture','leadArm','knees','wrist','alignment','settled'],
+  backswing:['leadArm','shoulderTurn','separation','wrist'],
+  top:['shoulderTurn','hipTurn','separation','hinge','trailFold','leadKnee','leadArm'],
+  downswing:['sequence','hinge','separation','leadArm','trailArm'],
+  impact:['leadArm','wrist','hipTurn','posture','knees','trailArm','contact'],
+  follow:['trailArm','shoulderTurn','posture'],
+  finish:['finishTurn','balance','posture','leadLeg']
+};
+const PRACTICE={
+  address:'Take your grip, soften your knees and let your arms hang before settling into setup.',
+  backswing:'Make three slow half backswings with a relaxed lead arm. Turn your chest with your hands.',
+  top:'Rehearse a comfortable shorter backswing, with your chest and arms changing direction together.',
+  downswing:'Pause briefly at the top in a rehearsal, then swing down smoothly into a slow half swing.',
+  impact:'Make easy half swings, continuing your chest and arms through the ball without locking the lead elbow.',
+  follow:'Rehearse a slow half swing through the ball, then continue into a comfortable finish.',
+  finish:'Hold your finish for a count of three after an easy swing. Reduce speed if you need a recovery step.'
 };
 
 // These are change-detection tolerances, not ideal golf angles. Require three
@@ -45,19 +76,32 @@ function holdsPosition(slot,time,phase) {
 }
 
 export function coachingFeedback(slot,time,entry,{tracked=false}={}) {
-  const result=(findings,practice,basis)=>({findings,practice,basis});
-  if(!tracked)return result([finding('info','No reliable body tracking',slot.samples.length?'The joints are not clear enough here to judge your technique.':'Analyze this video to get feedback for this frame.')],
-    slot.samples.length?'Choose a nearby frame with visible arms and legs, or record the full body in brighter light.':'Pause near your swing and choose Analyze beside Speed.', 'Technique feedback needs visible, tracked movement.');
-  if(!entry||!['marked','estimated'].includes(entry.source)||!PHASE_ADVICE[entry.key])return result([
-    finding('info','Identify the swing moment first','This is a range preview or an unassigned frame, so phase-specific strengths and faults cannot be identified.')],
-    'Jump to a recognizable swing moment and set it on its card, or analyze a complete swing.', 'Measurements are available below; this is not a detected swing phase.');
+  // Show observed strengths and concerns first, without dropping the other
+  // phase checkpoints. Keep their phase order within each evidence group.
+  const priority=f=>['good','check'].includes(f.kind)?0:1;
+  const result=(findings,practice,basis)=>({findings:findings.sort((a,b)=>priority(a)-priority(b)),practice,basis});
+  if(!entry||!['marked','estimated'].includes(entry.source)||!PHASE_CHECKS[entry.key])return result([
+    finding('info',tracked?'Identify the swing moment first':'No reliable body tracking',tracked?
+      'This is a range preview or an unassigned frame. Set a recognizable moment to evaluate each checkpoint.':
+      slot.samples.length?'The joints are not clear enough here to judge your technique.':'Analyze this video to get feedback for this frame.')],
+    tracked?'Set a recognizable moment on its card, or analyze a complete swing.':
+      slot.samples.length?'Choose a nearby frame with visible arms and legs, or record the full body in brighter light.':'Pause near your swing and choose Analyze beside Speed.',
+    'No swing phase has been confirmed for this frame.');
 
-  const phase=entry.key,advice=PHASE_ADVICE[phase],findings=[];
-  let practice=advice.practice;
-  const moments=keyMomentEntries(slot);
-  if(['address','finish'].includes(phase)&&holdsPosition(slot,time,phase)){
-    findings.push(phase==='address'?finding('good','Settled setup','Your shoulders, hips and feet stay steady just before takeaway. Keep that settled start while letting your arms stay relaxed.'):
-      finding('good','Steady finishing position','Your shoulders, hips and feet stay steady after this frame. Build on that by holding the finish longer.'));
+  const phase=entry.key,moments=keyMomentEntries(slot);
+  const findings=PHASE_CHECKS[phase].map(key=>({...finding(tracked?'info':'unavailable',...CHECKS[key]),key}));
+  const set=(key,kind,body)=>{
+    const check=findings.find(f=>f.key===key);if(check)Object.assign(check,{kind,body});
+  };
+  let practice=PRACTICE[phase];
+  if(phase==='address')set('posture',tracked?'info':'unavailable','Lean forward comfortably from your hips with soft knees. Leave room for your arms to hang.');
+  if(phase==='impact')set('knees',tracked?'info':'unavailable','Watch how your knees move from setup through contact. Avoid forcing them straight to match a target angle.');
+  if(phase==='finish')set('posture',tracked?'info':'unavailable','Review whether you finish comfortably upright, without straining to lean back. Check the moving sequence too.');
+  if(!tracked){
+    const message=slot.samples.length?'No reliable body tracking at this frame.':'Analyze this video to get feedback for this frame.';
+    findings.forEach(f=>{f.body=message;});
+    return result(findings,slot.samples.length?'Choose a nearby frame with visible arms and legs, or record the full body in brighter light.':'Pause near your swing and choose Analyze beside Speed.',
+      'These checkpoints could not be evaluated. Missing data is not a technique fault.');
   }
   function difference(key,reference) {
     const moment=moments.find(m=>m.key===reference&&['marked','estimated'].includes(m.source)&&Number.isFinite(m.time));
@@ -67,31 +111,47 @@ export function coachingFeedback(slot,time,entry,{tracked=false}={}) {
     const before=reliableAngle(slot,moment.time,key),now=reliableAngle(slot,time,key);
     return before&&now?{change:now.value-before.value,noise:before.spread+now.spread}:null;
   }
-  if(['backswing','top','impact'].includes(phase)){
-    const arm=difference('elbow','address');
-    if(arm&&Math.abs(arm.change)<=10&&arm.noise<=12){
-      findings.push(finding('good','Consistent lead-arm shape','Your lead arm keeps a similar shape to setup in this view. Keep it relaxed as you turn.'));
-    } else if(arm&&arm.change<-Math.max(20,arm.noise)){
-      findings.push(finding('check',phase==='impact'?'Lead arm folds before contact':'Lead arm folds on the way back',
-        'Your lead arm bends more than at setup. Check for lost swing width; some bend can suit your swing.'));
-      practice=phase==='impact'?'Verify the contact frame, then try easy half swings with relaxed arms extending through the ball. Do not lock the elbow.':
-        'Try a shorter backswing with a relaxed lead arm. Compare whether it keeps more width without forcing the elbow straight.';
-    }
+  function compare(check,key,reference,onReliable) {
+    const delta=difference(key,reference);
+    if(delta)onReliable(delta);
+    else set(check,'unavailable',`Needs clear tracking here and at ${reference}. Review both frames before judging this point.`);
   }
+  if(['backswing','top','downswing','impact'].includes(phase))compare('leadArm','elbow','address',arm=>{
+    if(Math.abs(arm.change)<=10&&arm.noise<=12){
+      set('leadArm','good','Your lead arm keeps a similar shape to setup in this view. Keep it relaxed as you turn.');
+    } else if(arm.change<-Math.max(20,arm.noise)){
+      set('leadArm','check','Your lead arm bends more than at setup. Check for lost swing width; some bend can suit your swing.');
+      practice=['impact','downswing'].includes(phase)?'Verify the contact frame, then try easy half swings with relaxed arms extending through the ball. Do not lock the elbow.':
+        'Try a shorter backswing with a relaxed lead arm. Keep width without forcing the elbow straight.';
+    }
+  });
   if(['downswing','impact','follow'].includes(phase)){
-    const reference=phase==='follow'?'impact':'top',arm=difference('trailElbow',reference);
-    if(arm&&arm.change>Math.max(20,arm.noise))findings.push(finding('good','Trail arm is unfolding',
-      phase==='follow'?'Your trail arm opens after impact in this view. Let your chest keep turning as the swing continues.':
-        'Your trail arm opens from the top toward the ball. Keep that motion flowing into the follow-through.'));
-    else if(arm&&phase==='impact'&&arm.change<-Math.max(20,arm.noise)){
-      findings.push(finding('check','Trail arm folds further toward contact','Your trail arm is more bent than at the top. Verify the impact frame and check for pulling inward.'));
-    }
+    const reference=phase==='follow'?'impact':'top';
+    compare('trailArm','trailElbow',reference,arm=>{
+      if(arm.change>Math.max(20,arm.noise))set('trailArm','good',phase==='follow'?
+        'Your trail arm opens after impact in this view. Let your chest keep turning as the swing continues.':
+        'Your trail arm opens from the top toward the ball. Keep that motion flowing into the follow-through.');
+      else if(phase==='impact'&&arm.change<-Math.max(20,arm.noise)){
+        set('trailArm','check','Your trail arm is more bent than at the top. Verify contact and check for pulling inward.');
+      }
+    });
   }
-  // Keep both a strength and an attention point when both are observed.
-  // Fill remaining space with a clearly worded visual checkpoint, never a
-  // manufactured fault. Two findings plus one rehearsal stay easy to scan.
-  if(findings.length<2)findings.push(finding('check',advice.title,advice.body));
-  return result(findings,practice,`${entry.source==='estimated'?'Automatic moment; verify the frame. ':''}Suggestions use this camera view, not a swing score.`);
+  if(['impact','follow'].includes(phase))compare('posture','lean','address',torso=>{
+    if(Math.abs(torso.change)<=10&&torso.noise<=12)set('posture','good','Your torso tilt stays similar to setup in this camera view. Keep turning through comfortably.');
+    else if(Math.abs(torso.change)>Math.max(20,torso.noise))set('posture','check','Your torso tilt changes visibly from setup. Review nearby frames for rising or dipping; perspective can affect this reading.');
+  });
+  if(['backswing','impact'].includes(phase))compare('wrist','wrist','address',wrist=>{
+    if(Math.abs(wrist.change)<=10&&wrist.noise<=12)set('wrist','good','Your hand-to-forearm shape stays similar to setup in this view. This does not establish clubface direction.');
+    // A changed projected wrist angle alone is not a demonstrated swing fault.
+  });
+  // A partially tracked body must not imply every individual joint was read.
+  const required={posture:['lean'],leadArm:['elbow'],knees:['knee','trailKnee'],wrist:['wrist'],hinge:['wrist'],trailFold:['trailElbow'],leadKnee:['knee'],leadLeg:['knee']};
+  for(const [check,keys] of Object.entries(required))if(findings.some(f=>f.key===check&&f.kind==='info')&&keys.some(key=>!reliableAngle(slot,time,key))){
+    set(check,'unavailable','Tracking is unclear for this point. Choose a nearby frame where these joints are visible.');
+  }
+  if(phase==='address'&&holdsPosition(slot,time,phase))set('settled','good','Your shoulders, hips and feet stay steady before takeaway. Keep that settled start with relaxed arms.');
+  if(phase==='finish'&&holdsPosition(slot,time,phase))set('balance','good','Your shoulders, hips and feet stay steady after this frame. Build on this by holding the finish longer.');
+  return result(findings,practice,`${entry.source==='estimated'?'Automatic moment; verify the frame. ':''}Good and Needs attention describe visible evidence. Check visually means no automatic verdict.`);
 }
 
 // One wording source for the online report and every frame's PDF page.

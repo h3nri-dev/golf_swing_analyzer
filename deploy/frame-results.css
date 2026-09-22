@@ -48,16 +48,22 @@
 .key-detail-results h4 { margin:0 0 5px; font-size:18px; }
 .key-phase-guide { margin:0 0 5px; padding:6px 8px; border-left:3px solid var(--moment-color); background:#f0f5e9; font-size:16px; }
 .key-detail-results .key-posture-notes { padding-left:20px; font-size:16px; line-height:1.4; margin:6px 0; }
-.key-detail-results .key-coaching { list-style:none; display:grid; gap:8px; margin:10px 0; padding:0; }
-.key-feedback { padding:10px 12px; border:1px solid #d6dece; border-left:4px solid #7b8b7b; border-radius:6px; background:#f4f6f1; color:#243b2d; overflow-wrap:anywhere; }
-.key-feedback-label { display:block; font-size:14px; font-weight:750; margin-bottom:3px; }
+.key-evaluation-summary { margin:4px 0 8px; color:#53664f; font-size:14px; line-height:1.4; }
+.key-detail-results .key-coaching { list-style:none; display:grid; gap:0; margin:8px 0; padding:0; }
+.key-feedback { display:flex; align-items:flex-start; gap:9px; padding:10px 0; border-bottom:1px solid #d6dece; color:#243b2d; overflow-wrap:anywhere; }
+.key-feedback-icon { display:grid; place-items:center; flex:none; width:24px; height:24px; border-radius:50%; background:#e9eee6; color:#53664f; font-size:17px; font-weight:750; }
+.key-feedback-content { min-width:0; flex:1; }
+.key-feedback-heading { display:flex; flex-wrap:wrap; gap:0 7px; align-items:baseline; }
+.key-feedback-label { font-size:14px; font-weight:750; color:#53664f; }
 .key-feedback strong { font-weight:650; }
-.key-feedback-good { border-left-color:#287749; background:#eef7ed; }
+.key-feedback-body { display:block; margin-top:3px; }
 .key-feedback-good .key-feedback-label { color:#22643d; }
-.key-feedback-check { border-left-color:#aa6a13; background:#fff7e8; }
+.key-feedback-good .key-feedback-icon { background:#dfefdf; color:#22643d; }
 .key-feedback-check .key-feedback-label { color:#83500a; }
-.key-feedback-practice { border-left-color:#26758a; background:#edf6f9; }
-.key-feedback-practice .key-feedback-label { color:#225e70; }
+.key-feedback-check .key-feedback-icon { background:#ffedcb; color:#83500a; }
+.key-feedback-practice { border:0; border-radius:6px; padding:10px; margin-top:10px; background:#edf6f9; }
+.key-feedback-practice .key-feedback-label,.key-feedback-practice .key-feedback-icon { color:#225e70; }
+.key-feedback-practice .key-feedback-icon { background:#d9edf2; }
 .key-detail-results h5 { font-size:16px; margin:16px 0 8px; }
 .key-coaching-basis { font-size:14px; line-height:1.4; color:#53664f; margin:8px 0; }
 .key-detail-metrics { width:100%; border-collapse:collapse; font-size:16px; color:#253e2e; }
@@ -102,19 +108,21 @@
 /* Full analysis belongs alongside the enlarged frame, with its edit controls.
    This avoids pushing the measurements and navigation below a tall image. */
 @media(min-width:1000px) {
-  .key-review-panel { display:grid; grid-template-columns:minmax(0,1fr) minmax(310px,.85fr); align-content:start; }
+  .key-review-dialog[open] { display:flex; flex-direction:column; height:min(1040px,calc(100dvh - 24px)); overflow:hidden; }
+  .key-review-dialog::before,.key-review-dialog>header,.key-review-dialog>nav,.key-review-note { flex:none; }
+  .key-review-panels { flex:1; min-height:0; }
+  .key-review-panel { display:grid; grid-template-columns:minmax(0,1fr) minmax(310px,.85fr); grid-template-rows:auto auto minmax(0,1fr) auto auto; min-height:0; }
   .key-review-panel>h3 { grid-column:1/-1; }
   .key-large-frame { grid-column:1; grid-row:2/6; height:100%; min-height:0; }
   .key-large-frame canvas { position:absolute; inset:0; }
   .key-detail-line { grid-column:2; grid-row:2; }
-  .key-review-panel>.key-detail-results { grid-column:2; grid-row:3; }
+  .key-review-panel>.key-detail-results { grid-column:2; grid-row:3; min-height:0; overflow:auto; overscroll-behavior:contain; padding-bottom:10px; scrollbar-gutter:stable; }
   .key-edit-controls { grid-column:2; grid-row:4; }
   .key-review-actions { grid-column:2; grid-row:5; }
   .key-review-panel:has(canvas[hidden]) .key-large-frame { min-height:200px; }
 }
 @media(min-width:1000px) and (max-width:1399px) {
-  .paired-review .key-review-panel { display:block; }
-  .paired-review .key-large-frame { height:240px; }
+  .paired-review .key-review-panel { grid-template-columns:minmax(130px,.7fr) minmax(240px,1fr); }
 }
 @media(max-width:900px) {
   .key-filmstrip { grid-template-columns:repeat(2,minmax(0,1fr)); }

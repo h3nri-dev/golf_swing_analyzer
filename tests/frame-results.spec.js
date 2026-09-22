@@ -35,7 +35,7 @@ test('each keyframe shows results immediately; edits, handedness and PDF use the
  await page.getByRole('button',{name:'Full Impact analysis',exact:true}).click();
  const panel=page.locator('[data-review-slot="0"]');await expect(panel.locator('[data-frame-metric]')).toHaveCount(8);await expect(panel.locator('.key-phase-guide')).toContainText('ball contact');
  await expect(panel.locator('.key-feedback-practice')).toContainText('Try next:');
- await expect(panel.locator('.key-feedback-check')).toContainText('Check actual contact');
+ await expect(panel.locator('[data-checkpoint=contact]')).toContainText('Check actual contact');
  const frame=page.getByRole('spinbutton',{name:'Key moment frame',exact:true});await frame.fill('20');await frame.press('Tab');
  const edited=(await data(page)).keyMoments.find(e=>e.key==='impact');await expect(panel.locator('[data-frame-metric=elbow] td').first()).toHaveText(angle(edited.analysis.measurements.elbow));
  await page.screenshot({path:'/tmp/frame-results-detail.png'});await page.keyboard.press('Escape');await checkCards(page);
@@ -72,7 +72,7 @@ test('single and paired results stay readable beside the videos across screen si
   const content=pages[i*8+j+1];expect(content).toContain(`(Swing ${i?'B':'A'} / ${frame.label})`);expect(content).toContain('vs address');
   if(frame.analysis.guide)expect(text(content)).toContain(frame.analysis.guide);
   for(const observation of frame.analysis.observations)expect(text(content)).toContain(observation);
-  expect(content).toContain('Coaching suggestions');
+  expect(content).toContain('Swing evaluation');
  }
  for(const [i,clip] of before.entries())expect((await data(page,i)).keyMoments).toEqual(clip.keyMoments);
 });
@@ -155,4 +155,34 @@ test('open reports adapt to mode and size changes, refresh after analysis and ex
  await analyze(page,0);await expect(report).toBeVisible();const renewed=(await data(page)).keyMoments.find(e=>e.key==='impact');expect(renewed.source).toBe('estimated');
  for(const [key,value] of Object.entries(renewed.analysis.measurements))await expect(report.locator(`[data-frame-metric="${key}"] td`).first()).toHaveText(angle(value));
  expect((await data(page,1)).keyMoments.find(e=>e.key==='impact').source).toBe('marked');
+});
+
+test('analysis popup restores every phase checkpoint, retains visible frame controls and resets reading position',async({page})=>{
+ await setup(page,true);await analyze(page,0);await analyze(page,1);
+ const original=await data(page),panel=page.locator('[data-review-slot="0"]'),dialog=page.locator('#keyMomentDialog');
+ await page.locator('.key-card[data-key=impact] .key-card-title').click();
+ for(const [i,frame] of original.keyMoments.entries()){
+  await dialog.locator('nav button').nth(i).click();
+  await expect(panel.locator('[data-checkpoint]')).toHaveCount(frame.analysis.coaching.findings.length);
+  for(const finding of frame.analysis.coaching.findings){
+   const row=panel.locator(`[data-checkpoint="${finding.key}"]`);
+   await expect(row).toHaveClass(new RegExp(`key-feedback-${finding.kind}`));await expect(row).toContainText(finding.title);await expect(row).toContainText(finding.body);
+  }
+  expect(await panel.locator('.key-detail-results').evaluate(e=>e.scrollTop)).toBe(0);
+  await panel.locator('.key-detail-results').evaluate(e=>e.scrollTop=e.scrollHeight);
+ }
+ for(const [width,height] of [[1440,900],[1280,720],[390,844]]){
+  await page.setViewportSize({width,height});await dialog.locator('nav button').nth(4).click();
+  await expect(panel.locator('canvas')).toBeVisible();
+  expect(await dialog.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+  if(width>=1000){
+   const image=await panel.locator('.key-large-frame').boundingBox(),actions=await panel.locator('.key-review-actions').boundingBox();
+   expect(image.height).toBeGreaterThan(250);expect(actions.y+actions.height).toBeLessThanOrEqual(height);
+   await expect(panel.locator('.key-play-from')).toBeInViewport();
+  }
+  await page.screenshot({path:`/tmp/evaluation-popup-compare-${width}.png`});
+ }
+ await page.keyboard.press('Escape');await page.setViewportSize({width:1280,height:720});await page.locator('#singleMode').click();
+ await page.getByRole('button',{name:'Full Impact analysis',exact:true}).click();await expect(panel.locator('canvas')).toBeVisible();
+ await expect(panel.locator('.key-play-from')).toBeInViewport();await page.screenshot({path:'/tmp/evaluation-popup-single-1280.png'});
 });
