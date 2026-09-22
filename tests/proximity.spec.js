@@ -58,6 +58,7 @@ test('the nearby range target preserves per-clip ranges, independent playback an
     await page.setViewportSize({width,height}); await page.locator('#studio').evaluate(e=>e.scrollIntoView({block:'start'}));
     await expect.poll(async()=>(await slot(page,0).locator('.stage').boundingBox()).height).toBeGreaterThan(minStage);
     await expect(page.locator('#analyze')).toBeInViewport(); await expect(page.locator('.key-card').last()).toBeInViewport();
+    await expect(page.locator('#studioFooter a[href="privacy.html"]')).toBeInViewport();
     const footer=await page.locator('.screen-transport').boundingBox(); expect(footer.y+footer.height).toBeLessThanOrEqual(height+1);
     await page.screenshot({path:`/tmp/range-reviewed-${width}.png`});
   }

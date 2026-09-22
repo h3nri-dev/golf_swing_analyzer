@@ -6,6 +6,8 @@ Reviewed the production version at commit `4c826ea`, performed a task walkthroug
 
 The user's requirements remain constraints: two modes, local processing, persistent zoom, drawing beside the video, independent playback, selectable analysis ranges, a screen-sized desktop workspace with scroll snapping, and all control sections permanently expanded. The latest user request places Range immediately above playback; the other four remain in the right column.
 
+The lower full-screen introduction/guide has moved into an About dialog. It previously created an unwanted scroll-snap destination beyond the players. The studio now ends the page on desktop, while privacy, terms and cookie settings share the existing status row. About is visible beside the logo/domain immediately after the mode buttons and also available from Help. The same logo/domain sits in each video's lower corner without capturing pointer events or moving with zoom. On phones, the full domain remains readable and expanded controls follow a minimum-height video area; legal links follow the controls. This change preserves natural mobile scrolling instead of clipping controls or squeezing the footage to fit branding.
+
 ## Tasks used to judge the interface
 
 1. Open one clip, pause it, draw a reference line, undo it, and save the annotated image.

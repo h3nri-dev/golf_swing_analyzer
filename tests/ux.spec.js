@@ -85,9 +85,10 @@ for(const [width,height] of [[390,844],[320,568],[844,390]]) {
     }
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     const footer=await page.locator('.screen-transport').boundingBox();
-    if(height>=800) expect(footer.y+footer.height).toBeLessThanOrEqual(height+1);
+    if(footer.y+footer.height<=height+1) await expect(page.locator('#play')).toBeInViewport();
     else {
-      // Tiny/landscape phones stack the controls rather than flattening the videos.
+      // Phone branding and the full drawing rail keep a usable minimum video
+      // height; playback and range controls follow immediately in normal flow.
       expect(footer.height).toBeLessThan(height);
       await page.locator('#commonPlayer').scrollIntoViewIfNeeded();
       await expect(page.locator('#play')).toBeInViewport();

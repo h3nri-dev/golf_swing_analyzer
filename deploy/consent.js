@@ -116,7 +116,7 @@ document.addEventListener('click', event => {
   const settings = event.target.closest('[data-cookie-settings]');
   if (!settings) return;
   const parentDialog = settings.closest('dialog');
-  returnFocus = parentDialog?.id === 'helpDialog' ? document.getElementById('workspaceHelp') : parentDialog?.id === 'privacyDialog' ? document.getElementById('privacy') : settings;
+  returnFocus = parentDialog?.id === 'helpDialog' ? document.getElementById('workspaceHelp') : parentDialog?.id === 'privacyDialog' ? document.getElementById('privacy') : parentDialog?.id === 'aboutDialog' ? document.getElementById('workspaceBrand') : settings;
   parentDialog?.close();
   if (!dialog.open) dialog.showModal();
 });

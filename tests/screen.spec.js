@@ -25,6 +25,10 @@ for(const [width,height] of [[1440,900],[1280,720],[2560,1440],[390,844],[320,56
       if(width>900) expect(await page.evaluate(()=>scrollY)).toBeCloseTo(top,0);
     }
     await focusVideos(page);
+    await expect(page.locator('#workspaceBrand')).toBeInViewport();
+    await expect(page.locator('.video-brand').first()).toBeVisible();
+    const brand=await page.locator('#workspaceBrand').evaluate(e=>({w:e.clientWidth,sw:e.scrollWidth}));
+    expect(brand.sw,'branding fits without squeezing the mode buttons').toBeLessThanOrEqual(brand.w+1);
     const side=await page.locator('#analysisPanel').boundingBox(),review=await page.locator('#workspace').boundingBox();
     if(width>900) {
       expect(side.x).toBeGreaterThanOrEqual(review.x+review.width-1);
@@ -42,7 +46,7 @@ for(const [width,height] of [[1440,900],[1280,720],[2560,1440],[390,844],[320,56
     expect(errors).toEqual([]);
   });
 }
-test('desktop scroll snapping and persistent sections preserve playback and zoom',async({page})=>{
+test('desktop scrolling ends at the workspace and preserves playback, zoom and legal access',async({page})=>{
   await page.goto('/');await page.mouse.wheel(0,170);await page.waitForTimeout(700);
   expect(Math.abs((await page.locator('#studio').boundingBox()).y)).toBeLessThan(1);
   await page.locator('input[type=file]').first().setInputFiles(new URL('./fixtures/portrait.mp4',import.meta.url).pathname);
@@ -55,5 +59,47 @@ test('desktop scroll snapping and persistent sections preserve playback and zoom
   expect(await page.evaluate(()=>scrollY)).toBeCloseTo(top,0);
   await page.keyboard.press('Escape');await expect(page.locator('#analysisPanel')).toBeVisible();
   await page.mouse.move(30,20);await page.mouse.wheel(0,1200);await page.waitForTimeout(700);
-  expect((await page.locator('#studio').boundingBox()).y).toBeLessThan(-500);
+  expect(Math.abs((await page.locator('#studio').boundingBox()).y)).toBeLessThan(1);
+  await expect(page.locator('#workspaceBrand')).toBeInViewport();
+  await expect(page.locator('#play')).toBeInViewport();
+  await expect(page.locator('#studioFooter a[href="privacy.html"]')).toBeInViewport();
+  await expect(page.locator('#studioFooter a[href="terms.html"]')).toBeInViewport();
+  await expect(page.locator('#studioFooter [data-cookie-settings]')).toBeInViewport();
+  // Scrolling past the end of the inspector must not move the video workspace.
+  await page.locator('#analysisPanel').evaluate(e=>{e.scrollTop=e.scrollHeight;});
+  const inspector=await page.locator('#analysisPanel').boundingBox();
+  await page.mouse.move(inspector.x+40,inspector.y+40);await page.mouse.wheel(0,1600);await page.waitForTimeout(300);
+  expect(Math.abs((await page.locator('#studio').boundingBox()).y)).toBeLessThan(1);
 });
+
+for(const [width,height] of [[1440,900],[390,844]]) {
+  test(`About holds the former guide without losing the video session at ${width}×${height}`,async({page})=>{
+    await page.setViewportSize({width,height});await page.goto('/');
+    await page.locator('input[type=file]').first().setInputFiles(new URL('./fixtures/portrait.mp4',import.meta.url).pathname);
+    await expect(page.locator('video').first()).toBeVisible();
+    await page.locator('.zoom-slider').first().fill('2');await focusVideos(page);
+    const before=await page.locator('video').first().evaluate(v=>({src:v.src,time:v.currentTime}));
+    const scroll=await page.evaluate(()=>scrollY);
+    await page.locator('#workspaceBrand').click();
+    await expect(page.getByRole('dialog',{name:'About Swing Studio'})).toBeVisible();
+    await expect(page.locator('#aboutDialog article')).toHaveCount(3);
+    await expect(page.locator('main > .guide')).toHaveCount(0);
+    await expect(page.locator('#closeAbout')).toBeFocused();
+    await page.locator('#aboutDialog').evaluate(e=>{e.scrollTop=e.scrollHeight;});
+    await expect(page.locator('#aboutDialog [data-cookie-settings]')).toBeInViewport();
+    await expect(page.locator('#closeAbout')).toBeInViewport();
+    const size=await page.locator('#aboutDialog').evaluate(e=>({w:e.clientWidth,sw:e.scrollWidth}));
+    expect(size.sw).toBeLessThanOrEqual(size.w+1);
+    await page.screenshot({path:`/tmp/studio-about-${width}.png`});
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#workspaceBrand')).toBeFocused();
+    expect(await page.evaluate(()=>scrollY)).toBeCloseTo(scroll,0);
+    expect(await page.locator('video').first().evaluate(v=>({src:v.src,time:v.currentTime}))).toEqual(before);
+    await expect(page.locator('.zoom-value').first()).toHaveText('2.00×');
+    await page.locator('#workspaceBrand').click();
+    await page.locator('#aboutDialog [data-cookie-settings]').click();
+    await expect(page.locator('#aboutDialog')).toBeHidden();
+    await expect(page.locator('#cookieDialog')).toBeVisible();
+    await page.keyboard.press('Escape');await expect(page.locator('#workspaceBrand')).toBeFocused();
+  });
+}

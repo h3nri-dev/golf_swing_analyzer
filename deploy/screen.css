@@ -1,6 +1,6 @@
-/* The studio is a viewport-sized stop; the guide remains reachable by scrolling. */
+/* The studio is the final viewport-sized stop; background information is in About. */
 html { scroll-snap-type: y mandatory; scroll-padding: 0; }
-.site-header, .studio, .guide { scroll-snap-align: start; }
+.site-header, .studio { scroll-snap-align: start; }
 .studio { scroll-snap-stop: always; }
 main { padding-inline: 12px; }
 .studio.screen-ready { height: 100dvh; display: grid; grid-template-rows: auto minmax(0,1fr) auto; border-radius: 12px; overflow: hidden; }
@@ -254,8 +254,6 @@ main { padding-inline: 12px; }
   .screen-ready .dropzone .upload-icon, .screen-ready .dropzone .drop-description, .screen-ready .dropzone .file-types { display: none; }
   .screen-ready .dropzone { gap: 6px; }
 }
-/* A full guide section provides a clean second snap destination. */
-.guide { min-height: 100dvh; align-content: center; }
 @media (max-width: 600px) and (max-height: 740px) {
   .screen-ready .analysis-panel { top: 0; bottom: 0; right: 3px; max-width: calc(100% - 6px); padding: 8px; }
   .screen-ready .range-heading { display: none; }

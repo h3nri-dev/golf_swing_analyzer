@@ -38,6 +38,17 @@
 .screen-ready .screen-video-settings .fps-label select { min-width: 100px; }
 .screen-ready #resultsEmpty { background: #f0f4e8; padding: 12px; border-radius: 8px; font-size: 16px; }
 /* Native dialogs preserve focus and provide a predictable Escape route. */
+.header-right > button { margin-left: 24px; font-size: 16px; }
+#aboutDialog { width: min(640px, calc(100vw - 24px)); max-width: 640px; padding: 22px; }
+#aboutDialog .task-dialog-heading { position: sticky; top: -22px; z-index: 1; margin: -22px -22px 0; padding: 16px 22px; background: #fff; border-bottom: 1px solid var(--line); }
+.about-brand { display: flex; align-items: center; gap: 10px; overflow-wrap: anywhere; }
+.about-brand img { flex: none; }
+.about-guide { margin: 24px 0; border-top: 1px solid var(--line); }
+.about-guide h3 { font-size: 20px; margin: 20px 0 16px; }
+.about-guide article { display: flex; gap: 14px; margin: 18px 0; }
+.about-guide article > span { font-size: 14px; color: #526846; padding-top: 3px; }
+.about-guide h4 { margin: 0 0 6px; font-size: 18px; }
+.about-guide article p { margin: 0; }
 .task-dialog { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 22px; border-radius: 14px; background: #fff; overflow: auto; overscroll-behavior: contain; }
 .task-dialog h2 { margin: 0; font-size: 23px; }
 .task-dialog p { color: #53634c; font-size: 16px; line-height: 1.45; }

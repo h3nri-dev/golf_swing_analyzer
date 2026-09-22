@@ -2,6 +2,15 @@
 const $ = id => document.getElementById(id);
 
 export function createTaskHelp({ screen, compare }) {
+  const about = $('aboutDialog');
+  $('closeAbout').onclick = () => about.close();
+  document.querySelectorAll('[data-open-about]').forEach(button => {
+    button.onclick = () => {
+      const parentDialog = button.closest('dialog');
+      if (parentDialog) { parentDialog.close(); $('workspaceHelp').focus({ preventScroll: true }); }
+      about.showModal();
+    };
+  });
   const dialog = $('helpDialog');
   $('workspaceHelp').onclick = () => dialog.showModal();
   $('closeHelp').onclick = () => dialog.close();

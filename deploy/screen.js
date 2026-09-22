@@ -93,6 +93,13 @@ export function createStudioScreen({ slots, state, changed }) {
   const sections=document.createElement('div');sections.className='sidebar-sections';sections.append(...Object.entries(panels).filter(([id])=>id!=='range').map(([,panel])=>panel));
   inspector.replaceChildren(inspectorHeader,sections);
   inspector.hidden=false;studio.append(inspector);
+  // End the page at the workspace. Legal links stay visible without creating
+  // another scrolling destination beyond the video controls.
+  const legalFooter = $('studioFooter');
+  const desktop = matchMedia('(min-width: 901px)');
+  const placeLegalFooter = () => (desktop.matches ? notice : studio).append(legalFooter);
+  desktop.addEventListener('change', placeLegalFooter);
+  placeLegalFooter();
   // A compact range editor stays readable even on a phone-sized controls panel.
   $('rangeTitle').textContent='10-second analysis window';
   $('rangeSetStart').textContent=$('rangeSetEnd').textContent='Set';
