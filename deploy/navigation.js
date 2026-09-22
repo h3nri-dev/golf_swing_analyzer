@@ -65,14 +65,18 @@ export function createMomentNavigation({slots,state,jump,jumpCommon,stepLocal,st
       // saved bounds through the corresponding local or common controller.
       track.min=toReal(bounds.start);track.max=toReal(bounds.end)||1;track.value=toReal(time||0);
       const windowRate=i<2?(s.shotFps??s.fps)/s.fps:controller.rate;
-      const [start,end]=busy?[s.start,s.end]:windowAt(time,s.ready?s.video.duration:0,windowRate);
+      // Review shows the complete saved interval. Only the playhead moves;
+      // the following window belongs to Full video when choosing a new scan.
+      const [start,end]=bounds.focused?[bounds.start,bounds.end]:busy?[s.start,s.end]:windowAt(time,s.ready?s.video.duration:0,windowRate);
       const percent=t=>Math.max(0,Math.min(100,(t-bounds.start)/(bounds.end-bounds.start||1)*100));
       item.rail.hidden=!s.ready;
       const band=item.rail.querySelector('.timeline-window');
       band.style.left=`${percent(start)}%`;band.style.width=`${percent(end)-percent(start)}%`;
       item.rail.querySelector('.timeline-playhead').style.left=`${percent(time)}%`;
       item.rail.dataset.start=start;item.rail.dataset.end=end;item.rail.dataset.time=time;
-      track.title=`Drag to seek and move the green window: ${windowDescription()} (real time). Arrow keys: one frame; Shift + arrow: one second.`;
+      track.title=bounds.focused
+        ?'The full green bar is the fixed analyzed range. Drag to move the playhead within it. Arrow keys: one frame; Shift + arrow: one second.'
+        :`Drag to seek and move the green window: ${windowDescription()} (real time). Arrow keys: one frame; Shift + arrow: one second.`;
       controls.hidden=!bounds.available;wrapper.classList.toggle('has-review',bounds.available&&!compact);wrapper.classList.toggle('is-focused',bounds.focused&&!compact);host.classList.toggle('has-timeline-review',bounds.available);
       controls.querySelector('.timeline-scopes').setAttribute('aria-label',`${i===2&&mode==='compare'?'Both videos':mode==='compare'?`Swing ${index?'B':'A'}`:'Video'} timeline view`);
       controls.querySelector('.timeline-range').setAttribute('aria-pressed',bounds.focused);

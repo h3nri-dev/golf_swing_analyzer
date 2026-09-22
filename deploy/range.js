@@ -37,7 +37,7 @@ export function createRangeSelector({ slots, state, changed, notice }) {
   const hint=document.getElementById('analysisWindowHint');
   hint.classList.add('analysis-window-settings');
   hint.innerHTML='<span>Analyze</span><label title="Real seconds before the current frame">−<input id="analysisBefore" type="number" min="0" max="20" step="0.1" aria-label="Analysis seconds before current frame"></label><label title="Real seconds after the current frame">+<input id="analysisAfter" type="number" min="0" max="20" step="0.1" aria-label="Analysis seconds after current frame"></label><span>s</span>';
-  hint.title='Adjust real seconds before and after the playhead. Saved in this browser for both videos. Maximum total: 20 seconds.';
+  hint.title='Adjust real seconds before and after the playhead for the next analysis. Completed analyzed ranges stay fixed. Saved in this browser for both videos. Maximum total: 20 seconds.';
   const inputs=[hint.querySelector('#analysisBefore'),hint.querySelector('#analysisAfter')];
   const fill=()=>inputs.forEach((input,i)=>{input.value=settings[i?'after':'before'];});fill();
   const apply=()=>{

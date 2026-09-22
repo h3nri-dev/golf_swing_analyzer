@@ -20,9 +20,10 @@ test('single-mode window and scan selection resize immediately for recording and
  await page.screenshot({path:'/tmp/fps-window-single.png'});
  await page.locator('#analyze').click();await expect(page.locator('#status')).toContainText('No clear pose',{timeout:15000});
  expect((await data(page)).analyzedRange).toEqual([25,35]);expect(await width(rail)).toBe(100);
- await clip(page).locator('.shot-fps').selectOption('same');await windowAt(rail,27.5,32.5);await expect(page.locator('#timeline')).toHaveValue('30');
- expect(await width(rail)).toBe(50);expect((await data(page)).analyzedRange).toEqual([25,35]);
+ await clip(page).locator('.shot-fps').selectOption('same');await windowAt(rail,25,35);await expect(page.locator('#timeline')).toHaveValue('30');
+ expect(await width(rail)).toBe(100);expect((await data(page)).analyzedRange).toEqual([25,35]);expect((await data(page)).selectedRange).toEqual([27.5,32.5]);
  await page.screenshot({path:'/tmp/fps-window-single-analyzed.png'});
+ await page.locator('#commonPlayer .timeline-full').click();await windowAt(rail,27.5,32.5);expect(await width(rail)).toBeCloseTo(original,3);
 });
 
 for(const clock of [0,1])test(`Sync off refreshes swing ${clock?'B':'A'} calibration without adopting its independently moved playhead`,async({page})=>{
