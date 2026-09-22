@@ -109,3 +109,17 @@ export function keyMomentEntries(slot) {
 export function phaseTimes(slot) {
   return Object.fromEntries(keyMomentEntries(slot).filter(e=>['marked','estimated'].includes(e.source)&&Number.isFinite(e.time)).map(e=>[e.key,e.time]));
 }
+
+// Use the first numbered phase present in both clips, rather than pairing
+// unrelated phases or treating an unconfirmed range preview as a marker.
+export function firstSharedMoment(slots) {
+  if (slots.length < 2) return null;
+  const phases = slots.map(phaseTimes);
+  for (const [key, label] of KEY_MOMENTS) {
+    const times = phases.map(values => values[key]);
+    if (times.every((time, i) => Number.isFinite(time) && time >= 0 && time < slots[i].video.duration)) {
+      return { key, label, times };
+    }
+  }
+  return null;
+}

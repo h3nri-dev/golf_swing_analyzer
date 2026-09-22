@@ -3,7 +3,7 @@ import { clamp, visible, measurements, frameTime, tempo, nearestSample, smoothSa
 import { mediaRate, synchronization, realTime, fileTime, frameStamp, frameNumber, seconds } from './timing.js';
 import { detectFileFrameRate } from './file-fps.js';
 import { createMoments } from './moments.js';
-import { PRIMARY_MOMENTS, suggestKeyMoments, keyMomentEntries, phaseTimes } from './keyframes.js';
+import { PRIMARY_MOMENTS, suggestKeyMoments, keyMomentEntries, phaseTimes, firstSharedMoment } from './keyframes.js';
 import { createKeyframeViews } from './keyframe-views.js';
 import { createAnnotations } from './annotations.js';
 import { defaultReview, drawReview, drawPose, cropRegion, mapCropPoints, postureNotes, frameAnalysis } from './review.js';
@@ -21,7 +21,7 @@ const $ = id => document.getElementById(id);
 const names = ['A', 'B'];
 const frameRates = [23.976,24,25,29.97,30,50,59.94,60,100,120,240];
 const phases = PRIMARY_MOMENTS;
-let mode = 'single', active = 0, linked = true, offset = 0, aligned = false, job = null;
+let mode = 'single', active = 0, linked = true, offset = 0, aligned = false, alignmentLabel = '', job = null;
 // With sync off, the common controller owns its last group command. Local
 // controls release its live updates without changing the displayed state.
 const commonTransport = { following: false, clock: 0, time: 0, duration: 1, rate: 1, fps: 30, speed: '1', playing: false };
@@ -146,7 +146,12 @@ function setSpeed(speed, both = false) {
   update();
 }
 function setLinked(next) {
-  if (job || linked === next) return;
+  if (job) return;
+  if (next && mode === 'compare' && slots.every(s => s.ready)) {
+    const marker = firstSharedMoment(slots);
+    if (marker) return alignFrames(marker.times, marker.label);
+  }
+  if (linked === next) return;
   if (next) pauseAll();
   // Unlink without interrupting playback; pending group play requests no longer own both clips.
   else slots.forEach(s => s.playGeneration++);
@@ -164,7 +169,7 @@ function controlClip(index, action) {
   }
   releaseCommon(); selectSlot(index); action();
 }
-function invalidateSync() { offset = 0; aligned = false; slots.forEach(s => s.anchor = null); }
+function invalidateSync() { offset = 0; aligned = false; alignmentLabel = ''; slots.forEach(s => s.anchor = null); }
 function hasSavedWork(s, index) { return !!(s.samples.length || Object.values(s.regionResults||{}).some(r=>r.samples?.length) || Object.keys(s.marks).length || annotations?.count(index)); }
 function cropChanged(index,crop) {
   if(job)return;const s=slots[index];pauseControlled(index);annotations?.interrupt();
@@ -324,7 +329,6 @@ function update() {
   $('restart').title = $('restart').getAttribute('aria-label');
   $('restart').innerHTML = '<span aria-hidden="true">↺</span><span class="restart-word"> Restart</span>';
   $('linked').setAttribute('aria-pressed', linked); $('independent').setAttribute('aria-pressed', !linked);
-  $('syncHint').textContent = !linked ? 'Individual controls leave the common controller unchanged.' : aligned ? `Aligned · B offset ${offset >= 0 ? '+' : ''}${offset.toFixed(2)} real s` : 'Sync is locked. Individual controls turn sync off.';
   const model = isLinked() ? syncModel() : null;
   for (const id of ['previous','next']) $(id).title = model ? `Step both by ${(model.stepSeconds * 1000).toFixed(2)} ms of real time, using both frame rates` : `${id === 'next' ? 'Next' : 'Previous'} frame`;
   $('align').title = `Sync the displayed frames using each video's File FPS and Shot FPS. Use Sync off to position them first.`;
@@ -332,6 +336,9 @@ function update() {
 }
 function updatePhases() {
   const s = slots[active];
+  $('syncHint').textContent = !linked ? 'Individual controls leave the common controller unchanged.' : aligned ? `Aligned${alignmentLabel ? ` at ${alignmentLabel}` : ''} · B offset ${offset >= 0 ? '+' : ''}${offset.toFixed(2)} real s` : 'Sync is locked. Individual controls turn sync off.';
+  const firstMarker = mode === 'compare' && slots.every(s => s.ready) ? firstSharedMoment(slots) : null;
+  $('linked').title = firstMarker ? `Align both videos at ${firstMarker.label}, their first shared marker, and sync playback.` : 'Play and step both videos together. Existing sync points are kept when there is no shared marker.';
   const times=phaseTimes(s), ratio=tempo(times);
   const automatic=['address','top','impact'].some(key=>!Number.isFinite(s.marks[key]));
   $('tempo').textContent = ratio === null ? '—' : `${ratio.toFixed(2)} : 1`;
@@ -600,16 +607,16 @@ async function analyze() {
 $('singleMode').onclick = () => setMode('single'); $('compareMode').onclick = () => setMode('compare');
 document.querySelectorAll('[data-select]').forEach(b => b.onclick = () => selectSlot(Number(b.dataset.select)));
 $('linked').onclick = () => setLinked(true); $('independent').onclick = () => setLinked(false);
-function alignFrames(times=slots.map(s=>s.video.currentTime)) {
+function alignFrames(times=slots.map(s=>s.video.currentTime), label='') {
   if (job || !slots.every(s => s.ready)) return;
   pauseAll();
   const next = times[1] / timingRate(slots[1]) - times[0] / timingRate(slots[0]);
   if (!synchronization(timingClips(), next)) return toast('Choose frames with video remaining in both clips.');
   slots.forEach((s,i) => { s.anchor = times[i]; });
-  offset = next; aligned = true; linked = true;
+  offset = next; aligned = true; alignmentLabel = label; linked = true;
   setSpeed(slots[active].speed);
   slots.forEach(s => { s.video.currentTime = s.anchor; });
-  update(); toast('Aligned to these frames. Play both to compare.');
+  update(); toast(label ? `Aligned at ${label}, the first shared marker. Play both to compare.` : 'Aligned to these frames. Play both to compare.');
 }
 $('align').onclick=()=>alignFrames();
 $('timeline').oninput = e => seekBoth(Number(e.target.value) * commonState().rate); $('play').onclick = () => togglePlay(true);
