@@ -70,11 +70,6 @@
 .timeline-moments button { pointer-events:auto; position:absolute; transform:translateX(-50%); width:12px; height:12px; min-height:12px; padding:0; border:1px solid #fff; border-radius:50%; background:var(--moment-color); box-shadow:0 0 0 1px #24402e60; }
 .timeline-moments button:hover,.timeline-moments button:focus-visible { z-index:3; transform:translateX(-50%) scale(1.5); }
 #loopRange { white-space:nowrap; }
-@media(min-width:1180px){
-  .key-portrait:not(.is-compare) .key-filmstrip { grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(4,minmax(0,1fr)); }
-  .key-portrait:not(.is-compare) .key-card:last-child { grid-column:1/-1; }
-  .key-portrait:not(.is-compare) .key-moment-strip:not(.has-previews) .key-filmstrip { grid-template-rows:repeat(4,auto); }
-}
 @media(min-width:901px) and (max-height:820px){
   .persistent-sidebar .drawing-tools button { min-height:30px; height:30px; font-size:0; }
   .persistent-sidebar .drawing-tools svg { width:19px; height:19px; }

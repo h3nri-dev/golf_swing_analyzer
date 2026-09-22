@@ -30,7 +30,7 @@
 }
 @media (min-width: 1180px) {
   .key-portrait:not(.is-compare) .moment-cell .key-frame { min-height: 0; }
-  .key-portrait:not(.is-compare) .key-moment-strip:not(.has-previews) .key-filmstrip { flex: none; grid-template-rows: repeat(3,auto); }
+  .key-portrait:not(.is-compare) .key-moment-strip:not(.has-previews) .key-filmstrip { flex: none; grid-template-rows: repeat(2,auto); }
   .key-portrait:not(.is-compare) .key-moment-strip:not(.has-previews) .key-card-frames { flex: none; min-height: 68px; }
 }
 @media (max-width: 900px) {
