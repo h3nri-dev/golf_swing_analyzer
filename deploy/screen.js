@@ -27,6 +27,7 @@ export function createStudioScreen({ slots, state, changed }) {
   commands.append(context, $('analyze'), $('cancel'));
   const notice = document.createElement('div'); notice.className = 'screen-notice';
   notice.append($('status'), $('drawingHint'), $('progress')); footer.append(notice);
+  footer.append(document.querySelector('[data-consent-banner]'));
   const resultsAction = document.createElement('button'); resultsAction.id = 'viewResults'; resultsAction.textContent = 'View results'; resultsAction.hidden = true;
   resultsAction.onclick = () => focusSection('pose');
   notice.append(resultsAction);
@@ -87,9 +88,8 @@ export function createStudioScreen({ slots, state, changed }) {
     s.get('.clip-frame-controls').insertBefore(s.get('.clip-play'),s.get('.clip-next'));
   });
   const inspectorHeader=document.createElement('div');inspectorHeader.className='sidebar-heading';
-  inspectorHeader.innerHTML='<h2>Tools & analysis</h2>';
   const target=panels.draw.querySelector('.drawing-target');
-  inspectorHeader.append(target);
+  panels.draw.querySelector('.section-heading').append(target);
   const sections=document.createElement('div');sections.className='sidebar-sections';sections.append(...Object.entries(panels).filter(([id])=>id!=='range').map(([,panel])=>panel));
   inspector.replaceChildren(inspectorHeader,sections);
   inspector.hidden=false;studio.append(inspector);
@@ -97,6 +97,14 @@ export function createStudioScreen({ slots, state, changed }) {
   // another scrolling destination beyond the video controls.
   const legalFooter = $('studioFooter');
   const desktop = matchMedia('(min-width: 901px)');
+  // No full-width title row on desktop: session controls share the existing
+  // inspector. On phones keep the mode switch above the players, in one row.
+  const placeSessionControls = () => {
+    if (desktop.matches) inspectorHeader.append(heading);
+    else studio.prepend(heading);
+  };
+  desktop.addEventListener('change', placeSessionControls);
+  placeSessionControls();
   const placeLegalFooter = () => (desktop.matches ? notice : studio).append(legalFooter);
   desktop.addEventListener('change', placeLegalFooter);
   placeLegalFooter();
@@ -122,7 +130,7 @@ export function createStudioScreen({ slots, state, changed }) {
   const observer=new ResizeObserver(()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;changed();});});
   slots.forEach(s=>observer.observe(s.stage));
   const footerObserver=new ResizeObserver(()=>{
-    const total=Math.ceil(footer.getBoundingClientRect().height+heading.getBoundingClientRect().height+2);
+    const total=Math.ceil(footer.getBoundingClientRect().height+(desktop.matches?0:heading.getBoundingClientRect().height)+2);
     studio.style.setProperty('--review-chrome-height',`${total}px`);
   });
   footerObserver.observe(footer);footerObserver.observe(heading);

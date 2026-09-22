@@ -1,4 +1,4 @@
-import { PRIMARY_MOMENTS as MOMENTS, MOMENT_COLORS, momentSource } from './keyframes.js';
+import { MOMENT_COLORS, momentSource } from './keyframes.js';
 import { seconds, frameNumber } from './timing.js';
 import { MEASUREMENTS } from './analysis.js';
 
@@ -15,126 +15,122 @@ function pdfLibrary() {
   return library;
 }
 
+const BRAND = 'FreeGolfSwingAnalyzer.com';
 const real = (time,clip) => time / clip.mediaSecondsPerRealSecond;
-const stamp = (time,clip) => `${seconds(real(time,clip))} s  |  Frame ${frameNumber(time,clip.frameRate,clip.duration)}`;
+const stamp = (time,clip) => `${seconds(real(time,clip))} real s  |  Frame ${frameNumber(time,clip.frameRate,clip.duration)}`;
 const interval = (range,clip) => range ? `${seconds(real(range[0],clip))} - ${seconds(real(range[1],clip))} s` : 'Not analyzed';
 const angle = value => Number.isFinite(value) ? `${value.toFixed(1)}°` : '-';
 
 export async function createPdfReport(report) {
   const jsPDF = await pdfLibrary();
   const doc = new jsPDF({unit:'mm',format:'a4',compress:false,putOnlyUsedFonts:true});
-  doc.setProperties({title:'Swing Studio - Swing review',subject:'Golf swing frames, moments and analysis',creator:'Swing Studio / freegolfswinganalyzer.com'});
-  const green = '#203D2F', muted = '#55675B', pale = '#F0F4EA', lime = '#D7EDAD';
-  function text(value,x,y,size=10,color=green,bold=false) {
-    doc.setFont('helvetica',bold?'bold':'normal'); doc.setFontSize(size); doc.setTextColor(color); doc.text(String(value),x,y);
+  doc.setProperties({title:`${BRAND} - Swing review`,subject:'Golf swing frames, moments and analysis',creator:BRAND});
+  const green='#203D2F',muted='#55675B',pale='#F0F4EA';
+  function text(value,x,y,size=10,color=green,bold=false,options={}) {
+    doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor(color);doc.text(String(value),x,y,options);
   }
-  function wrap(value,x,y,width,size=10,color=muted,maxLines=3) {
-    doc.setFont('helvetica','normal'); doc.setFontSize(size);
-    const lines = doc.splitTextToSize(String(value),width);
-    if (lines.length > maxLines) { lines.length=maxLines; lines[maxLines-1]=lines[maxLines-1].replace(/.{3}$/,'...'); }
+  function wrap(value,x,y,width,size=10,color=muted) {
+    doc.setFont('helvetica','normal');doc.setFontSize(size);
+    const lines=doc.splitTextToSize(String(value),width);
     doc.setTextColor(color);doc.text(lines,x,y,{lineHeightFactor:1.25});
+    return lines.length*size*.3528*1.25;
   }
-  function rect(x,y,w,h,color) { doc.setFillColor(color); doc.rect(x,y,w,h,'F'); }
-  function header(title,subtitle) {
-    rect(0,0,210,42,green);text('SWING STUDIO',16,13,10,lime,true);
-    text(title,16,27,24,'#FFFFFF',true);text(subtitle,16,35,9,'#D9E4D7');
-  }
-  // Browser text rendering preserves non-Latin filenames without uploading
-  // them or depending on an external font. Body text remains searchable.
+  function rect(x,y,w,h,color) { doc.setFillColor(color);doc.rect(x,y,w,h,'F'); }
+  // Keep ordinary filenames searchable; browser fonts also preserve Unicode
+  // filenames without uploading them or fetching a font during export.
   function filename(value,x,y,width) {
-    const canvas=document.createElement('canvas');canvas.width=Math.round(width*8);canvas.height=70;
+    if(/^[\x20-\x7e]*$/.test(value)) {
+      doc.setFont('helvetica','normal');doc.setFontSize(9);
+      let label=value;
+      while(label.length&&doc.getTextWidth(label)>width)label=label.slice(0,-1);
+      text(label===value?label:label.slice(0,-3)+'...',x,y,9,muted);return;
+    }
+    const canvas=document.createElement('canvas');canvas.width=Math.round(width*10);canvas.height=48;
     const ctx=canvas.getContext('2d');ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.font='28px sans-serif';ctx.fillStyle=green;
-    const chars=Array.from(value);while(chars.length && ctx.measureText(chars.join('')).width>canvas.width-10) chars.pop();
+    ctx.font='32px sans-serif';ctx.fillStyle=muted;
+    const chars=Array.from(value);while(chars.length&&ctx.measureText(chars.join('')).width>canvas.width-10)chars.pop();
     let label=chars.join('');if(label!==value)label=Array.from(label).slice(0,-3).join('')+'...';
-    ctx.fillText(label,0,36);doc.addImage(canvas.toDataURL('image/png'),'PNG',x,y,width,8.75);
+    ctx.fillText(label,0,34);doc.addImage(canvas.toDataURL('image/png'),'PNG',x,y-3.4,width,4.8);
   }
-  function image(data,x,y,w,h) { rect(x,y,w,h,green); if(data)doc.addImage(data,'JPEG',x,y,w,h); }
-  function metrics(values,x,y,w) {
-    [['Lead elbow','elbow'],['Lead knee','knee'],['Torso lean','lean']].forEach(([label,key],i)=>{
-      text(label,x+i*w/3,y,8,muted);text(angle(values?.[key]),x+i*w/3,y+8,15,green,true);
-    });
-  }
-  header('Swing review',`${report.clips.length===2?'Side-by-side comparison':'Single swing'}  /  ${report.created}`);
-  text('Your current view',16,55,14,green,true);
-  text(report.clips.length===2 ? (report.linked?'Synchronized at the selected event':'Independent video positions') : 'Annotated frame and session summary',16,62,10,muted);
-  const gap=8,w=(178-gap*(report.clips.length-1))/report.clips.length;
-  report.clips.forEach((clip,index)=>{
-    const x=16+index*(w+gap);
-    text(report.clips.length===2?`SWING ${clip.name}`:'YOUR SWING',x,73,11,green,true);filename(clip.file,x,76,w);
-    image(clip.currentImage,x,87,w,100);
-    text(stamp(clip.currentTime,clip),x,195,9,green,true);
-    text(`File ${clip.frameRate} FPS  /  Shot ${clip.recordingFrameRate} FPS`,x,202,9,muted);
-    text(`${clip.viewport.zoom.toFixed(2)}x zoom${clip.mirrored?'  /  Mirrored':''}`,x,208,9,muted);
-    metrics(clip.currentMeasurements,x,218,w);
-    text(`Selected: ${interval(clip.selectedRange,clip)}`,x,239,9,muted);
-    text(`Analyzed: ${interval(clip.analyzedRange,clip)}`,x,245,9,muted);
-    const autoTempo=['address','top','impact'].some(k=>!Number.isFinite(clip.marks[k]));
-    text(`Tempo: ${clip.tempo===null?'Set address, top and impact':`${clip.tempo.toFixed(2)} : 1${autoTempo?' (estimated)':''}`}`,x,253,9,green,true);
-  });
-  rect(16,261,178,18,pale);
-  wrap('Times use File FPS / Shot FPS; frames start at 0. Current views include visible reference overlays. Moment frames show the individual pose and drawings.',20,268,170,9,muted,2);
+  let pageNumber=0;
   for(const clip of report.clips) {
-    doc.addPage();header(report.clips.length===2?`Swing ${clip.name} / Key moments`:'Your swing / Key moments','Frames, timing and measurements');filename(clip.file,16,47,178);
-    text(`${clip.hand==='left'?'Left':'Right'}-handed  |  File ${clip.frameRate} FPS  |  Shot ${clip.recordingFrameRate} FPS`,16,61,10);
-    const analysis = clip.analyzedRange ? `${clip.measurements.length} samples  /  ${clip.coverage}% pose coverage  /  ${interval(clip.analyzedRange,clip)}` : 'Not analyzed. Review and mark moments without running analysis.';
-    text(analysis,16,68,9,muted);
-    MOMENTS.forEach(([key,label],i)=>{
-      const x=16+(i%2)*93,y=76+Math.floor(i/2)*73,time=clip.phaseTimes[key],exists=Number.isFinite(time);
-      if(exists) image(clip.momentImages[key],x,y,85,55);
-      else {rect(x,y,85,55,pale);text('Not marked',x+28,y+29,11,muted);}
-      rect(x,y,85,1.5,MOMENT_COLORS[key]);
-      text(`${label}${Number.isFinite(clip.marks[key])?' / Your mark':exists?' / Auto estimate':''}`,x,y+61,10,green,true);
-      text(exists?stamp(time,clip):'Add this moment beside the Play button.',x,y+67,8.5,muted);
-    });
-    text('Measurements at your key frames',16,226,12,green,true);
-    rect(16,230,178,8,green);
-    const columns=[18,70,97,130,163];
-    ['Moment','Real seconds','Elbow','Knee','Torso lean'].forEach((label,i)=>text(label,columns[i],235.5,9,'#FFFFFF',true));
-    MOMENTS.forEach(([key,label],i)=>{
-      const y=238+i*8,values=clip.momentMeasurements[key];rect(16,y,178,8,i%2?pale:'#FFFFFF');
-      [label,Number.isFinite(clip.phaseTimes[key])?seconds(real(clip.phaseTimes[key],clip)):'-',angle(values?.elbow),angle(values?.knee),angle(values?.lean)].forEach((value,j)=>text(value,columns[j],y+5.5,9));
-    });
-    text(clip.tempo===null?'Tempo requires ordered address, top and impact marks.':`Tempo ${clip.tempo.toFixed(2)} : 1  |  Backswing ${seconds(real(clip.phaseTimes.top-clip.phaseTimes.address,clip))} s  /  Downswing ${seconds(real(clip.phaseTimes.impact-clip.phaseTimes.top,clip))} s`,16,278,9,green,true);
-  }
-  for(const clip of report.clips) {
-    if(!clip.visualMoments?.length)continue;
-    doc.addPage();header(report.clips.length===2?`Swing ${clip.name} / Visual moments`:'Your swing / Visual moments','A closer look, frame by frame');filename(clip.file,16,47,178);
-    text('Your marks take priority. Estimates use hand motion; verify impact in the video.',16,61,9,muted);
-    text('Range previews are sampled frames when swing phases could not be identified.',16,67,9,muted);
-    const columns=clip.visualMoments.length>6?3:2,cellWidth=columns===3?166/3:85,imageHeight=columns===3?46:50;
-    clip.visualMoments.forEach((entry,i)=>{
-      const x=16+(i%columns)*(cellWidth+(columns===3?6:8)),y=76+Math.floor(i/columns)*66;
-      image(entry.image,x,y,cellWidth,imageHeight);
-      rect(x,y,cellWidth,1.5,entry.source==='sampled'?muted:MOMENT_COLORS[entry.key]);
-      text(entry.label,x,y+imageHeight+6,10,green,true);
-      if(columns===3){text(stamp(entry.time,clip),x,y+imageHeight+11,8,muted);text(momentSource(entry.source),x,y+imageHeight+16,8,muted);}
-      else text(`${stamp(entry.time,clip)}  /  ${momentSource(entry.source)}`,x,y+imageHeight+12,8,muted);
-    });
-    rect(16,274,178,6,pale);text('Open Key moments on the site to enlarge, edit, play or draw on these frames.',19,278,8,muted);
-  }
-  for(const clip of report.clips){
-    if(!clip.analyzedRange)continue;
-    doc.addPage();header(report.clips.length===2?`Swing ${clip.name} / Observations`:'Your swing / Observations','Measurements you can check against the video');filename(clip.file,16,47,178);
-    text(`Current frame: ${stamp(clip.currentTime,clip)}`,16,64,10,green,true);
-    text(`Video area: ${clip.crop==='full'?'Full frame':clip.crop==='left'?'Left half':'Right half'}  /  ${clip.quality==='detailed'?'Detailed':'Fast'} analysis`,16,73,10,muted);
-    const cols=[18,82,106,132,156,180];rect(16,83,178,10,green);
-    ['Image angle','Now','Address','Top','Impact','Finish'].forEach((label,i)=>text(label,cols[i],89.5,i?8:10,'#FFFFFF',true));
-    MEASUREMENTS.forEach(([key,label],i)=>{
-      const y=93+i*12;rect(16,y,178,12,i%2?'#FFFFFF':pale);text(label,18,y+8,10);
-      const values=[clip.currentMeasurements,...['address','top','impact','finish'].map(k=>clip.momentMeasurements[k])];
-      values.forEach((value,j)=>text(angle(value?.[key]),cols[j+1],y+8,9));
-    });
-    text('What to review',16,205,14,green,true);
-    (clip.observations||[]).forEach((note,i)=>wrap(note,16,216+i*17,178,10,muted,2));
-    wrap('Shoulder and hip line angles describe slopes in the image, not 3D body rotation. These camera-dependent observations do not determine clubface angle, ball flight or a swing score.',16,258,178,9,muted,3);
+    const frames=[{label:'Current frame',time:clip.currentTime,image:clip.currentImage,measurements:clip.currentMeasurements,observations:clip.observations},...(clip.visualMoments||[])];
+    for(const frame of frames) {
+      if(!frame.image)continue;
+      const properties=doc.getImageProperties(frame.image),ratio=properties.width/properties.height;
+      const landscape=ratio>=1,orientation=landscape?'landscape':'portrait';
+      if(pageNumber++)doc.addPage('a4',orientation);
+      else {doc.deletePage(1);doc.addPage('a4',orientation);}
+      const width=doc.internal.pageSize.getWidth(),height=doc.internal.pageSize.getHeight();
+      const margin=12,contentWidth=width-24,statsWidth=landscape?70:60;
+      const imageAreaWidth=contentWidth-statsWidth-8,imageAreaHeight=landscape?106:height-64;
+      const imageWidth=Math.min(imageAreaWidth,imageAreaHeight*ratio),imageHeight=imageWidth/ratio;
+      const imageX=margin+(imageAreaWidth-imageWidth)/2,imageY=42;
+      const statsX=width-margin-statsWidth;
+      const source=frame.source?momentSource(frame.source):'Your current view';
+      const accent=frame.source==='sampled'?muted:MOMENT_COLORS[frame.key]||green;
+      text(BRAND,margin,11,11,green,true);
+      text(report.created,width-margin,11,9,muted,false,{align:'right'});
+      text(`${report.clips.length===2?`Swing ${clip.name}`:'Your swing'} / ${frame.label}`,margin,23,landscape?21:18,green,true);
+      filename(clip.file,margin,30,contentWidth);
+      text(`${stamp(frame.time,clip)}  /  ${source}`,margin,37,10,accent,true);
+      rect(imageX,imageY,imageWidth,imageHeight,green);
+      doc.addImage(frame.image,'JPEG',imageX,imageY,imageWidth,imageHeight);
+      // A print-safe watermark is placed ON each frame, independently of the
+      // page footer, and remains legible on light or dark footage.
+      const watermarkSize=Math.min(12,imageWidth/5.8);
+      doc.saveGraphicsState();doc.setGState(new doc.GState({opacity:.8}));
+      rect(imageX,imageY+imageHeight-9,imageWidth,9,green);doc.restoreGraphicsState();
+      text(BRAND,imageX+imageWidth/2,imageY+imageHeight-3,watermarkSize,'#FFFFFF',true,{align:'center'});
+      rect(imageX,imageY,imageWidth,1.4,accent);
+      text('Frame measurements',statsX,46,11,green,true);
+      MEASUREMENTS.forEach(([key,label],i)=>{
+        const y=50+i*8;rect(statsX,y,statsWidth,8,i%2?'#FFFFFF':pale);
+        text(label,statsX+2,y+5.5,10);
+        text(angle(frame.measurements?.[key]),statsX+statsWidth-2,y+5.5,11,green,true,{align:'right'});
+      });
+      const autoTempo=['address','top','impact'].some(key=>!Number.isFinite(clip.marks[key]));
+      text('Swing tempo',statsX,123,11,green,true);
+      if(Number.isFinite(clip.tempo)) {
+        text(`${clip.tempo.toFixed(2)} : 1${autoTempo?' (estimated)':''}`,statsX,130,12,green,true);
+        text(`Back ${seconds(real(clip.phaseTimes.top-clip.phaseTimes.address,clip))} s / Down ${seconds(real(clip.phaseTimes.impact-clip.phaseTimes.top,clip))} s`,statsX,136,9,muted);
+      } else text('Needs address, top and impact.',statsX,131,9,muted);
+      text('Video & analysis',statsX,146,11,green,true);
+      text(`File ${clip.frameRate} FPS / Shot ${clip.recordingFrameRate} FPS`,statsX,153,10);
+      text(`${clip.viewport.zoom.toFixed(2)}x zoom${clip.mirrored?' / Mirrored':''} / ${clip.hand==='left'?'Left':'Right'}-handed`,statsX,160,9,muted);
+      text(`Area: ${clip.crop==='left'?'Left half':clip.crop==='right'?'Right half':'Full frame'}`,statsX,167,9,muted);
+      text(`Selected: ${interval(clip.selectedRange,clip)}`,statsX,174,9,muted);
+      text(`Analyzed: ${interval(clip.analyzedRange,clip)}`,statsX,181,9,muted);
+      if(clip.analyzedRange)text(`${clip.quality==='detailed'?'Detailed':'Fast'} / ${clip.measurements.length} samples / ${clip.coverage}% tracked`,statsX,188,8.5,muted);
+      const notes=[...(frame.observations||[])];
+      if(frame.source==='sampled')notes.unshift('Range preview: a sampled frame, not a detected swing phase.');
+      else if(frame.source==='estimated')notes.unshift('Automatic phase estimate. Verify the event in your video.');
+      if(!frame.source&&report.clips.length===2)notes.unshift(report.linked?'Videos synchronized at the selected event.':'Videos positioned independently.');
+      // Landscape footage leaves room below the image; portrait footage uses
+      // the remaining statistics column. Notes always belong to this frame.
+      const notesX=landscape?margin:statsX,notesWidth=landscape?imageAreaWidth:statsWidth;
+      let notesY=landscape?imageY+imageHeight+8:201;
+      const notesLimit=height-19;
+      if(notes.length&&notesY+8<notesLimit) {
+        text('What to review',notesX,notesY,11,green,true);notesY+=6;
+        for(const note of notes) {
+          doc.setFont('helvetica','normal');doc.setFontSize(9);
+          const lineHeight=9*.3528*1.25,lines=doc.splitTextToSize(note,notesWidth);
+          const available=Math.floor((notesLimit-notesY)/lineHeight);
+          if(available<=0)break;
+          if(lines.length>available) {lines.length=available;lines[available-1]=lines[available-1].replace(/.{3}$/,'...');}
+          notesY+=wrap(lines.join(' '),notesX,notesY,notesWidth,9)+3;
+        }
+      }
+    }
   }
   const count=doc.getNumberOfPages();
   for(let page=1;page<=count;page++) {
-    doc.setPage(page);doc.setDrawColor('#CCD8C7');doc.line(16,284,194,284);
-    text('2D estimates. Camera angle and visibility affect measurements. A dash means unavailable.',16,289,8,muted);
-    text('freegolfswinganalyzer.com  /  Created locally on your device',16,294,8,muted);
-    doc.setFontSize(8);doc.text(`${page} / ${count}`,194,294,{align:'right'});
+    doc.setPage(page);const width=doc.internal.pageSize.getWidth(),height=doc.internal.pageSize.getHeight();
+    doc.setDrawColor('#CCD8C7');doc.line(12,height-14,width-12,height-14);
+    text('2D image angles, not 3D rotation. Camera and visibility affect accuracy. A dash means unavailable.',12,height-9,8,muted);
+    text(`${BRAND} / Created locally / Frames start at 0`,12,height-4,8,muted);
+    text(`${page} / ${count}`,width-12,height-4,8,muted,false,{align:'right'});
   }
   return doc.output('blob');
 }

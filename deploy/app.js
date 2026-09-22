@@ -583,27 +583,27 @@ $('export').onclick = async () => {
   const token={kind:'report',cancelled:false,controller:new AbortController()};job=token;update();reportDialog.showModal();
   try {
     const {createPdfReport}=await import('./report.js');
+    // Capture both current views before seeking either player to its moments;
+    // reference overlays must use the session's original paired positions.
+    await Promise.all(indices.map(index=>seekDecoded(slots[index].video,originals[index])));
+    render();
+    for(const [column,index] of indices.entries()) {
+      if(token.cancelled)return;
+      report.clips[column].currentImage=annotations.capture(index).toDataURL('image/jpeg',.94);
+    }
+    token.omitReference=true;
     for(const [column,index] of indices.entries()) {
       const s=slots[index],clip=report.clips[column];
-      await seekDecoded(s.video,originals[index]);render();
-      clip.currentImage=annotations.capture(index,indices.length===2?688:1424,800).toDataURL('image/jpeg',.92);
       // A reference at the other player's current time is meaningful only in
       // the current-view snapshot. Phase pages show each clip's own pose.
-      token.omitReference=true;
-      clip.momentImages={};
-      for(const [key,label] of phases) {
-        if(token.cancelled)return;
-        if(!Number.isFinite(clip.phaseTimes[key]))continue;
-        reportDialog.querySelector('p').textContent=`Preparing ${mode === 'compare' ? `swing ${names[index]}` : 'your swing'}: ${label.toLowerCase()}…`;
-        await seekDecoded(s.video,clip.phaseTimes[key]);render();
-        clip.momentImages[key]=annotations.capture(index,1020,660).toDataURL('image/jpeg',.92);
-      }
-      clip.visualMoments = (s.keyMoments.length || Number.isFinite(s.marks.backswing) || Number.isFinite(s.marks.downswing) || Number.isFinite(s.marks.follow)) ? clip.keyMoments.filter(entry=>Number.isFinite(entry.time)) : [];
+      clip.visualMoments=clip.keyMoments.filter(entry=>Number.isFinite(entry.time));
       for(const entry of clip.visualMoments) {
         if(token.cancelled)return;
         reportDialog.querySelector('p').textContent=`Preparing ${mode === 'compare' ? `swing ${names[index]}` : 'your swing'}: ${entry.label.toLowerCase()}…`;
         await seekDecoded(s.video,entry.time);render();
-        entry.image=annotations.capture(index,clip.visualMoments.length>6?722:1020,600).toDataURL('image/jpeg',.92);
+        entry.image=annotations.capture(index).toDataURL('image/jpeg',.94);
+        entry.measurements=measurements(nearestSample(s.samples,entry.time,s.tolerance)?.points,s.video.videoWidth,s.video.videoHeight,s.hand);
+        entry.observations=postureNotes(s,entry.time);
       }
     }
     if(token.cancelled)return;

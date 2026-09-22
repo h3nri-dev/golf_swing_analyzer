@@ -1,4 +1,4 @@
-# Swing Studio
+# FreeGolfSwingAnalyzer.com
 
 Read `CLAUDE.md` for the static app architecture, deployment and regression checks.
 
@@ -20,3 +20,7 @@ The user's standing UX requirement is **proximity**: controls used together belo
 - An interface redesign must inventory the existing features and provide a tested equivalent for each useful capability. Do not silently delete features, hide core tasks behind tabs, shrink text to force a fit, or substitute random scores for observations.
 - Render-check analyzed single and compare layouts, including the current sidebar contents, not only the empty page.
 - After analyzing a short interval, expand the playback timelines to that saved interval. Keep Analyzed range / Full video controls beside each timeline, spread crowded marker labels without changing their exact frame anchors, and preserve the focused interval during playback. Never squeeze all markers onto the full-clip scale by default. Local and common marker actions must retain their respective playback scopes.
+
+### Compact workspace and print reports
+- Use FreeGolfSwingAnalyzer.com consistently as the product name in browser titles, dialogs, legal pages and exports. No full-width desktop title bar or introductory section: keep Single/Compare, About and Help in the top of the existing inspector. Phones retain a compact mode row. Preserve visible consent choices in the lower dock without an overlay.
+- PDF exports use one large video image per page, with that exact frame's statistics and a visible FreeGolfSwingAnalyzer.com watermark on the image. Preserve aspect ratio and visible zoom/pan/crop/mirror; trim empty player margins. Retain all seven available moments, source labels, eight measurements, timing and observations, with no blank placeholder pages or duplicate contact sheets. Capture both current views before seeking moments so reference overlays use the original paired positions. Render-check portrait and landscape pages before deployment.

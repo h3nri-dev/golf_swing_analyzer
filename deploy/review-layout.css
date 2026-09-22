@@ -180,3 +180,44 @@
 @media (min-width: 601px) and (max-width: 900px) and (max-height: 500px) {
   .studio.persistent-sidebar { grid-template-rows: auto max(252px,calc(100dvh - var(--review-chrome-height,220px))) auto auto auto; }
 }
+
+/* Session controls belong in the inspector, freeing the entire top of the
+   desktop workspace for video. The unused first grid row collapses to zero. */
+.persistent-sidebar .sidebar-heading { padding: 0; }
+.persistent-sidebar .sidebar-heading .studio-heading { display: grid; grid-template-columns: minmax(0,1fr) auto; width: 100%; padding: 6px 8px; gap: 4px 6px; border: 0; }
+.sidebar-heading .studio-brand { grid-column: 1 / -1; grid-row: 1; width: 100%; min-height: 32px; padding: 0; }
+.sidebar-heading .studio-brand .brand-about { margin-left: auto; }
+.sidebar-heading .studio-brand img { width: 24px; height: 24px; }
+.sidebar-heading .mode-switch { grid-column: 1; grid-row: 2; min-width: 0; }
+.screen-ready .sidebar-heading .mode-switch button { flex: 1; min-height: 36px; padding: 4px 6px; font-size: 16px; }
+.sidebar-heading .workspace-help { grid-column: 2; grid-row: 2; margin: 0; min-height: 36px; padding: 4px 6px; }
+.persistent-sidebar #panel-draw .drawing-target { display: flex; gap: 4px; align-items: center; font-size: 14px; }
+#panel-draw .drawing-target button { min-height: 30px; padding: 3px 6px; font-size: 14px; }
+@media (max-width: 900px) {
+  .persistent-sidebar .sidebar-heading { display: none; }
+  .screen-ready > .studio-heading { display: flex; flex-wrap: nowrap; gap: 4px; padding: 4px; }
+  .screen-ready > .studio-heading .mode-switch { order: 0; display: flex; flex: 1; min-width: 0; }
+  .screen-ready > .studio-heading .mode-switch button { flex: 1; min-height: 36px; padding: 4px; font-size: 16px; }
+  .screen-ready > .studio-heading .studio-brand { order: 1; width: auto; padding: 2px; min-height: 36px; flex: none; }
+  .screen-ready > .studio-heading .studio-brand span { display: none; }
+  .screen-ready > .studio-heading .workspace-help { order: 2; margin: 0; padding: 4px; min-height: 36px; }
+}
+#aboutTitle { min-width: 0; overflow-wrap: anywhere; }
+.about-brand strong { min-width: 0; overflow-wrap: anywhere; }
+/* A first-visit consent choice uses the existing lower dock, never a separate
+   introductory screen or an overlay over the footage. */
+.screen-transport > [data-consent-banner] { grid-column: 1 / -1; }
+.screen-transport .cookie-banner { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; max-width: none; padding: 6px 8px; border: 1px solid #c6d4b8; border-radius: 6px; background: #f0f4e9; }
+.screen-transport .cookie-banner p { font-size: 14px; line-height: 1.3; margin: 0; }
+.screen-transport .cookie-actions { flex: none; align-items: center; gap: 6px; }
+.screen-transport .cookie-actions button { font-size: 14px; min-height: 32px; padding: 4px 8px; }
+.screen-transport .cookie-actions a { font-size: 14px; }
+@media (max-width: 1179px) {
+  .screen-transport .cookie-banner { flex-wrap: wrap; gap: 4px; }
+  .screen-transport .cookie-actions { flex-wrap: wrap; flex: auto; }
+}
+
+@media (max-width: 600px) {
+  #aboutTitle { font-size: 20px; }
+  #aboutTitle span { display: block; font-size: 16px; line-height: 1.4; }
+}

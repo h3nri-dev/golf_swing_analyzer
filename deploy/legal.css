@@ -17,3 +17,5 @@
   .legal-main h2 { font-size: 21px; }
   .legal-main ul { padding-left: 24px; }
 }
+.legal-page .brand { min-width: 0; font-size: clamp(16px, 3.5vw, 24px); letter-spacing: -.4px; }
+.legal-page .brand span, .legal-home { overflow-wrap: anywhere; min-width: 0; }

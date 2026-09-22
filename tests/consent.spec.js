@@ -56,7 +56,7 @@ test('opt-in uses the original property once, keeps ads off and excludes URL que
   const config = queue.findIndex(c => c[0] === 'config');
   expect(grant).toBeLessThan(config);
   expect(queue[config]).toEqual(['config', id, {
-    page_location: 'http://127.0.0.1:8080/', page_title: 'Free Golf Swing Analyzer — Swing Studio', page_referrer: '',
+    page_location: 'http://127.0.0.1:8080/', page_title: 'FreeGolfSwingAnalyzer.com', page_referrer: '',
     send_page_view: false, allow_google_signals: false, allow_ad_personalization_signals: false,
   }]);
   expect(queue.filter(c => c[0] === 'consent').every(c => c[2].ad_storage === 'denied' && c[2].ad_user_data === 'denied' && c[2].ad_personalization === 'denied')).toBe(true);

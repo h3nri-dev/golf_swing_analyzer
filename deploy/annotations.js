@@ -260,7 +260,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
         for(const shape of displayed(i)) paintShape(ctx,shape,w,h,mirrored(i));
         ctx.restore();
       });
-      ctx.fillStyle='#b7c5b5';ctx.font='16px sans-serif';ctx.fillText('SWING STUDIO  /  Free Golf Swing Analyzer',22,canvas.height-15);
+      ctx.fillStyle='#b7c5b5';ctx.font='16px sans-serif';ctx.fillText('FreeGolfSwingAnalyzer.com',22,canvas.height-15);
       const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
       if(!blob) throw new Error('Could not create an image. Please try again.');
       const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=indices.length===2?'swing-comparison.png':'swing-annotated-frame.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -272,14 +272,20 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     paintFrame(ctx,i,time,w,h,mirror,region={x:0,width:1}) {
       if(visible)for(const shape of histories[i].items.filter(shape=>isDrawingVisible(shape,time)))paintShape(ctx,{...shape,points:shape.points.map(p=>({...p,x:(p.x-region.x)/region.width}))},w,h,mirror);
     },
-    capture(i,width=960,height=720) {
+    capture(i,maxSize=2000) {
       const s=slots[i],view=s.viewport.geometry(),w=view.image.width,h=view.image.height;
+      // Retain exactly the visible zoom/crop/pan, but remove the stage's empty
+      // letterboxing before scaling for a full-page print. Never stretch video.
+      const left=view.stage.width/2+view.offset.x+(view.crop.x-.5)*w*view.zoom;
+      const top=view.stage.height/2+view.offset.y-h*view.zoom/2;
+      const x=Math.max(0,left),y=Math.max(0,top);
+      const sw=Math.max(1,Math.min(view.stage.width,left+view.crop.width*w*view.zoom)-x);
+      const sh=Math.max(1,Math.min(view.stage.height,top+h*view.zoom)-y);
+      const scale=maxSize/Math.max(sw,sh),width=Math.round(sw*scale),height=Math.round(sh*scale);
       const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
       const ctx=canvas.getContext('2d');ctx.fillStyle='#17251f';ctx.fillRect(0,0,width,height);
-      const scale=Math.min(width/view.stage.width,height/view.stage.height);
-      const sw=view.stage.width*scale,sh=view.stage.height*scale,x=(width-sw)/2,y=(height-sh)/2;
-      ctx.save();ctx.beginPath();ctx.rect(x,y,sw,sh);ctx.clip();
-      ctx.translate(x+sw/2+view.offset.x*scale,y+sh/2+view.offset.y*scale);
+      ctx.save();ctx.beginPath();ctx.rect(0,0,width,height);ctx.clip();
+      ctx.translate((view.stage.width/2+view.offset.x-x)*scale,(view.stage.height/2+view.offset.y-y)*scale);
       ctx.scale(scale*view.zoom,scale*view.zoom);ctx.translate(-w/2,-h/2);
       ctx.beginPath();ctx.rect(view.crop.x*w,0,view.crop.width*w,h);ctx.clip();
       ctx.save();if(mirrored(i)){ctx.translate(w,0);ctx.scale(-1,1);}

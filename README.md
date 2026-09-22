@@ -1,4 +1,4 @@
-# Swing Studio — Free Golf Swing Analyzer
+# FreeGolfSwingAnalyzer.com
 
 A build-free static site with two modes: analyze one local golf swing, or compare two clips side by side. Production: https://freegolfswinganalyzer.com.
 
@@ -104,10 +104,10 @@ Cloudflare Pages deploys the static directory to `freegolfswinganalyzer`, branch
 
 ## Saving a PDF report
 
-Choose **Save PDF report** in the expanded Tempo & report section. Without analysis, single mode creates a two-page report; comparison creates a three-page report containing both loaded clips. Analyzed clips add pages for all seven visual moments and the full measurement/observation table. No analysis or marker is required to export.
+Choose **Save PDF report** in the expanded Tempo & report section. Every captured image gets its own page: one current frame per loaded video, then one page per available key moment. An analyzed swing with seven moments produces eight pages; two analyzed swings produce sixteen. Without analysis or marks, there is just one page per video. No empty moment pages or duplicate contact sheets are added.
 
-- The overview includes the current annotated frame(s), filenames, File FPS / Shot FPS, real elapsed time, frame numbers, zoom, mirroring, current pose measurements, selected/analyzed ranges and tempo.
-- Each swing gets a page with address, top, impact and finish images, a table of measurements at those key frames, pose coverage and calibrated backswing/downswing durations. Missing marks or low-confidence measurements are clearly shown as unavailable.
+- Frames fill a large, aspect-correct print area, with portrait/landscape pages selected to suit the image. Captures remove empty player margins, retain the visible zoom/pan/crop and use a 2,000-pixel long edge. Every frame carries a **FreeGolfSwingAnalyzer.com** watermark.
+- Each image's page includes its own eight 2D measurements and observations, filename, phase/source, real elapsed time, zero-based frame number, File FPS / Shot FPS, zoom/mirroring, selected/analyzed ranges, coverage and calibrated swing tempo. Missing tracking remains unavailable. Manual marks, automatic estimates and sampled previews stay distinct.
 - The report includes the visible drawing and pose settings. Export pauses playback, captures decoded frames, then restores the original playheads and views. You can cancel; a failed export leaves the studio usable and can be retried.
 - PDF generation uses the locally hosted, pinned jsPDF 4.2.1 browser build. No video, frame, filename or report content is uploaded. The app downloads a PDF directly, with searchable report text and browser-rendered filenames for non-Latin characters. It does not require a print dialog or a backend.
 

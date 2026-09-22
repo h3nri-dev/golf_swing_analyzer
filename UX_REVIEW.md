@@ -1,4 +1,4 @@
-# Swing Studio UX review — 21 September 2026
+# FreeGolfSwingAnalyzer.com UX review — 21 September 2026
 
 ## Method and limits
 
@@ -6,7 +6,7 @@ Reviewed the production version at commit `4c826ea`, performed a task walkthroug
 
 The user's requirements remain constraints: two modes, local processing, persistent zoom, drawing beside the video, independent playback, selectable analysis ranges, a screen-sized desktop workspace with scroll snapping, and all control sections permanently expanded. The latest user request places Range immediately above playback; the other four remain in the right column.
 
-The lower full-screen introduction/guide has moved into an About dialog. It previously created an unwanted scroll-snap destination beyond the players. The studio now ends the page on desktop, while privacy, terms and cookie settings share the existing status row. About is visible beside the logo/domain immediately after the mode buttons and also available from Help. The same logo/domain sits in each video's lower corner without capturing pointer events or moving with zoom. On phones, the full domain remains readable and expanded controls follow a minimum-height video area; legal links follow the controls. This change preserves natural mobile scrolling instead of clipping controls or squeezing the footage to fit branding.
+The lower full-screen introduction/guide has moved into an About dialog. It previously created an unwanted scroll-snap destination beyond the players. The studio now ends the page on desktop, while privacy, terms and cookie settings share the existing status row. About and Help share the top of the existing inspector with Single/Compare on desktop; phones use a compact mode row. The separate desktop title row and upper introduction have also been removed. The same logo/domain sits in each video's lower corner without capturing pointer events or moving with zoom. On phones, the full domain remains readable and expanded controls follow a minimum-height video area; legal links follow the controls. This change preserves natural mobile scrolling instead of clipping controls or squeezing the footage to fit branding.
 
 ## Tasks used to judge the interface
 
@@ -127,3 +127,14 @@ The full-clip playback scale clustered swing events into a few pixels on long re
 Individual timelines retain separate view states and single-video marker actions. Common marker actions preserve sync when enabled and use calibrated real-time changes for independent normal/slow-motion clips. Short desktop layouts use full-width local scrubbers, compact non-overlapping dots and adjacent scope toggles; the common controller keeps numbered markers. The workspace gives more width to the players on short screens, with internal inspector scrolling instead of collapsing video height. All key-moment cards and playback controls remain available.
 
 Validation includes 47 unit tests and 51 browser regressions covering window selection, cancellation, markers, FPS calibration, independent/common controls, keyframe views, drawings and responsive layouts. Screenshots were inspected for single and comparison review at laptop, desktop and phone sizes. Focused checks additionally verify compact marker click targets do not overlap and scope toggles preserve playheads and synchronization.
+
+
+## Full-frame PDF and title-free workspace follow-up
+
+The workspace now starts at the top of the screen. The former full-width brand/title row has moved into the existing right inspector, with Single/Compare, About and Help still visible. Drawing target selection sits in Draw; all local/common playback, range and marking controls retain their established neighbors. The first-visit analytics choice occupies the lower dock and disappears after a choice; it never covers footage or creates another scrolling screen. Product labels use FreeGolfSwingAnalyzer.com throughout the app, legal pages and image/PDF exports.
+
+PDF export now gives each current view and each available moment its own page, with a large aspect-correct image, visible domain watermark, frame-specific measurements and observations, calibrated time/FPS, range and tempo. Portrait/landscape page orientation follows the captured view. Empty player margins are trimmed while visible crop, mirror, pan and zoom are preserved. Both current views are captured before seeking either clip to its moments, retaining the original reference overlay. Seven analyzed moments produce eight pages per video; an unmarked, unanalyzed clip produces one page. Manual-only exports include just the marked moments, without blank placeholders.
+
+Validation includes one drawn video image per PDF page, portrait/landscape proportions, Unicode filenames, watermark and statistics on each page, restored playheads/drawings/views, retry/cancel, consent, mode labels, independent playback and responsive geometry. Rendered PDF examples cover untracked, manual, automatically estimated and sampled frames, including cropped/mirrored drawings. Desktop workspace tests assert that videos start at the top and document height does not exceed the viewport.
+
+Completed checks for this follow-up: 47 unit tests and 77 distinct Chrome browser tests passed. All 39 pages across six exported examples were rendered and reviewed, including portrait/landscape, manual/automatic/sampled frames, Unicode filenames, and a cropped/mirrored annotated frame.

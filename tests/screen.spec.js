@@ -31,6 +31,9 @@ for(const [width,height] of [[1440,900],[1280,720],[2560,1440],[390,844],[320,56
     expect(brand.sw,'branding fits without squeezing the mode buttons').toBeLessThanOrEqual(brand.w+1);
     const side=await page.locator('#analysisPanel').boundingBox(),review=await page.locator('#workspace').boundingBox();
     if(width>900) {
+      expect(review.y,'video starts at the top without a title row').toBeLessThan(2);
+      await expect(page.locator('#analysisPanel .mode-switch')).toBeInViewport();
+      expect(await page.evaluate(()=>document.documentElement.scrollHeight)).toBeLessThanOrEqual(height+1);
       expect(side.x).toBeGreaterThanOrEqual(review.x+review.width-1);
       if(width>=1440 && height>=900) {
         const size=await page.locator('#analysisPanel').evaluate(e=>({h:e.clientHeight,sh:e.scrollHeight}));
@@ -81,7 +84,7 @@ for(const [width,height] of [[1440,900],[390,844]]) {
     const before=await page.locator('video').first().evaluate(v=>({src:v.src,time:v.currentTime}));
     const scroll=await page.evaluate(()=>scrollY);
     await page.locator('#workspaceBrand').click();
-    await expect(page.getByRole('dialog',{name:'About Swing Studio'})).toBeVisible();
+    await expect(page.getByRole('dialog',{name:'About FreeGolfSwingAnalyzer.com'})).toBeVisible();
     await expect(page.locator('#aboutDialog article')).toHaveCount(3);
     await expect(page.locator('main > .guide')).toHaveCount(0);
     await expect(page.locator('#closeAbout')).toBeFocused();
