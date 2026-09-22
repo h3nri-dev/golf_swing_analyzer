@@ -1,21 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { analysisRangeError, analysisWindow } from '../deploy/range.js';
+import { analysisRangeError, analysisWindow, DEFAULT_WINDOW_SECONDS } from '../deploy/range.js';
 import {fileTime} from '../deploy/timing.js';
 
-test('default window covers five seconds either side and clips at both edges',()=>{
-  assert.deepEqual(analysisWindow(30,60),[25,35]);
-  assert.deepEqual(analysisWindow(0,60),[0,5]);
-  assert.deepEqual(analysisWindow(59,60),[54,60]);
+test('default window covers 2.5 seconds either side and clips at both edges',()=>{
+  assert.deepEqual(analysisWindow(30,60),[27.5,32.5]);
+  assert.deepEqual(analysisWindow(0,60),[0,2.5]);
+  assert.deepEqual(analysisWindow(59,60),[56.5,60]);
   assert.deepEqual(analysisWindow(2,4),[0,4]);
-  assert.deepEqual(analysisWindow(60,60),[55,60]);
+  assert.deepEqual(analysisWindow(60,60),[57.5,60]);
   assert.deepEqual(analysisWindow(NaN,60),[0,0]);
   assert.deepEqual(analysisWindow(0,0),[0,0]);
 });
 test('window sizes use real seconds across ordinary and slow-motion frame rates',()=>{
   for(const [fps,shotFps] of [[30,30],[60,60],[30,120],[29.97,119.88]]) {
     const clip={fps,shotFps},scale=shotFps/fps;
-    assert.deepEqual(analysisWindow(fileTime(7,clip),fileTime(15,clip),fileTime(10,clip)),[2*scale,12*scale]);
+    assert.deepEqual(analysisWindow(fileTime(7,clip),fileTime(15,clip),fileTime(DEFAULT_WINDOW_SECONDS,clip)),[4.5*scale,9.5*scale]);
   }
   assert.deepEqual(analysisWindow(30,60,2),[29,31]);
 });

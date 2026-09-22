@@ -184,7 +184,7 @@ async function loadFile(index, file) {
     s.ready = true; s.video.hidden = false; s.drop.hidden = true; trackUsage('video_loaded',mode);
     if (isLinked()) { s.speed = slots[1 - index].speed; applySpeed(s); }
     if (isIndependent()) Object.assign(commonTransport, playerState(active), { following: false });
-    s.status = 'Pause at your swing, then Analyze. The window follows the current frame ±5 seconds.';
+    s.status = 'Pause at your swing, then Analyze. The window follows the current frame ±2.5 seconds.';
     s.video.onerror = () => { if (s.ready) { pauseControlled(index); s.status = 'Video decoding failed. Replace this clip with an H.264 MP4.'; s.ready = false; update(); } };
     update(); studioScreen?.focus();
   } catch (error) {
@@ -240,7 +240,7 @@ function updateAnalysisControls() {
   const s = slots[active];
   const disabled = !s.ready || !!job || !!analysisRangeError(s.start, s.end, s.video.duration, timingRate(s));
   $('analyze').disabled = disabled;
-  slots.forEach((slot,i)=>{const button=slot.get('.clip-analyze');if(button){button.disabled=!slot.ready||!!job;button.title=`Analyze swing ${names[i]}: five real seconds either side of its current frame. Replaces its markers when complete.`;}});
+  slots.forEach((slot,i)=>{const button=slot.get('.clip-analyze');if(button){button.disabled=!slot.ready||!!job;button.title=`Analyze swing ${names[i]}: 2.5 real seconds either side of its current frame. Replaces its markers when complete.`;}});
   const target = mode === 'compare' ? ` ${names[active]}` : '';
   $('analyze').textContent = `Analyze${target}`;
   const range = s.ready ? Number.isFinite(s.start) && Number.isFinite(s.end) ? `${seconds(realTime(s.start,s))}–${seconds(realTime(s.end,s))} s` : 'set range' : 'no video';

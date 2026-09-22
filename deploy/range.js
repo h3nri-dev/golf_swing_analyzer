@@ -2,7 +2,7 @@ import { clamp } from './analysis.js';
 import { realTime, fileTime } from './timing.js';
 
 export const MAX_ANALYSIS_SECONDS = 20;
-export const DEFAULT_WINDOW_SECONDS = 10;
+export const DEFAULT_WINDOW_SECONDS = 5;
 // Clip each edge independently: never reach more than half the window from
 // its center. Arguments share one unit (real seconds or file seconds).
 export function analysisWindow(center, duration, span = DEFAULT_WINDOW_SECONDS) {

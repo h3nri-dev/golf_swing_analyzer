@@ -62,9 +62,9 @@ test('phase alignment considers shot FPS, and markers plus reset remain local wi
 test('loop captures fixed boundaries while the analysis window keeps following independent playback',async({page})=>{
  await page.goto('/');await page.locator('#compareMode').click();await load(page,0,'window-60s.mp4');await load(page,1,'window-60s.mp4');await page.locator('#independent').click();
  await seek(page,0,20);await page.locator('#loopRange').click();await expect(page.locator('#loopRange')).toHaveAttribute('aria-pressed','true');
- await seek(page,0,24.8);const clock=await page.locator('#time').textContent();await slot(page,1).locator('.clip-play').click();await slot(page,0).locator('.clip-play').click();await page.waitForTimeout(900);
- const time=await slot(page,0).locator('video').evaluate(v=>v.currentTime);expect(time).toBeGreaterThanOrEqual(15);expect(time).toBeLessThan(17);expect(await slot(page,1).locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(.7);await expect(page.locator('#time')).toHaveText(clock);
- expect((await data(page)).selectedRange[0]).toBeCloseTo(time-5,0);
+ await seek(page,0,22.3);const clock=await page.locator('#time').textContent();await slot(page,1).locator('.clip-play').click();await slot(page,0).locator('.clip-play').click();await page.waitForTimeout(900);
+ const time=await slot(page,0).locator('video').evaluate(v=>v.currentTime);expect(time).toBeGreaterThanOrEqual(17.5);expect(time).toBeLessThan(19.5);expect(await slot(page,1).locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(.7);await expect(page.locator('#time')).toHaveText(clock);
+ expect((await data(page)).selectedRange[0]).toBeCloseTo(time-2.5,0);
  await page.locator('#loopRange').click();await expect(page.locator('#loopRange')).toHaveAttribute('aria-pressed','false');
 });
 

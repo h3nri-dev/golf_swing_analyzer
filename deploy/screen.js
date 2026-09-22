@@ -50,7 +50,7 @@ export function createStudioScreen({ slots, state, changed }) {
   const controls=common.querySelector('.transport-row');
   controls.querySelector('.speed-label').after($('analyze'), $('cancel'), rangeTargets);
   const hint=document.createElement('span');hint.id='analysisWindowHint';hint.className='analysis-window-hint';
-  hint.textContent='Analyze ±5s around frame';
+  hint.textContent='Analyze ±2.5s around frame';
   hint.title='The light-green analysis window follows playback, using real time and stopping at clip edges.';
   const description=document.createElement('div');description.className='timeline-description';description.append(hint);
   common.querySelector('.timeline-row').prepend(description);

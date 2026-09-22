@@ -47,7 +47,7 @@ test('frame-aware clocks, analysis windows and retiming use real seconds without
   expect(data.selectedRange).toEqual([0,8]);expect(data.marks.impact).toBe(2);
   await card(page,1).locator('.fps').selectOption('60');
   await expect(moment(page,1,'impact').locator('.key-frame-time')).toContainText('1.000 s');
-  expect(await card(page,1).locator('.timeline-rail').getAttribute('data-end')).toBe('8');
+  expect(await card(page,1).locator('.timeline-rail').getAttribute('data-end')).toBe('7');
   data=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(data.marks.impact).toBe(2);
   await moment(page,1,'impact').locator('.key-frame').click();
   await expect(card(page,1).locator('.clip-time')).toHaveText('1.000 s · F120');

@@ -60,7 +60,7 @@ export function createMomentNavigation({slots,state,jump,jumpCommon,select,loop,
       band.style.left=`${percent(start)}%`;band.style.width=`${percent(end)-percent(start)}%`;
       item.rail.querySelector('.timeline-playhead').style.left=`${percent(time)}%`;
       item.rail.dataset.start=start;item.rail.dataset.end=end;item.rail.dataset.time=time;
-      track.title='Drag to seek and move the green ±5 real-second analysis window. Arrow keys: one frame; Shift + arrow: one second.';
+      track.title='Drag to seek and move the green ±2.5 real-second analysis window. Arrow keys: one frame; Shift + arrow: one second.';
       controls.hidden=!bounds.available;wrapper.classList.toggle('has-review',bounds.available&&!compact);wrapper.classList.toggle('is-focused',bounds.focused&&!compact);host.classList.toggle('has-timeline-review',bounds.available);
       controls.querySelector('.timeline-scopes').setAttribute('aria-label',`${i===2&&mode==='compare'?'Both videos':mode==='compare'?`Swing ${index?'B':'A'}`:'Video'} timeline view`);
       controls.querySelector('.timeline-range').setAttribute('aria-pressed',bounds.focused);

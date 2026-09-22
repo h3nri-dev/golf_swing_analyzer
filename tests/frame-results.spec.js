@@ -7,7 +7,10 @@ async function setup(page,compare=false) {
  const nodes=[[0,.72],[300,.72],[1300,.2],[1700,.74],[3400,.2],[4000,.2]];let i=1;while(i<nodes.length-1&&nodes[i][0]<t)i++;const a=nodes[i-1],b=nodes[i],y=a[1]+(b[1]-a[1])*(t-a[0])/(b[0]-a[0]);
  const p=Array.from({length:33},()=>({x:.5,y:.5,visibility:1}));
  for(const [j,x,v] of [[11,.38,.35],[12,.62,.35],[13,.25,.5],[14,.72,.48],[15,.4,y],[16,.6,y],[19,.43,y+.03],[20,.63,y+.03],[23,.43,.65],[24,.59,.65],[25,.4,.78],[26,.6,.78],[27,.38,.92],[28,.62,.92]])p[j]={x,y:v,visibility:1};return {landmarks:[p]};}})};`}));
- await page.goto('/');if(compare)await page.locator('#compareMode').click();
+ await page.goto('/');
+ // Complete the first-visit privacy choice before measuring the review workspace.
+ await page.getByRole('button',{name:'No thanks',exact:true}).click();
+ if(compare)await page.locator('#compareMode').click();
  for(const i of compare?[0,1]:[0]){await card(page,i).locator('input[type=file]').setInputFiles(new URL(`./fixtures/${i?'landscape':'portrait'}.mp4`,import.meta.url).pathname);await expect(card(page,i).locator('video')).toBeVisible();}
 }
 async function analyze(page,i=0){if(await page.locator(`[data-select="${i}"]`).isVisible())await page.locator(`[data-select="${i}"]`).click();await page.locator('#analyze').click();await expect(page.locator('#status')).toContainText('Analysis ready',{timeout:20000});}

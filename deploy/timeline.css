@@ -1,4 +1,4 @@
-/* One scrubber owns playback and its moving ±5 real-second analysis window. */
+/* One scrubber owns playback and its moving ±2.5 real-second analysis window. */
 .timeline-review { display:block; min-width:0; width:100%; flex:1; }
 .timeline-focus-controls { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; margin:0; font-size:14px; line-height:1.2; }
 .timeline-scopes { display:flex; flex-wrap:wrap; gap:3px; }
