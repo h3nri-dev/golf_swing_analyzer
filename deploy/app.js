@@ -83,6 +83,13 @@ function configureTiming(index, fps, shotFps) {
     applySpeed(s);
     if (isLinked()) seekActive(s.video.currentTime, index);
   }
+  // An independent common player freezes its transport, not its calibration.
+  // Reinterpret its saved file frame using the updated FPS without adopting
+  // the local playhead, speed or play state.
+  if (isIndependent() && commonTransport.clock === index) {
+    commonTransport.rate = timingRate(s);
+    commonTransport.fps = s.fps;
+  }
   update();
 }
 function isLinked() { return mode === 'compare' && linked && slots.every(s => s.ready); }

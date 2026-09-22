@@ -37,18 +37,22 @@ test('a single tall scrubber moves both the playhead and window, including keybo
  await expect(card(page).locator('.zoom-value')).toHaveText('2.00×');
 });
 
-test('each unsynced player owns its FPS-aware window and leaves the common window unchanged',async({page})=>{
+test('each unsynced player owns its FPS-aware window and local playback leaves the common window unchanged',async({page})=>{
  await stub(page);await page.goto('/');await page.locator('#compareMode').click();await load(page);await load(page,1);await page.locator('#independent').click();
- const common=await page.locator('#commonPlayer .timeline-rail').evaluate(e=>({...e.dataset}));
+ const commonRail=page.locator('#commonPlayer .timeline-rail');
  await card(page,0).locator('.clip-timeline').fill('20');await bounds(page,15,25);
  await card(page,1).locator('.clip-timeline').fill('40');await bounds(page,35,45,1);
  await card(page,1).locator('.shot-fps').selectOption('120');await bounds(page,20,60,1);
+ // Explicit calibration updates the common clock's scale at its saved frame.
+ await expect(commonRail).toHaveAttribute('data-time','0');await expect(commonRail).toHaveAttribute('data-end','20');
+ const common=await commonRail.evaluate(e=>({...e.dataset}));
  const band=card(page,1).locator('.timeline-window');expect(parseFloat(await band.evaluate(e=>e.style.width))).toBeCloseTo(200/3,3);
  await card(page,1).locator('.clip-speed').selectOption('0.25');await card(page,1).locator('.clip-play').click();
  await expect.poll(async()=>(await data(page,1)).selectedRange[0]).toBeGreaterThan(20.1);
  expect(await page.locator('#commonPlayer .timeline-rail').evaluate(e=>({...e.dataset}))).toEqual(common);
  await card(page,1).locator('.clip-play').click();await card(page,0).locator('.clip-analyze').click();
  await expect(page.locator('#status')).toContainText('No clear pose',{timeout:15000});expect((await data(page)).analyzedRange).toEqual([15,25]);expect((await data(page,1)).analyzedRange).toBeNull();
+ await page.screenshot({path:'/tmp/fps-window-compare-analyzed.png'});
 });
 
 test('analysis from playback restores the exact anchor without a false stale-results warning',async({page})=>{
