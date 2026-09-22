@@ -1,4 +1,38 @@
-/* Results are part of each moment, visible without a Notes toggle. */
+/* Quick measurements stay visible. Each frame owns its full report toggle. */
+.moment-actions { display:flex; flex:none; container-type:inline-size; min-width:0; }
+.moment-cell .moment-actions .moment-mark { flex:1; width:auto; min-width:0; white-space:nowrap; }
+.moment-analysis-toggle { display:flex; align-items:center; justify-content:center; gap:4px; min-width:26px; min-height:32px; padding:3px; border:0; border-top:1px solid #c8d3be; border-left:1px solid #c8d3be; border-radius:0; background:#eaf0e2; font-size:14px; transition:none; }
+.moment-analysis-toggle svg { width:19px; height:19px; flex:none; }
+.moment-analysis-toggle span { display:none; }
+.moment-analysis-toggle:hover { background:#d9e7c9; }
+.moment-analysis-toggle[aria-expanded=true],.moment-analysis-toggle[aria-expanded=true]:hover:not(:disabled) { background:#354f3d; color:white; }
+.moment-analysis-toggle:focus-visible { outline:3px solid #254831; outline-offset:-3px; }
+@container (min-width:115px) { .moment-analysis-toggle span { display:inline; } .moment-analysis-toggle svg { display:none; } }
+@container (min-width:150px) { .moment-analysis-toggle svg { display:block; } }
+.key-inline-reports { display:none; min-width:0; }
+.key-card.has-analysis { grid-column:1/-1; }
+.key-card.has-analysis .key-inline-reports { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:10px; padding:10px; border-top:1px solid #cad8bd; }
+.key-card.has-analysis .key-frame-results { display:none; }
+.key-inline-analysis { min-width:0; padding:0; }
+.key-inline-analysis h4 { margin:0 0 8px; }
+.key-inline-analysis .key-posture-notes { margin:8px 0; }
+.key-inline-analysis:focus-visible { outline:2px solid #354f3d; outline-offset:3px; }
+/* Long reports scroll inside their existing gallery, keeping the video and
+   playback dock fixed. The normal seven-card layout returns on close. */
+@media(min-width:901px) {
+  .has-inline-analysis .key-filmstrip { position:relative; height:var(--gallery-height); max-height:var(--gallery-height); overflow:auto; overscroll-behavior:contain; align-content:start; align-items:start; }
+  .key-portrait:not(.is-compare) .has-inline-analysis .key-filmstrip { flex:1; }
+  .has-inline-analysis .key-filmstrip,.key-portrait:not(.is-compare) .has-inline-analysis .key-filmstrip { grid-template-rows:none; grid-auto-rows:max-content; }
+  .has-inline-analysis .key-card { flex:none; }
+  .has-inline-analysis .key-card:not(.has-analysis) .key-frame-image { flex:none; height:80px; }
+  .has-inline-analysis .key-card.has-analysis { display:grid; grid-template-columns:minmax(115px,.4fr) minmax(270px,1fr); grid-template-rows:auto minmax(0,1fr); height:min(var(--gallery-height),560px); }
+  .has-inline-analysis .key-card.has-analysis .key-card-title { grid-column:1; grid-row:1; }
+  .has-inline-analysis .key-card.has-analysis .key-card-frames { grid-column:1; grid-row:2; min-height:0; }
+  .has-inline-analysis .key-card.has-analysis .key-frame { display:flex; flex-direction:column; min-height:0; }
+  .has-inline-analysis .key-card.has-analysis .key-frame-image { flex:1; min-height:0; height:auto; width:100%; }
+  .has-inline-analysis .key-card.has-analysis .key-frame-image canvas { position:absolute; inset:0; }
+  .has-inline-analysis .key-card.has-analysis .key-inline-reports { grid-column:2; grid-row:1/3; min-height:0; overflow:auto; overscroll-behavior:contain; align-content:start; grid-auto-rows:max-content; border-top:0; border-left:1px solid #cad8bd; }
+}
 .key-frame-results { flex:none; padding:2px 5px 5px; border-top:1px solid #d1ddc8; background:#f6f8f2; }
 .key-frame-results table { width:100%; border-collapse:collapse; font-size:14px; line-height:1.25; }
 .key-frame-results th { text-align:left; font-weight:400; }
@@ -61,7 +95,7 @@
   .key-large-frame { grid-column:1; grid-row:2/6; height:100%; min-height:0; }
   .key-large-frame canvas { position:absolute; inset:0; }
   .key-detail-line { grid-column:2; grid-row:2; }
-  .key-detail-results { grid-column:2; grid-row:3; }
+  .key-review-panel>.key-detail-results { grid-column:2; grid-row:3; }
   .key-edit-controls { grid-column:2; grid-row:4; }
   .key-review-actions { grid-column:2; grid-row:5; }
   .key-review-panel:has(canvas[hidden]) .key-large-frame { min-height:200px; }

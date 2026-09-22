@@ -7,6 +7,13 @@ const sourceLabel=momentSource;
 const name=i=>i?'B':'A';
 const angle=(value,delta=false)=>Number.isFinite(value)?`${delta&&value>0?'+':''}${Math.round(value)}°`:'—';
 const compactLabels={elbow:'Elbow',trailElbow:'Trail el.',lean:'Torso',knee:'Knee',wrist:'Wrist'};
+const analysisMarkup='<h4>Frame analysis</h4><p class="key-phase-guide"></p><ul class="key-posture-notes"></ul><table class="key-detail-metrics"><thead><tr><th>2D measurement</th><th>Angle</th><th>vs address</th></tr></thead><tbody></tbody></table>';
+function showAnalysis(element,analysis) {
+  element.querySelector('.key-phase-guide').textContent=analysis.guide||'';
+  element.querySelector('.key-phase-guide').hidden=!analysis.guide;
+  element.querySelector('.key-posture-notes').replaceChildren(...analysis.observations.map(note=>{const li=document.createElement('li');li.textContent=note;return li;}));
+  element.querySelector('tbody').innerHTML=MEASUREMENTS.map(([key,label])=>`<tr data-frame-metric="${key}"><th scope="row">${label}</th><td>${angle(analysis.measurements[key])}</td><td>${angle(analysis.changes[key],true)}</td></tr>`).join('');
+}
 
 export function createKeyframeViews({slots,state,controlClip,seek,play,changed,paintDrawings,focusVideo,markMoment,editMoments,alignMoment}) {
   const strip=document.createElement('section');strip.id='keyMomentStrip';strip.className='key-moment-strip';strip.hidden=true;
@@ -19,7 +26,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
   document.body.append(dialog);
   let previewsOverlay=true;
   strip.querySelector('.key-overlay').onclick=()=>{previewsOverlay=!previewsOverlay;strip.querySelector('.key-overlay').setAttribute('aria-pressed',previewsOverlay);lastVisual='';render(lastDrawings);};
-  let selected=0,signature='',drawingSignature='',lastDrawings='',paintVersion=0,lastVisual='';
+  let selected=0,signature='',drawingSignature='',lastDrawings='',paintVersion=0,lastVisual='',reportLayout='';
   const caches=slots.map(()=>new Map()), workers=slots.map(()=>null), failed=slots.map(()=>new Set());
   const cellViews=[];
   const cards=KEY_MOMENTS.map(([key,label],position)=>{
@@ -32,15 +39,54 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
       button.innerHTML='<span class="key-frame-image"><canvas></canvas><span class="key-frame-placeholder"></span><span class="key-slot-badge"></span></span><span class="key-frame-time"></span>';
       button.onclick=()=>jump(i,position,false);
       const mark=document.createElement('button');mark.className='moment-mark';mark.textContent=`Set ${name(i)}`;mark.setAttribute('aria-label',`Set ${label} here in swing ${name(i)}`);mark.title=`Replace ${label} with the frame currently displayed in swing ${name(i)}`;mark.onclick=()=>markMoment(i,key);
-      cell.append(button,mark);cells.append(cell);cellViews.push({button,canvas:button.querySelector('canvas'),position,index:i});
+      const actions=document.createElement('div');actions.className='moment-actions';
+      const toggle=document.createElement('button');toggle.className='moment-analysis-toggle';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',`frame-analysis-${i}-${key}`);
+      toggle.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3v17h17M8 16v-5m5 5V6m5 10v-8"/></svg><span>Analysis</span>';
+      const report=document.createElement('section');report.className='key-inline-analysis key-detail-results';report.id=`frame-analysis-${i}-${key}`;report.hidden=true;report.tabIndex=0;report.innerHTML=analysisMarkup;
+      toggle.onclick=()=>{
+        report.hidden=!report.hidden;toggle.setAttribute('aria-expanded',String(!report.hidden));
+        updateReports(card);
+      };
+      report.addEventListener('keydown',e=>{
+        // Reading/scrolling a report must not trigger the player's shortcuts.
+        if([' ','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown','Escape'].includes(e.key))e.stopPropagation();
+        if(e.key==='Escape'){toggle.click();toggle.focus();}
+      });
+      actions.append(mark,toggle);cell.append(button,actions);cells.append(cell);
+      cellViews.push({button,canvas:button.querySelector('canvas'),position,index:i,toggle,report,url:s.url});
     });
     const sync=document.createElement('button');sync.className='key-sync';sync.textContent='Sync';sync.setAttribute('aria-label',`Sync here at ${label}`);sync.title=`Synchronize both videos at ${label}`;sync.onclick=()=>alignMoment(key);cells.append(sync);
     const results=document.createElement('div');results.className='key-frame-results';card.append(results);
     results.addEventListener('click',e=>{if(e.target.closest('button'))open(position);});
+    const reports=document.createElement('div');reports.className='key-inline-reports';
+    cellViews.filter(v=>v.position===position).forEach(v=>reports.append(v.report));card.append(reports);
     strip.querySelector('.key-filmstrip').append(card);
     const nav=document.createElement('button');nav.textContent=`${position+1} ${label}`;nav.style.setProperty('--moment-color',MOMENT_COLORS[key]);nav.onclick=()=>{selected=position;renderDialog();};dialog.querySelector('nav').append(nav);
     return {card,title};
   });
+  function updateReports(card) {
+    const gallery=strip.querySelector('.key-filmstrip'),wasOpen=strip.classList.contains('has-inline-analysis');
+    // Reserve the existing gallery area before expansion: reading a report
+    // must not shrink the players or move their controls off screen.
+    if(!wasOpen)strip.style.setProperty('--gallery-height',`${gallery.getBoundingClientRect().height}px`);
+    cards.forEach(({card},position)=>card.classList.toggle('has-analysis',cellViews.some(v=>v.position===position&&!v.report.hidden&&!v.button.parentElement.hidden)));
+    const expanded=cards.some(({card})=>card.classList.contains('has-analysis'));
+    strip.classList.toggle('has-inline-analysis',expanded);
+    if(!expanded)strip.style.removeProperty('--gallery-height');
+    if(card?.classList.contains('has-analysis'))gallery.scrollTop=card.offsetTop;
+  }
+  function resizeReports() {
+    if(!strip.classList.contains('has-inline-analysis'))return;
+    strip.classList.remove('has-inline-analysis');cards.forEach(({card})=>card.classList.remove('has-analysis'));
+    const active=cellViews.find(v=>!v.report.hidden);updateReports(active?cards[active.position].card:undefined);
+  }
+  let reportResize=0;
+  function scheduleReportResize() {
+    cancelAnimationFrame(reportResize);
+    // Mode controls and the studio grid update later in the same render.
+    reportResize=requestAnimationFrame(()=>{reportResize=0;resizeReports();});
+  }
+  window.addEventListener('resize',scheduleReportResize);
   const panels=slots.map((s,index)=>{
     const panel=document.createElement('section');panel.className='key-review-panel';panel.dataset.reviewSlot=index;
     panel.innerHTML='<h3><span class="key-swing-label"></span> <span class="key-source"></span></h3><div class="key-large-frame"><canvas></canvas><p></p></div><div class="key-detail-line"><strong class="key-detail-time"></strong></div><div class="key-detail-results"><h4>Frame analysis</h4><p class="key-phase-guide"></p><ul class="key-posture-notes"></ul><table class="key-detail-metrics"><thead><tr><th>2D measurement</th><th>Angle</th><th>vs address</th></tr></thead><tbody></tbody></table></div><div class="key-edit-controls"><button class="key-frame-back">−1</button><label>Frame <input type="number" min="0" step="1"></label><button class="key-frame-next">+1</button><button class="key-set-current">Set from player</button></div><div class="key-review-actions"><button class="key-play-from">▶ Play from here</button><button class="key-draw-frame">Draw on frame ↗</button></div>';
@@ -149,10 +195,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
       panel.querySelector('.key-detail-time').textContent=has?`${entry.label} · ${frameStamp(entry.time,s)}`:'Choose a frame';
       const analysis=frameAnalysis(s,entry.time,entry);
       panel.querySelector('.key-detail-results').hidden=!has;
-      panel.querySelector('.key-phase-guide').textContent=analysis.guide||'';
-      panel.querySelector('.key-phase-guide').hidden=!analysis.guide;
-      panel.querySelector('.key-posture-notes').replaceChildren(...analysis.observations.map(note=>{const li=document.createElement('li');li.textContent=note;return li;}));
-      panel.querySelector('.key-detail-metrics tbody').innerHTML=MEASUREMENTS.map(([key,label])=>`<tr data-frame-metric="${key}"><th scope="row">${label}</th><td>${angle(analysis.measurements[key])}</td><td>${angle(analysis.changes[key],true)}</td></tr>`).join('');
+      showAnalysis(panel.querySelector('.key-detail-results'),analysis);
       const input=panel.querySelector('input');if(document.activeElement!==input)input.value=has?frameNumber(entry.time,s.fps):'';input.max=lastFrame(s.video.duration,s.fps);input.disabled=!s.ready||busy;
       panel.querySelectorAll('button').forEach(b=>b.disabled=!s.ready||busy||(!has&&!b.classList.contains('key-set-current')));
     });
@@ -190,10 +233,17 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
           const note=document.createElement('p');note.className='key-results-guide';note.textContent=slots.some(s=>s.samples.length)?'Pose unavailable.':'Analyze to see results.';results.append(note);
         }
       });
-      cellViews.forEach(({button,position,index})=>{
+      cellViews.forEach(view=>{
+        const {button,position,index,toggle,report}=view;
         const entry=data[index][position],has=Number.isFinite(entry.time);
         const cell=button.parentElement;cell.hidden=index===1&&mode!=='compare';cell.classList.toggle('is-active',slots[index].card.classList.contains('selected'));cell.dataset.source=entry.source;cell.dataset.empty=!has;cell.querySelector('.moment-mark').disabled=!slots[index].ready||busy;
         const suffix=mode==='compare'?` in swing ${name(index)}`:'';
+        if(view.url!==slots[index].url||!has||cell.hidden){report.hidden=true;toggle.setAttribute('aria-expanded','false');view.url=slots[index].url;}
+        toggle.disabled=!has||busy;
+        toggle.setAttribute('aria-label',`Analysis for ${entry.label}${suffix}`);toggle.title=`Show or hide analysis for ${entry.label}${suffix}`;
+        report.setAttribute('aria-label',`${entry.label} analysis${suffix}`);
+        report.querySelector('h4').textContent=`${entry.label}${mode==='compare'?` · ${name(index)}`:''} analysis`;
+        showAnalysis(report,frameAnalysis(slots[index],entry.time,entry));
         const mark=cell.querySelector('.moment-mark'),markLabel=mode==='compare'?`Set ${name(index)}`:'Set here';mark.textContent=markLabel;
         mark.setAttribute('aria-label',`Set ${KEY_MOMENTS[position][1]} here${suffix}`);
         mark.title=`Replace ${KEY_MOMENTS[position][1]} with the frame currently displayed${suffix}`;
@@ -207,6 +257,9 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
         if(mode==='compare'&&has){const [time,frame]=frameStamp(entry.time,slots[index]).split(' · ');stamp.innerHTML=`<span>${time}</span> <span>${frame}</span>`;}
         button.setAttribute('aria-label',has?`Jump to ${entry.label}${suffix}, ${frameStamp(entry.time,slots[index])}`:`No ${KEY_MOMENTS[position][1]}${suffix}`);
       });
+      updateReports();
+      const layout=JSON.stringify([mode,mobile,slots[0].video.videoHeight>slots[0].video.videoWidth]);
+      if(reportLayout!==layout){reportLayout=layout;scheduleReportResize();}
       slots.forEach((s,i)=>{if(!s.ready){caches[i].clear();failed[i].clear();}});
     }
     const current=slots.map(s=>currentMoment(s)?.key);

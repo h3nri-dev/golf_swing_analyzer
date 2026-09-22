@@ -71,3 +71,80 @@ test('single and paired results stay readable beside the videos across screen si
  }
  for(const [i,clip] of before.entries())expect((await data(page,i)).keyMoments).toEqual(clip.keyMoments);
 });
+
+test('inline analysis toggles beside Set, stays frame-specific and leaves playback alone',async({page})=>{
+ await setup(page,true);await analyze(page,0);await analyze(page,1);
+ const moment=page.locator('.key-card[data-key=impact]');
+ const toggleA=moment.locator('[data-moment-slot="0"] .moment-analysis-toggle'),toggleB=moment.locator('[data-moment-slot="1"] .moment-analysis-toggle');
+ const reportA=page.locator('#frame-analysis-0-impact'),reportB=page.locator('#frame-analysis-1-impact');
+ const before=await data(page);const common=await page.locator('#play').textContent();
+ const positions=await page.locator('.video-card video').evaluateAll(v=>v.map(v=>v.currentTime));
+ await expect(reportA).toBeHidden();await expect(toggleA).toHaveAttribute('aria-expanded','false');
+ for(const index of [0,1]){
+  const actions=moment.locator(`[data-moment-slot="${index}"] .moment-actions`),set=await actions.locator('.moment-mark').boundingBox(),toggle=await actions.locator('.moment-analysis-toggle').boundingBox();
+  expect(Math.abs(set.y-toggle.y)).toBeLessThan(1);expect(toggle.x-(set.x+set.width)).toBeLessThan(2);
+ }
+ await toggleA.click();await expect(reportA).toBeVisible();await expect(reportB).toBeHidden();await expect(toggleA).toHaveAttribute('aria-expanded','true');
+ await expect(page.locator('#keyMomentDialog')).toBeHidden();
+ const impact=before.keyMoments.find(e=>e.key==='impact');
+ await expect(reportA.locator('[data-frame-metric]')).toHaveCount(8);
+ for(const [key,value] of Object.entries(impact.analysis.measurements))await expect(reportA.locator(`[data-frame-metric="${key}"] td`).first()).toHaveText(angle(value));
+ await expect(reportA.locator('.key-phase-guide')).toHaveText(impact.analysis.guide);
+ for(const note of impact.analysis.observations)await expect(reportA).toContainText(note);
+ await toggleB.click();await expect(reportB).toBeVisible();await expect(reportA).toBeVisible();
+ await toggleA.click();await expect(reportA).toBeHidden();await expect(reportB).toBeVisible();
+ await toggleA.click();await page.locator('#hand').selectOption('left');
+ const changed=await data(page);for(const [key,value] of Object.entries(changed.keyMoments.find(e=>e.key==='impact').analysis.measurements))await expect(reportA.locator(`[data-frame-metric="${key}"] td`).first()).toHaveText(angle(value));
+ expect(positions).toHaveLength(2);
+ const marks=report=>report.keyMoments.map(({key,time,source})=>({key,time,source}));
+ expect(marks(await data(page))).toEqual(marks(before));
+ expect(await page.locator('.video-card video').evaluateAll(v=>v.map(v=>v.currentTime))).toEqual(positions);
+ await expect(page.locator('#play')).toHaveText(common);
+ await page.locator('#singleMode').click();await expect(reportB).toBeHidden();await expect(reportA).toBeVisible();await expect(toggleA).toHaveAccessibleName('Analysis for Impact');
+ const singlePlay=await page.locator('#play').textContent();
+ await reportA.focus();await page.keyboard.press('ArrowRight');await page.keyboard.press('Space');
+ expect(await page.locator('.video-card video').evaluateAll(v=>v.map(v=>v.currentTime))).toEqual(positions);
+ await expect(page.locator('#play')).toHaveText(singlePlay);
+ await page.keyboard.press('Escape');await expect(reportA).toBeHidden();await expect(toggleA).toBeFocused();await expect(page.locator('#keyMomentStrip')).not.toHaveClass(/has-inline-analysis/);
+});
+
+test('expanded inline reports preserve video space and reachable toggles on desktop and phone',async({page})=>{
+ await setup(page,true);await analyze(page,0);await analyze(page,1);
+ for(const [width,height] of [[2560,1440],[1440,900],[1280,720],[390,844]]){
+  await page.setViewportSize({width,height});
+  for(const compare of [false,true]){
+   await page.locator(compare?'#compareMode':'#singleMode').click();
+   const moment=page.locator('.key-card[data-key=impact]'),toggle=moment.locator('[data-moment-slot="0"] .moment-analysis-toggle');
+   const stageBefore=await card(page).locator('.stage').boundingBox();
+   await toggle.click();if(compare)await moment.locator('[data-moment-slot="1"] .moment-analysis-toggle').click();
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+   if(width>900){
+    const stageAfter=await card(page).locator('.stage').boundingBox();expect(Math.abs(stageAfter.height-stageBefore.height)).toBeLessThan(2);
+    const button=await toggle.boundingBox();expect(button.y).toBeGreaterThanOrEqual(0);expect(button.y+button.height).toBeLessThan(height);
+    const report=page.locator('#frame-analysis-0-impact');expect(await report.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+   }
+   await page.screenshot({path:`/tmp/inline-analysis-${compare?'compare':'single'}-${width}.png`,fullPage:width<901});
+   if(compare)await moment.locator('[data-moment-slot="1"] .moment-analysis-toggle').click();await toggle.click();
+  }
+ }
+});
+
+test('open reports adapt to mode and size changes, refresh after analysis and explain missing tracking',async({page})=>{
+ await setup(page,true);await analyze(page,0);
+ const moment=page.locator('.key-card[data-key=impact]'),toggle=moment.locator('[data-moment-slot="0"] .moment-analysis-toggle'),report=page.locator('#frame-analysis-0-impact');
+ await moment.locator('[data-moment-slot="1"] .moment-mark').click();await moment.locator('[data-moment-slot="1"] .moment-analysis-toggle').click();
+ await expect(page.locator('#frame-analysis-1-impact')).toContainText('Analyze this video to see measurements');
+ await expect(page.locator('#frame-analysis-1-impact .key-phase-guide')).toBeHidden();
+ await toggle.click();
+ for(const [width,height,mode] of [[1280,720,'single'],[1440,900,'compare'],[390,844,'single'],[1280,720,'compare']]){
+  await page.setViewportSize({width,height});await page.locator(`#${mode}Mode`).click();await expect(report).toBeVisible();
+  if(width>900){
+   await expect.poll(async()=>{const b=await toggle.boundingBox(),s=await card(page).locator('.stage').boundingBox();return b.y+b.height<height&&s.height>100;},{message:`Expanded report fits ${mode} at ${width}x${height}`}).toBe(true);
+   const g=await page.locator('#keyMomentStrip').boundingBox();expect(g.y+g.height).toBeLessThanOrEqual(height);
+  }
+ }
+ await moment.locator('[data-moment-slot="0"] .moment-mark').click();expect((await data(page)).keyMoments.find(e=>e.key==='impact').source).toBe('marked');
+ await analyze(page,0);await expect(report).toBeVisible();const renewed=(await data(page)).keyMoments.find(e=>e.key==='impact');expect(renewed.source).toBe('estimated');
+ for(const [key,value] of Object.entries(renewed.analysis.measurements))await expect(report.locator(`[data-frame-metric="${key}"] td`).first()).toHaveText(angle(value));
+ expect((await data(page,1)).keyMoments.find(e=>e.key==='impact').source).toBe('marked');
+});
