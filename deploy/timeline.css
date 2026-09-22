@@ -1,4 +1,4 @@
-/* One scrubber owns playback and its moving ±2.5 real-second analysis window. */
+/* One scrubber owns playback and its adjustable following analysis window. */
 .timeline-review { display:block; min-width:0; width:100%; flex:1; }
 .timeline-focus-controls { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; margin:0; font-size:14px; line-height:1.2; }
 .timeline-scopes { display:flex; flex-wrap:wrap; gap:3px; }
@@ -41,6 +41,11 @@
 .persistent-sidebar .common-player .timeline-row>output { width:auto; margin:0 0 0 auto; font-size:14px; white-space:nowrap; }
 .analysis-window-hint { display:inline-flex; align-items:center; gap:6px; color:#49613c; font-size:14px; line-height:1.4; }
 .analysis-window-hint::before { content:''; width:16px; height:10px; border:1px solid #89ae64; border-radius:2px; background:#b7d99a80; }
+.analysis-window-settings { gap:3px; white-space:nowrap; }
+.analysis-window-settings::before { width:10px; flex:none; }
+.analysis-window-settings label { display:inline-flex; align-items:center; gap:2px; }
+.analysis-window-settings input { width:50px; min-width:0; min-height:30px; padding:3px 2px; border:1px solid #a7ba99; border-radius:4px; font:inherit; font-size:16px; font-variant-numeric:tabular-nums; color:#253e2e; background:#f0f7e9; }
+.analysis-window-settings input:focus-visible { outline:2px solid #496e35; outline-offset:1px; }
 .persistent-sidebar #loopRange { padding:5px 8px; min-height:32px; font-size:14px; }
 .persistent-sidebar .clip-transport,.persistent-sidebar .clip-transport.has-timeline-review { display:flex; flex-direction:column; gap:2px; padding:4px 8px; }
 .persistent-sidebar .clip-transport .clip-timeline-row { display:flex; flex-wrap:wrap; align-items:center; gap:2px; width:100%; }

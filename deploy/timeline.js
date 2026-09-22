@@ -7,8 +7,17 @@ export function timelineBounds(slot, focused = false) {
   const range = slot.analyzedRange;
   const start = range && Number.isFinite(range[0]) ? clamp(range[0],0,duration) : 0;
   const end = range && Number.isFinite(range[1]) ? clamp(range[1],0,duration) : 0;
-  const available = end > start && end-start < duration-0.5/slot.fps;
+  const available = duration>0&&end>start;
   return {start:focused && available ? start : 0,end:focused && available ? end : duration,available,focused:focused && available};
+}
+
+// Intersect saved file-time windows on the calibrated common clock. A missing
+// range leaves that clip constrained only by its file boundaries.
+export function linkedLoopBounds(model, ranges) {
+  if(!model)return null;
+  let {start,end}=model.bounds;
+  ranges.forEach((range,i)=>{if(range){start=Math.max(start,model.commonTime(range[0],i));end=Math.min(end,model.commonTime(range[1],i));}});
+  return end>start?{start,end}:null;
 }
 
 // Spread nearby labels just enough to remain selectable. Leaders connect each

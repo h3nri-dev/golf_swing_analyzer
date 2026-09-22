@@ -4,7 +4,7 @@ const model=(page,i=0)=>page.evaluate(async i=>(await import('/app.js')).reportD
 async function load(page,i=0){await clip(page,i).locator('input[type=file]').setInputFiles(new URL('./fixtures/window-60s.mp4',import.meta.url).pathname);await expect(clip(page,i).locator('video')).toBeVisible();}
 async function setup(page){
  await page.route('**/vision_bundle.mjs',r=>r.fulfill({contentType:'text/javascript',body:`export const FilesetResolver={forVisionTasks:async()=>({})};export const PoseLandmarker={createFromOptions:async()=>({close(){},detectForVideo(canvas,t){const nodes=[[0,.72],[300,.72],[1300,.2],[1700,.74],[3400,.2],[20000,.2]];let i=1;while(i<nodes.length-1&&nodes[i][0]<t)i++;const a=nodes[i-1],b=nodes[i],y=a[1]+(b[1]-a[1])*(t-a[0])/(b[0]-a[0]);const p=Array.from({length:33},()=>({x:.5,y:.5,visibility:1}));p[11].y=p[12].y=.35;p[23].y=p[24].y=.65;p[15].y=p[16].y=y;return{landmarks:[p]}}})};`}));
- await page.goto('/');
+ await page.goto('/');await page.locator('#analysisBefore').fill('2.5');await page.locator('#analysisBefore').press('Tab');await page.locator('#analysisAfter').fill('2.5');await page.locator('#analysisAfter').press('Tab');
  // Measure the working review layout after its first-visit privacy choice.
  await page.getByRole('button',{name:'No thanks',exact:true}).click();await load(page);
 }
@@ -41,7 +41,9 @@ test('local expanded timelines remain independent and common marker seeks honor 
  await page.locator('#commonPlayer .timeline-moments [data-key=impact]').click();
   const after=await page.locator('.video-card video').evaluateAll(v=>v.map(x=>x.currentTime));expect(after[1]).toBeCloseTo(b.phaseTimes.impact,4);expect(after[0]).toBeCloseTo(before[0]+(after[1]-before[1])/4,4);
  await page.locator('#linked').click();await page.locator('#commonPlayer .timeline-moments [data-key=top]').click();await expect(page.locator('#linked')).toHaveAttribute('aria-pressed','true');
- const synced=await page.locator('.video-card video').evaluateAll(v=>v.map(x=>x.currentTime));expect(synced[1]).toBeCloseTo(b.phaseTimes.top,4);expect(synced[0]).toBeCloseTo(synced[1]/4,4);
+ const synced=await page.locator('.video-card video').evaluateAll(v=>v.map(x=>x.currentTime)),a=await model(page,0);
+ const alignedOffset=b.phaseTimes.address/4-a.phaseTimes.address;
+ expect(synced[1]).toBeCloseTo(b.phaseTimes.top,4);expect(synced[0]).toBeCloseTo(synced[1]/4-alignedOffset,4);
  for(const [width,height] of [[1440,900],[1280,720],[2560,1440],[390,844]]){
   await page.setViewportSize({width,height});await page.locator('#studio').evaluate(e=>e.scrollIntoView({block:'start',behavior:'instant'}));
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

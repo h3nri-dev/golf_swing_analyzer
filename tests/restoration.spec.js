@@ -61,6 +61,7 @@ test('phase alignment considers shot FPS, and markers plus reset remain local wi
 
 test('loop captures fixed boundaries while the analysis window keeps following independent playback',async({page})=>{
  await page.goto('/');await page.locator('#compareMode').click();await load(page,0,'window-60s.mp4');await load(page,1,'window-60s.mp4');await page.locator('#independent').click();
+ await page.locator('#analysisBefore').fill('2.5');await page.locator('#analysisBefore').press('Tab');await page.locator('#analysisAfter').fill('2.5');await page.locator('#analysisAfter').press('Tab');
  await seek(page,0,20);await page.locator('#loopRange').click();await expect(page.locator('#loopRange')).toHaveAttribute('aria-pressed','true');
  await seek(page,0,22.3);const clock=await page.locator('#time').textContent();await slot(page,1).locator('.clip-play').click();await slot(page,0).locator('.clip-play').click();await page.waitForTimeout(900);
  const time=await slot(page,0).locator('video').evaluate(v=>v.currentTime);expect(time).toBeGreaterThanOrEqual(17.5);expect(time).toBeLessThan(19.5);expect(await slot(page,1).locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(.7);await expect(page.locator('#time')).toHaveText(clock);
@@ -78,7 +79,8 @@ for(const [width,height] of [[1440,900],[1280,720],[2560,1440],[390,844]])test(`
 test('linked looping respects calibrated overlap and loops through the natural clip end',async({page})=>{
  await page.goto('/');await page.locator('#compareMode').click();await load(page);await load(page,1,'timing-slow.mp4');await slot(page,1).locator('.shot-fps').selectOption('120');
  await page.locator('[data-select="0"]').click();await page.locator('#timeline').fill('1.8');await page.locator('#loopRange').click();await page.locator('#play').click();
- await page.waitForTimeout(900);let times=await page.locator('.video-card video').evaluateAll(v=>v.map(x=>x.currentTime));expect(times[0]).toBeGreaterThanOrEqual(0);expect(times[0]).toBeLessThan(1);expect(times[0]).toBeLessThan(2);expect(Math.abs(times[1]/4-times[0])).toBeLessThan(.1);
+ // The default window starts at 1.5 s; B's calibrated natural end limits the loop to 2 s.
+ await page.waitForTimeout(900);let times=await page.locator('.video-card video').evaluateAll(v=>v.map(x=>x.currentTime));expect(times[0]).toBeGreaterThanOrEqual(1.5);expect(times[0]).toBeLessThan(2);expect(Math.abs(times[1]/4-times[0])).toBeLessThan(.1);
  await expect(page.locator('#play')).toContainText('Pause');await page.locator('#independent').click();await page.locator('[data-select="0"]').click();await page.waitForTimeout(650);
  expect(await slot(page,0).locator('video').evaluate(v=>v.paused)).toBe(false);expect(await slot(page,0).locator('video').evaluate(v=>v.currentTime)).toBeGreaterThanOrEqual(0);
 });

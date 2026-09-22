@@ -1,12 +1,14 @@
-import {analysisWindow,DEFAULT_WINDOW_SECONDS} from './range.js';
 import {keyMomentEntries,MOMENT_COLORS,KEY_MOMENTS} from './keyframes.js';
 import {frameStamp,realTime,seconds} from './timing.js';
 import {timelineBounds,markerLayout} from './timeline.js';
 
-export function createMomentNavigation({slots,state,jump,jumpCommon,select,loop,changed}) {
+export function createMomentNavigation({slots,state,jump,jumpCommon,select,loop,changed,windowAt,windowDescription,scopeChanged}) {
   const $=id=>document.getElementById(id);
   const loopButton=document.createElement('button');loopButton.id='loopRange';loopButton.textContent='Loop window';loopButton.setAttribute('aria-pressed','false');
-  $('restart').before(loopButton);loopButton.onclick=loop;
+  $('restart').before(loopButton);loopButton.onclick=()=>{
+    if(commonRangeActive()){setFocus(layers[2],false);return;}
+    loop();
+  };
   const layers=[...slots.map(s=>({slot:s,track:s.get('.clip-timeline'),host:s.get('.clip-transport')})),{track:$('timeline'),host:$('commonPlayer')}].map(item=>{
     const wrapper=document.createElement('div');wrapper.className='timeline-review';item.track.before(wrapper);
     const controls=document.createElement('div');controls.className='timeline-focus-controls';controls.hidden=true;
@@ -32,14 +34,20 @@ export function createMomentNavigation({slots,state,jump,jumpCommon,select,loop,
     });
     if(!item.slot)item.host.querySelector('.timeline-description').append(controls);
     const view={...item,wrapper,controls,layer,rail,focused:false,signature:'',layoutSignature:''};
-    controls.querySelector('.timeline-range').onclick=()=>{view.focused=true;render();changed();};
-    controls.querySelector('.timeline-full').onclick=()=>{view.focused=false;render();changed();};
+    controls.querySelector('.timeline-range').onclick=()=>setFocus(view,true);
+    controls.querySelector('.timeline-full').onclick=()=>setFocus(view,false);
     return view;
   });
+  function setFocus(view,focused) {
+    if(state().busy)return;
+    view.focused=focused;scopeChanged(view.slot?slots.indexOf(view.slot):null,focused);render();changed();
+  }
+  function commonRangeActive(){const {controller}=state();return timelineBounds(slots[controller.clock],layers[2].focused).focused;}
   function render() {
     const {active,mode,busy,controller}=state(),slot=slots[active];
-    loopButton.textContent=`Loop${mode==='compare'?` ${active?'B':'A'}`:''} window`;loopButton.setAttribute('aria-pressed',!!slot.loop);loopButton.disabled=busy||!slot.ready||!Number.isFinite(slot.start)||!Number.isFinite(slot.end)||slot.start<0||slot.end<=slot.start||slot.end>slot.video.duration;
-    loopButton.title=slot.loop?`Stop repeating ${seconds(realTime(slot.loop[0],slot))}–${seconds(realTime(slot.loop[1],slot))} real seconds.`:'Repeat the current green window. Its loop boundaries stay fixed while the analysis window follows playback.';
+    const automatic=commonRangeActive();
+    loopButton.textContent=automatic?'Looping range':`Loop${mode==='compare'?` ${active?'B':'A'}`:''} window`;loopButton.setAttribute('aria-pressed',automatic||!!slot.loop);loopButton.disabled=busy||!slot.ready||!Number.isFinite(slot.start)||!Number.isFinite(slot.end)||slot.start<0||slot.end<=slot.start||slot.end>slot.video.duration;
+    loopButton.title=automatic?'Playback repeats only the analyzed range. Click to switch to Full video.':slot.loop?`Stop repeating ${seconds(realTime(slot.loop[0],slot))}–${seconds(realTime(slot.loop[1],slot))} real seconds.`:'Repeat the current green window. Its loop boundaries stay fixed while the analysis window follows playback.';
     layers.forEach((item,i)=>{
       const index=i<2?i:mode==='compare'?controller.clock:active,s=slots[index],{track,host,layer,wrapper,controls}=item;
       const bounds=timelineBounds(s,item.focused),time=busy?s.windowCenter||0:i<2?s.video.currentTime:controller.time;
@@ -50,20 +58,22 @@ export function createMomentNavigation({slots,state,jump,jumpCommon,select,loop,
       if(controls.parentElement!==controlsHost)controlsHost.prepend(controls);
       const rate=i<2?1:controller.rate;
       const toReal=i<2?t=>realTime(t,s):t=>t/rate;
-      // Scope changes affect the view only; neither playhead nor transport state moves.
+      // Paused playheads stay put on scope changes. Playing clips enforce these
+      // saved bounds through the corresponding local or common controller.
       track.min=toReal(bounds.start);track.max=toReal(bounds.end)||1;track.value=toReal(time||0);
       const windowRate=i<2?(s.shotFps??s.fps)/s.fps:controller.rate;
-      const [start,end]=busy?[s.start,s.end]:analysisWindow(time,s.ready?s.video.duration:0,DEFAULT_WINDOW_SECONDS*windowRate);
+      const [start,end]=busy?[s.start,s.end]:windowAt(time,s.ready?s.video.duration:0,windowRate);
       const percent=t=>Math.max(0,Math.min(100,(t-bounds.start)/(bounds.end-bounds.start||1)*100));
       item.rail.hidden=!s.ready;
       const band=item.rail.querySelector('.timeline-window');
       band.style.left=`${percent(start)}%`;band.style.width=`${percent(end)-percent(start)}%`;
       item.rail.querySelector('.timeline-playhead').style.left=`${percent(time)}%`;
       item.rail.dataset.start=start;item.rail.dataset.end=end;item.rail.dataset.time=time;
-      track.title='Drag to seek and move the green ±2.5 real-second analysis window. Arrow keys: one frame; Shift + arrow: one second.';
+      track.title=`Drag to seek and move the green window: ${windowDescription()} (real time). Arrow keys: one frame; Shift + arrow: one second.`;
       controls.hidden=!bounds.available;wrapper.classList.toggle('has-review',bounds.available&&!compact);wrapper.classList.toggle('is-focused',bounds.focused&&!compact);host.classList.toggle('has-timeline-review',bounds.available);
       controls.querySelector('.timeline-scopes').setAttribute('aria-label',`${i===2&&mode==='compare'?'Both videos':mode==='compare'?`Swing ${index?'B':'A'}`:'Video'} timeline view`);
       controls.querySelector('.timeline-range').setAttribute('aria-pressed',bounds.focused);
+      controls.querySelector('.timeline-range').title='Play and loop only within the saved analyzed range.';
       controls.querySelector('.timeline-full').setAttribute('aria-pressed',!bounds.focused);
       controls.querySelectorAll('button').forEach(b=>b.disabled=busy);
       controls.querySelector('.timeline-bounds').textContent=`${seconds(toReal(bounds.start))}–${seconds(toReal(bounds.end))} s${bounds.focused?` · ${(s.video.duration/(bounds.end-bounds.start)).toFixed(1).replace('.0','')}×`:''}`;
@@ -114,5 +124,7 @@ export function createMomentNavigation({slots,state,jump,jumpCommon,select,loop,
       const entry=(direction>0?entries:entries.reverse()).find(e=>(e.time-s.video.currentTime)*direction>.5/s.fps);if(entry)jump(active,entry.time);
     }
   });
-  return {render,isFocused(index){return timelineBounds(slots[index],layers[2].focused&&state().controller.clock===index).focused;},focusAnalysis(index){layers[index].focused=true;layers[2].focused=true;},reset(index){layers[index].focused=false;}};
+  return {render,isFocused(index){return timelineBounds(slots[index],layers[2].focused&&state().controller.clock===index).focused;},
+    playbackRange(index,common=false){const bounds=timelineBounds(slots[index],common||state().mode==='single'?commonRangeActive():layers[index].focused);return bounds.focused?[bounds.start,bounds.end]:null;},
+    focusAnalysis(index){layers[index].focused=true;layers[2].focused=true;},reset(index){layers[index].focused=false;}};
 }

@@ -9,6 +9,7 @@ import { createAnnotations } from './annotations.js';
 import { defaultReview, drawReview, drawPose, cropRegion, mapCropPoints, postureNotes, frameAnalysis } from './review.js';
 import { createReviewTools } from './review-tools.js';
 import { createMomentNavigation } from './navigation.js';
+import { linkedLoopBounds } from './timeline.js';
 import { createViewport } from './viewport.js';
 import { createRangeSelector, analysisRangeError } from './range.js';
 import { createStudioScreen } from './screen.js';
@@ -54,7 +55,7 @@ const slots = names.map((name, index) => {
   get('.clip-next').onclick = () => controlClip(index, () => step(1));
   get('.clip-back-second').onclick = () => controlClip(index, () => jumpSecond(-1));
   get('.clip-forward-second').onclick = () => controlClip(index, () => jumpSecond(1));
-  get('.clip-restart').onclick = () => controlClip(index, () => seekActive(0));
+  get('.clip-restart').onclick = () => controlClip(index, () => seekActive(playbackRange(index)?.[0]??0));
   get('.clip-speed').onchange = e => { const speed = Number(e.target.value); controlClip(index, () => setSpeed(speed)); };
   get('.mirror').onclick = () => { const on = slot.stage.classList.toggle('mirrored'); get('.mirror').setAttribute('aria-pressed', on); render(); };
   const fpsStatus = document.createElement('span');
@@ -68,9 +69,9 @@ const slots = names.map((name, index) => {
   };
   get('.shot-fps').onchange = e => configureTiming(index, slot.fps, e.target.value === 'same' ? null : Number(e.target.value));
   card.addEventListener('click', e => { if (!e.target.closest('button,input,select')) selectSlot(index); });
-  slot.video.addEventListener('timeupdate', () => { if (!job) render(); });
-  slot.video.addEventListener('seeked', () => { if (!job) render(); });
-  slot.video.addEventListener('ended', () => { if (!loopPlayback(true) && isLinked()) pauseAll(); updatePlayback(); });
+  slot.video.addEventListener('timeupdate', () => { if (!job) {loopPlayback();render();} });
+  slot.video.addEventListener('seeked', () => { if (!job) {loopPlayback();render();} });
+  slot.video.addEventListener('ended', () => { if (!loopPlayback(index) && isLinked()) pauseAll(); updatePlayback(); });
   slot.video.addEventListener('play', updatePlayback);
   slot.video.addEventListener('pause', updatePlayback);
   return slot;
@@ -142,6 +143,7 @@ function pauseAll() { pauseSlots(slots); }
 function pauseControlled(index = active) { releaseCommon(); pauseSlots(isLinked() ? slots : [slots[index]]); }
 function setSpeed(speed, both = false) {
   if (both && isIndependent()) commonTransport.following = true;
+  if(both)slots.forEach(s=>s.playbackScope='common');
   (isLinked() || (both && mode === 'compare') ? slots : [slots[active]]).forEach(s => { s.speed = speed; applySpeed(s); });
   update();
 }
@@ -167,7 +169,7 @@ function controlClip(index, action) {
     setLinked(false);
     toast(`Sync off · controlling swing ${names[index]}. Use the bottom controller for both.`);
   }
-  releaseCommon(); selectSlot(index); action();
+  releaseCommon(); slots[index].playbackScope='local';selectSlot(index); action();
 }
 function invalidateSync() { offset = 0; aligned = false; alignmentLabel = ''; slots.forEach(s => s.anchor = null); }
 function hasSavedWork(s, index) { return !!(s.samples.length || Object.values(s.regionResults||{}).some(r=>r.samples?.length) || Object.keys(s.marks).length || annotations?.count(index)); }
@@ -239,7 +241,7 @@ async function loadFile(index, file) {
     s.ready = true; s.video.hidden = false; s.drop.hidden = true; trackUsage('video_loaded',mode);
     if (isLinked()) { s.speed = slots[1 - index].speed; applySpeed(s); }
     if (isIndependent()) Object.assign(commonTransport, playerState(active), { following: false });
-    s.status = 'Pause at your swing, then Analyze. The window follows the current frame ±2.5 seconds.';
+    s.status = 'Pause at your swing, then Analyze. Adjust the before/after seconds beside the timeline.';
     s.video.onerror = () => { if (s.ready) { pauseControlled(index); s.status = 'Video decoding failed. Replace this clip with an H.264 MP4.'; s.ready = false; update(); } };
     update(); studioScreen?.focus();
   } catch (error) {
@@ -296,7 +298,7 @@ function updateAnalysisControls() {
   const s = slots[active];
   const disabled = !s.ready || !!job || !!analysisRangeError(s.start, s.end, s.video.duration, timingRate(s));
   $('analyze').disabled = disabled;
-  slots.forEach((slot,i)=>{const button=slot.get('.clip-analyze');if(button){button.disabled=!slot.ready||!!job;button.title=`Analyze swing ${names[i]}: 2.5 real seconds either side of its current frame. Replaces its markers when complete.`;}});
+  slots.forEach((slot,i)=>{const button=slot.get('.clip-analyze');if(button){button.disabled=!slot.ready||!!job;button.title=`Analyze${mode==='compare'?` swing ${names[i]}`:''}: ${rangeSelector?.description()} (real time). Replaces its markers when complete.`;}});
   const target = mode === 'compare' ? ` ${names[active]}` : '';
   $('analyze').textContent = `Analyze${target}`;
   const range = s.ready ? Number.isFinite(s.start) && Number.isFinite(s.end) ? `${seconds(realTime(s.start,s))}–${seconds(realTime(s.end,s))} s` : 'set range' : 'no video';
@@ -365,14 +367,20 @@ async function togglePlay(both = false) {
   const shouldPause = both && isIndependent() ? commonState().playing : targets.some(s => !s.video.paused);
   if (both && isIndependent()) commonTransport.following = true;
   if (shouldPause) { pauseSlots(targets); updatePlayback(); render(); return; }
+  targets.forEach(s=>s.playbackScope=both||isLinked()||mode==='single'?'common':'local');
   if (isLinked()) {
     const model = syncModel();
     if (!model) return toast('No shared playback range. Choose new sync frames.');
+    const bounds=linkedLoopBounds(model,slots.map((s,i)=>playbackRange(i,true)));
+    if(!bounds)return toast('The analyzed or loop ranges do not overlap. Align the swings with Sync Videos or choose Full video.');
     let time = model.commonTime(slots[0].video.currentTime, 0);
-    if (time < model.bounds.start || time >= model.bounds.end - model.endTolerance) time = model.bounds.start;
+    if (time < bounds.start || time >= bounds.end - model.endTolerance) time = bounds.start;
     const targets = model.mediaTimes(time);
     slots.forEach((s, i) => s.video.currentTime = targets[i]);
-  } else targets.forEach(s => { if (s.video.ended || s.video.currentTime >= s.video.duration - 0.02) s.video.currentTime = 0; });
+  } else targets.forEach(s => {
+    const [start,end]=playbackRange(slots.indexOf(s))??[0,s.video.duration];
+    if(s.video.ended||s.video.currentTime<start||s.video.currentTime>=end-.5/s.fps)s.video.currentTime=start;
+  });
   const generations = targets.map(s => ++s.playGeneration);
   const results = await Promise.allSettled(targets.map(s => s.video.play()));
   if (results.some((r, i) => r.status === 'rejected' && generations[i] === targets[i].playGeneration)) {
@@ -389,6 +397,7 @@ function seekBoth(time) {
   if (job || !Number.isFinite(time) || !slots.every(s => s.ready)) return;
   const clock = slots[commonTransport.clock];
   const delta = (time - clock.video.currentTime) / timingRate(clock);
+  slots.forEach(s=>s.playbackScope='common');
   commonTransport.following = true;
   pauseAll();
   slots.forEach(s => { s.video.currentTime = clamp(s.video.currentTime + delta * timingRate(s), 0, s.video.duration); });
@@ -397,6 +406,7 @@ function seekBoth(time) {
 function stepBoth(direction) {
   if (mode !== 'compare') return step(direction);
   if (job || !slots.every(s => s.ready)) return;
+  slots.forEach(s=>s.playbackScope='common');
   if (isIndependent()) commonTransport.following = true;
   pauseAll();
   if (isLinked()) {
@@ -411,6 +421,7 @@ function jumpSecond(direction, both = false) {
   if (job) return;
   const targets = both && mode === 'compare' ? slots : [slots[active]];
   if (!targets.every(s => s.ready)) return;
+  if(both)targets.forEach(s=>s.playbackScope='common');
   if (both && isLinked()) {
     const model = syncModel();
     if (!model) return toast('No shared playback range. Choose new sync frames.');
@@ -423,10 +434,17 @@ function jumpSecond(direction, both = false) {
   updatePlayback(); render();
 }
 function restartBoth() {
-  if (mode !== 'compare' || isLinked()) return seekActive(0);
-  if (job || !slots.every(s => s.ready)) return;
+  if(job)return;
+  if(mode!=='compare')return seekActive(playbackRange(active,true)?.[0]??0);
+  if(!slots.every(s=>s.ready))return;
+  slots.forEach(s=>s.playbackScope='common');
+  if(isLinked()){
+    const model=syncModel(),bounds=linkedLoopBounds(model,slots.map((s,i)=>playbackRange(i,true)));
+    if(bounds)return seekActive(model.mediaTimes(bounds.start)[active]);
+    return toast('The analyzed or loop ranges do not overlap. Align the swings with Sync Videos or choose Full video.');
+  }
   commonTransport.following = true;
-  pauseAll(); slots.forEach(s => { s.video.currentTime = 0; }); updatePlayback(); render();
+  pauseAll(); slots.forEach((s,i) => { s.video.currentTime = playbackRange(i,true)?.[0]??0; }); updatePlayback(); render();
 }
 function render() {
   const s = slots[active];
@@ -485,24 +503,29 @@ function playbackLoop() {
   }
   requestAnimationFrame(playbackLoop);
 }
-function loopPlayback(ended=false) {
+function playbackRange(index,common=slots[index].playbackScope==='common') {
+  return navigation?.playbackRange(index,common)??slots[index].loop;
+}
+function loopPlayback(endedIndex=null) {
   if(job)return false;
-  if(isLinked()&&slots.some(s=>s.loop)){
+  const ranges=slots.map((s,i)=>playbackRange(i,isLinked()||s.playbackScope==='common'));
+  if(isLinked()&&ranges.some(Boolean)){
     const model=syncModel();if(!model)return false;
-    const start=Math.max(model.bounds.start,...slots.map((s,i)=>s.loop?s.loop[0]/timingRate(s)-(i?offset:0):-Infinity));
-    const end=Math.min(model.bounds.end,...slots.map((s,i)=>s.loop?s.loop[1]/timingRate(s)-(i?offset:0):Infinity));
-    if(end<=start){slots.forEach(s=>s.loop=null);toast('These loop windows do not overlap. Adjust them or turn Sync off.');return false;}
+    if(slots.every(s=>s.video.paused)&&endedIndex===null)return false;
+    const bounds=linkedLoopBounds(model,ranges);
+    if(!bounds){pauseAll();toast('The analyzed or loop ranges do not overlap. Align the swings with Sync Videos or choose Full video.');return false;}
+    const {start,end}=bounds;
     const time=slots[0].video.currentTime/timingRate(slots[0]);
     // Either calibrated clip can reach its natural end first by a fraction
     // of a frame. An ended event must restart the pair's captured loop.
-    if((!slots[0].video.paused||ended)&&(ended||time>=end-model.endTolerance||time<start)){
-      const times=model.mediaTimes(start);slots.forEach((s,i)=>{s.video.currentTime=times[i];if(ended)s.video.play().catch(()=>{});});return true;
+    if((!slots[0].video.paused||endedIndex!==null)&&(endedIndex!==null||time>=end-model.endTolerance||time<start)){
+      const times=model.mediaTimes(start);slots.forEach((s,i)=>{s.video.currentTime=times[i];if(endedIndex!==null)s.video.play().catch(()=>{});});return true;
     }
   }else{
     let looped=false;
-    slots.forEach((s,i)=>{if(!s.loop||!s.ready||(i===1&&mode!=='compare')||s.loop[1]<=s.loop[0])return;
-      if((!s.video.paused||(ended&&s.video.ended))&&(s.video.currentTime>=s.loop[1]-.5/s.fps||s.video.currentTime<s.loop[0])){
-        s.video.currentTime=s.loop[0];if(ended)s.video.play().catch(()=>{});looped=true;
+    slots.forEach((s,i)=>{const range=ranges[i];if(!range||!s.ready||(i===1&&mode!=='compare')||range[1]<=range[0])return;
+      if((!s.video.paused||endedIndex===i)&&(s.video.currentTime>=range[1]-.5/s.fps||s.video.currentTime<range[0]||endedIndex===i)){
+        s.video.currentTime=range[0];if(endedIndex===i)s.video.play().catch(()=>{});looped=true;
       }
     });return looped;
   }
@@ -560,7 +583,7 @@ async function analyze() {
       runningMode: 'VIDEO', numPoses: 1, minPoseDetectionConfidence: 0.6, minPosePresenceConfidence: 0.6, minTrackingConfidence: 0.6
     }), token, lateDetector => lateDetector.close());
     if (token.cancelled) return;
-    const duration = s.end - start, count = Math.min(s.quality==='detailed'?2400:240, Math.max(2, Math.ceil(duration * (s.quality==='detailed'?s.fps:Math.min(s.fps, 30)))));
+    const duration = s.end - start, count = Math.min(s.quality==='detailed'?2400:240, Math.max(2, Math.ceil(duration * (s.quality==='detailed'?s.fps:Math.min(s.fps, 30))-1e-7)));
     const interval = duration / count, samples = [];
     const buffer = document.createElement('canvas'), region=cropRegion(s.crop); const scale = Math.min(1, (s.quality==='detailed'?960:640) / Math.max(s.video.videoWidth*region.width,s.video.videoHeight));
     buffer.width = Math.round(s.video.videoWidth*region.width * scale); buffer.height = Math.round(s.video.videoHeight * scale); const ctx = buffer.getContext('2d');
@@ -581,7 +604,7 @@ async function analyze() {
       // must leave its previous manual edits and detected moments intact.
       const smoothed = smoothSamples(samples);
       const keyMoments = suggestKeyMoments(smoothed,start,s.end,s.fps,{anchor:originalTime,rate:timingRate(s),aspect:s.video.videoWidth/s.video.videoHeight});
-      Object.assign(s,{samples:smoothed,tolerance:interval*.6,analyzedRange:[start,s.end],analysisQuality:s.quality,keyMoments,marks:{}});
+      Object.assign(s,{samples:smoothed,tolerance:interval*.6,analyzedRange:[start,s.end],analysisQuality:s.quality,keyMoments,marks:{},loop:null});
       s.analysisVersion++;
       navigation.focusAnalysis(active);
       // Analyze is an explicit review command. Subsequent individual playback
@@ -705,12 +728,19 @@ slots.forEach((slot, index) => {
   });
 });
 annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!job }), selectSlot, pauseAll, pauseControlled, seekActive, toast, changed: updatePhases });
-rangeSelector = createRangeSelector({ slots, state: () => ({ active, mode, busy: !!job, reviewFocused:navigation?.isFocused(active) }), changed: updateAnalysisControls });
 studioScreen = createStudioScreen({ slots, state: () => ({ active, mode, linked, busy: !!job }), changed: () => { slots.forEach(s => s.viewport?.cancelGesture()); render(); } });
+rangeSelector = createRangeSelector({ slots, state: () => ({ active, mode, busy: !!job, reviewFocused:navigation?.isFocused(active) }), changed: updateAnalysisControls, notice:toast });
 moments = createMoments({slots, state:()=>({mode,busy:!!job}), controlClip, pause:pauseControlled, seek:seekActive, changed:updatePhases});
 keyframeViews = createKeyframeViews({slots, state:()=>({mode,busy:!!job}), controlClip, seek:seekActive, play:togglePlay, changed:updatePhases, paintDrawings:annotations.paintFrame, focusVideo:()=>studioScreen.focus(),markMoment:(i,key)=>moments.set(i,key),editMoments:i=>moments.open(i),alignMoment:key=>{const times=slots.map(s=>phaseTimes(s)[key]);if(times.every(Number.isFinite))alignFrames(times);}});
 reviewTools=createReviewTools({slots,state:()=>({active,mode,busy:!!job}),changed:()=>{render();updatePhases();},cropChanged});
-navigation=createMomentNavigation({slots,state:()=>({active,mode,busy:!!job,controller:commonState()}),jump:(i,time)=>controlClip(i,()=>seekActive(time)),jumpCommon:seekBoth,changed:render,select:selectSlot,loop:()=>{
+navigation=createMomentNavigation({slots,state:()=>({active,mode,busy:!!job,controller:commonState()}),jump:(i,time)=>controlClip(i,()=>seekActive(time)),jumpCommon:seekBoth,changed:render,select:selectSlot,
+  windowAt:rangeSelector.windowAt,windowDescription:rangeSelector.description,
+  scopeChanged:index=>{
+    const targets=index===null?(mode==='compare'?slots:[slots[active]]):[slots[index]];
+    if(index!==null)releaseCommon();
+    targets.forEach(s=>{s.playbackScope=index===null?'common':'local';s.loop=null;});
+    loopPlayback();
+  },loop:()=>{
   if(job||!slots[active].ready)return;const s=slots[active];rangeSelector.prepare();s.loop=s.loop?null:[s.start,s.end];update();
 }});
 createTaskHelp({screen: studioScreen, compare: () => setMode('compare')});

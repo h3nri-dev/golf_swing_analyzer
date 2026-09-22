@@ -1,23 +1,30 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { analysisRangeError, analysisWindow, DEFAULT_WINDOW_SECONDS } from '../deploy/range.js';
+import { analysisRangeError, analysisWindow, DEFAULT_WINDOW, validWindow, readWindowSettings } from '../deploy/range.js';
 import {fileTime} from '../deploy/timing.js';
 
-test('default window covers 2.5 seconds either side and clips at both edges',()=>{
-  assert.deepEqual(analysisWindow(30,60),[27.5,32.5]);
-  assert.deepEqual(analysisWindow(0,60),[0,2.5]);
-  assert.deepEqual(analysisWindow(59,60),[56.5,60]);
-  assert.deepEqual(analysisWindow(2,4),[0,4]);
-  assert.deepEqual(analysisWindow(60,60),[57.5,60]);
+test('default window covers 0.3 seconds before and 3.2 after, clipped at file edges',()=>{
+  assert.deepEqual(analysisWindow(30,60),[29.7,33.2]);
+  assert.deepEqual(analysisWindow(0,60),[0,3.2]);
+  assert.deepEqual(analysisWindow(59,60),[58.7,60]);
+  assert.deepEqual(analysisWindow(2,4),[1.7,4]);
+  assert.deepEqual(analysisWindow(60,60),[59.7,60]);
   assert.deepEqual(analysisWindow(NaN,60),[0,0]);
   assert.deepEqual(analysisWindow(0,0),[0,0]);
 });
 test('window sizes use real seconds across ordinary and slow-motion frame rates',()=>{
   for(const [fps,shotFps] of [[30,30],[60,60],[30,120],[29.97,119.88]]) {
     const clip={fps,shotFps},scale=shotFps/fps;
-    assert.deepEqual(analysisWindow(fileTime(7,clip),fileTime(15,clip),fileTime(DEFAULT_WINDOW_SECONDS,clip)),[4.5*scale,9.5*scale]);
+    assert.deepEqual(analysisWindow(fileTime(7,clip),fileTime(15,clip),DEFAULT_WINDOW,scale),[6.7*scale,10.2*scale]);
   }
-  assert.deepEqual(analysisWindow(30,60,2),[29,31]);
+  assert.deepEqual(analysisWindow(30,60,{before:1,after:1}),[29,31]);
+});
+test('window preferences validate both offsets and recover safely from blocked or corrupt storage',()=>{
+  for(const value of [null,{before:0,after:0},{before:-1,after:3},{before:1,after:20},{before:'0.3',after:3.2},{before:NaN,after:3.2}])assert.equal(validWindow(value),false);
+  for(const value of [{before:0,after:.1},{before:20,after:0},{before:1.2,after:4.8}]){
+    assert.equal(validWindow(value),true);assert.deepEqual(readWindowSettings({getItem:()=>JSON.stringify(value)}),value);
+  }
+  for(const storage of [undefined,{getItem:()=>'{bad'}, {getItem:()=>'{"before":0,"after":0}'},{getItem(){throw new Error('Blocked');}}])assert.deepEqual(readWindowSettings(storage),DEFAULT_WINDOW);
 });
 
 test('analysis accepts sections anywhere in a long video, up to 20 seconds', () => {

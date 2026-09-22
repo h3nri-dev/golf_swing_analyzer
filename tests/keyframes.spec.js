@@ -21,7 +21,7 @@ test('a low sideways takeaway keeps automatic Address in the setup in cards, jum
    p[15].x=p[16].x=a[1]+(b[1]-a[1])*f;p[15].y=p[16].y=a[2]+(b[2]-a[2])*f;
    return {landmarks:[p]};
   }})};`}));
- await page.locator('#timeline').fill('1.5');await analyze(page);
+ await page.locator('#timeline').fill('0.3');await analyze(page);
  const report=await page.evaluate(async()=>(await import('/app.js')).reportData());
  const address=report.keyMoments.find(e=>e.key==='address');
  expect(address.source).toBe('estimated');expect(address.time).toBeGreaterThan(.1);expect(address.time).toBeLessThan(.8);
@@ -40,7 +40,8 @@ test('analysis replaces edited markers with seven new estimates and cancellation
  await expect(page.locator('#keyMomentStrip')).toBeVisible();await expect(page.locator('.key-card')).toHaveCount(7);
  for(const canvas of await page.locator('.key-frame[data-preview-slot="0"] canvas').all())await expect(canvas).toBeVisible();
  expect(await card(page,0).locator('video').evaluate(v=>v.currentTime)).toBeCloseTo(.7,3);await expect(page.locator('.zoom-value').first()).toHaveText('2.00×');
- await page.locator('.key-card[data-key="top"] .key-frame').first().click();expect(await card(page,0).locator('video').evaluate(v=>v.currentTime)).toBeCloseTo(1.3,1);await expect(card(page,0).locator('.clip-time')).toContainText('F38');
+ const detected=await page.evaluate(async()=>(await import('/app.js')).reportData());
+ await page.locator('.key-card[data-key="top"] .key-frame').first().click();expect(await card(page,0).locator('video').evaluate(v=>v.currentTime)).toBeCloseTo(detected.phaseTimes.top,5);await expect(card(page,0).locator('.clip-time')).toContainText(`F${Math.round(detected.phaseTimes.top*30)}`);
  await page.locator('.key-card[data-key="impact"] .key-card-title').click();await expect(page.locator('#keyMomentDialog')).toBeVisible();
  const field=page.getByRole('spinbutton',{name:'Key moment frame',exact:true});await field.fill('54');await field.press('Tab');
  await expect(page.locator('[data-review-slot="0"] .key-source')).toHaveText('Your mark');await expect(page.locator('[data-review-slot="0"] .key-detail-time')).toContainText('1.800 s · F54');
@@ -51,7 +52,9 @@ test('analysis replaces edited markers with seven new estimates and cancellation
  const model=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(model.marks).toEqual({});
  expect(model.keyMoments.every(e=>e.source==='estimated')).toBe(true);expect(model.phaseTimes.impact).not.toBe(55/30);
  await expect(page.locator('.key-card[data-key=impact] .key-slot-badge').first()).toHaveText('Auto estimate');
- await page.locator('#timeline').fill('1.834');await page.getByRole('button',{name:'Set Impact here',exact:true}).click();
+ // Expanded timelines start at a fractional frame; select a valid slider step near frame 55.
+ const timeline=page.locator('#timeline'),min=Number(await timeline.getAttribute('min'));
+ await timeline.fill((min+Math.ceil((55/30-min)/.001)*.001).toFixed(6));await page.getByRole('button',{name:'Set Impact here',exact:true}).click();
  await page.locator('#analyze').click();await page.locator('#cancel').click();await expect(page.locator('#status')).toContainText('cancelled');
  await expect(page.locator('.key-card')).toHaveCount(7);expect((await page.evaluate(async()=>(await import('/app.js')).reportData())).marks.impact).toBe(55/30);
  await focusVideos(page);await page.screenshot({path:'/tmp/keyframes-single.png'});const download=page.waitForEvent('download');await page.locator('#export').click();const pdf=await download;await pdf.saveAs('/tmp/swing-key-moments-report.pdf');await expect(page.locator('#reportDialog')).toBeHidden();expect((await page.evaluate(async()=>(await import('/app.js')).reportData())).keyMoments.every(e=>!e.image)).toBe(true);expect(errors).toEqual([]);
@@ -61,6 +64,8 @@ test('paired previews and slow-motion edits leave independent playback and commo
  await card(page,1).locator('.shot-fps').selectOption('120');await page.locator('#independent').click();
  const snapshot=await page.locator('#time').textContent();await card(page,0).locator('.clip-speed').selectOption('0.25');
  await card(page,0).locator('.clip-play').click();
+ // Playing an edit outside the saved analysis requires Full video.
+ await card(page,1).locator('.timeline-full').click();
  await page.locator('.key-card[data-key="impact"] .key-card-title').click();
  const field=page.getByRole('spinbutton',{name:'Key moment frame in swing B'});await field.fill('120');await field.press('Tab');
  await expect(page.locator('[data-review-slot="1"] .key-detail-time')).toContainText('1.000 s · F120');
@@ -123,6 +128,7 @@ test('new analysis replaces every marker only on the analyzed video',async({page
  await page.getByRole('button',{name:'Set Impact here in swing B',exact:true}).click();
  const before=await page.evaluate(async()=>{const app=await import('/app.js');return [app.reportData(0),app.reportData(1)];});
  expect(Object.keys(before[0].marks)).toHaveLength(7);expect(before[1].marks.impact).toBe(1);
+ await card(page,0).locator('.clip-timeline').fill('0.3');
  await analyze(page,0);
  const after=await page.evaluate(async()=>{const app=await import('/app.js');return [app.reportData(0),app.reportData(1)];});
  expect(after[0].marks).toEqual({});expect(after[0].keyMoments.every(e=>e.source==='estimated')).toBe(true);

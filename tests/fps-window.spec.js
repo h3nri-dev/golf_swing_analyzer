@@ -7,9 +7,9 @@ async function width(rail){return rail.locator('.timeline-window').evaluate(e=>p
 
 test('single-mode window and scan selection resize immediately for recording and file FPS',async({page})=>{
  await page.route('**/vision_bundle.mjs',r=>r.fulfill({contentType:'text/javascript',body:'export const FilesetResolver={forVisionTasks:async()=>({})};export const PoseLandmarker={createFromOptions:async()=>({close(){},detectForVideo(){return {landmarks:[]}}})};'}));
- await page.goto('/');await load(page);await page.locator('#timeline').fill('30');
+ await page.goto('/');await page.locator('#analysisBefore').fill('2.5');await page.locator('#analysisBefore').press('Tab');await page.locator('#analysisAfter').fill('2.5');await page.locator('#analysisAfter').press('Tab');await load(page);await page.locator('#timeline').fill('30');
  const rail=page.locator('#commonPlayer .timeline-rail');await windowAt(rail,27.5,32.5);const original=await width(rail);
- // Normal-speed files retain five real seconds regardless of encoded FPS.
+ // The configured five-second window stays the same in normal-speed files regardless of encoded FPS.
  await clip(page).locator('.fps').selectOption('60');await windowAt(rail,27.5,32.5);expect(await width(rail)).toBe(original);
  await clip(page).locator('.fps').selectOption('30');
  for(const [shot,start,end,factor] of [['60',25,35,2],['120',20,40,4]]){
@@ -26,7 +26,7 @@ test('single-mode window and scan selection resize immediately for recording and
 });
 
 for(const clock of [0,1])test(`Sync off refreshes swing ${clock?'B':'A'} calibration without adopting its independently moved playhead`,async({page})=>{
- await page.goto('/');await page.locator('#compareMode').click();await load(page);await load(page,1);
+ await page.goto('/');await page.locator('#analysisBefore').fill('2.5');await page.locator('#analysisBefore').press('Tab');await page.locator('#analysisAfter').fill('2.5');await page.locator('#analysisAfter').press('Tab');await page.locator('#compareMode').click();await load(page);await load(page,1);
  await page.locator(`[data-select="${clock}"]`).click();await page.locator('#timeline').fill('30');await page.locator('#independent').click();
  const common=page.locator('#commonPlayer .timeline-rail'),local=clip(page,clock).locator('.timeline-rail');
  await clip(page,clock).locator('.clip-timeline').fill('35');await windowAt(common,27.5,32.5);await windowAt(local,32.5,37.5);
@@ -44,7 +44,7 @@ for(const clock of [0,1])test(`Sync off refreshes swing ${clock?'B':'A'} calibra
 });
 
 test('linked comparison resizes both windows in each clip calibration and changes back without drift',async({page})=>{
- await page.goto('/');await page.locator('#compareMode').click();await load(page);await load(page,1);
+ await page.goto('/');await page.locator('#analysisBefore').fill('2.5');await page.locator('#analysisBefore').press('Tab');await page.locator('#analysisAfter').fill('2.5');await page.locator('#analysisAfter').press('Tab');await page.locator('#compareMode').click();await load(page);await load(page,1);
  await clip(page,0).locator('.shot-fps').selectOption('60');await clip(page,1).locator('.shot-fps').selectOption('120');
  await page.locator('[data-select="1"]').click();await page.locator('#timeline').fill('7.5');
  await windowAt(clip(page,0).locator('.timeline-rail'),10,20);await windowAt(clip(page,1).locator('.timeline-rail'),20,40);await windowAt(page.locator('#commonPlayer .timeline-rail'),20,40);
