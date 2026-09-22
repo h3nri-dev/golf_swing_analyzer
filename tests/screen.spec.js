@@ -19,8 +19,8 @@ for(const [width,height] of [[1440,900],[1280,720],[2560,1440],[390,844],[320,56
     const top=await page.evaluate(()=>scrollY);
     for(const name of sections){
       await focusSection(page,name);
-      for(const other of sections) await expect(page.locator(`#panel-${other}`)).toBeVisible();
-      const size=await page.locator(`#panel-${name}`).evaluate(e=>({w:e.clientWidth,sw:e.scrollWidth}));
+      for(const other of sections) await expect(page.locator(other==='range'?'#commonPlayer':`#panel-${other}`)).toBeVisible();
+      const size=await page.locator(name==='range'?'#commonPlayer':`#panel-${name}`).evaluate(e=>({w:e.clientWidth,sw:e.scrollWidth}));
       expect(size.sw,`${name} stays within its card`).toBeLessThanOrEqual(size.w+1);
       if(width>900) expect(await page.evaluate(()=>scrollY)).toBeCloseTo(top,0);
     }

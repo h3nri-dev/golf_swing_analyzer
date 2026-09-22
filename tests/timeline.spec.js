@@ -21,7 +21,7 @@ test('analysis expands the timeline and separated markers seek exact frames with
  await page.locator('#play').click();await expect.poll(async()=>await clip(page).locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(report.phaseTimes.impact+.05);await page.locator('#play').click();await bounds(track,25,35);
  const before=await clip(page).locator('video').evaluate(v=>v.currentTime);await common.locator('.timeline-full').click();await bounds(track,0,60);expect(await clip(page).locator('video').evaluate(v=>v.currentTime)).toBe(before);
  await common.locator('.timeline-range').click();await bounds(track,25,35);await expect(clip(page).locator('.zoom-value')).toHaveText('2.00×');
- expect((await track.boundingBox()).width).toBeGreaterThan((await common.boundingBox()).width*.75);
+ expect((await track.boundingBox()).width).toBeGreaterThan(500);
  await page.screenshot({path:'/tmp/timeline-expanded-single.png'});
  await page.setViewportSize({width:1280,height:720});await expect(common.locator('.timeline-range')).toBeInViewport();expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280);await page.screenshot({path:'/tmp/timeline-expanded-single-1280.png'});
 });
@@ -51,16 +51,16 @@ test('local expanded timelines remain independent and common marker seeks honor 
     for(let j=1;j<dots.length;j++)expect(dots[j].left).toBeGreaterThanOrEqual(dots[j-1].right);
    }
    const current=await clip(page,0).locator('video').evaluate(v=>v.currentTime);
-   await clip(page,0).locator('.timeline-toggle').click();await bounds(clip(page,0).locator('.clip-timeline'),0,60);await bounds(page.locator('#timeline'),0,10);
-   await clip(page,0).locator('.timeline-toggle').click();await bounds(clip(page,0).locator('.clip-timeline'),20,30);expect(await clip(page,0).locator('video').evaluate(v=>v.currentTime)).toBe(current);await expect(page.locator('#linked')).toHaveAttribute('aria-pressed','true');
+   await clip(page,0).locator('.timeline-full').click();await bounds(clip(page,0).locator('.clip-timeline'),0,60);await bounds(page.locator('#timeline'),0,10);
+   await clip(page,0).locator('.timeline-range').click();await bounds(clip(page,0).locator('.clip-timeline'),20,30);expect(await clip(page,0).locator('video').evaluate(v=>v.currentTime)).toBe(current);await expect(page.locator('#linked')).toHaveAttribute('aria-pressed','true');
   }
  }
 });
 
 test('cancellation preserves the review window and FPS calibration changes clocks without changing its saved frames',async({page})=>{
  await setup(page);await page.locator('#timeline').fill('30');await analyze(page);await bounds(page.locator('#timeline'),25,35);
- await page.locator('#rangeStart').fill('40');await page.locator('#rangeEnd').fill('45');await page.locator('#analyze').click();await page.locator('#cancel').click();await expect(page.locator('#status')).toContainText('cancelled');await bounds(page.locator('#timeline'),25,35);
+ await clip(page).locator('video').evaluate(v=>v.currentTime=42.5);await page.locator('#analyze').click();await page.locator('#cancel').click();await expect(page.locator('#status')).toContainText('cancelled');await bounds(page.locator('#timeline'),25,35);
  await clip(page).locator('.shot-fps').selectOption('120');await bounds(page.locator('#timeline'),6.25,8.75);expect((await model(page)).analyzedRange).toEqual([25,35]);
  await page.locator('#commonPlayer .timeline-full').click();await bounds(page.locator('#timeline'),0,15);
- await page.locator('#rangeStart').fill('8');await page.locator('#rangeEnd').fill('13');await analyze(page);await bounds(page.locator('#timeline'),8,13);
+ await page.locator('#timeline').fill('10.5');await analyze(page);await bounds(page.locator('#timeline'),5.5,15);
 });

@@ -1,6 +1,6 @@
 // Sections are always expanded; only scroll their controls into reach.
 export async function focusSection(page, name) {
-  await page.locator(`#panel-${name}`).scrollIntoViewIfNeeded();
+  await page.locator(name==='range'?'#commonPlayer':`#panel-${name}`).scrollIntoViewIfNeeded();
 }
 export async function settings(page, i, selector) {
   const target = page.locator(`[data-select="${i}"]`);

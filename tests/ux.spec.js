@@ -41,7 +41,7 @@ test('Sync Videos aligns the displayed frames in one click from either sync stat
 test('expanded sections have natural keyboard access and help focuses the requested controls',async({page})=>{
   await page.goto('/');await load(page,0);
   await expect(page.getByRole('tab')).toHaveCount(0);
-  for(const name of ['draw','video','range','pose','moments']) await expect(page.locator(`#panel-${name}`)).toBeVisible();
+  for(const name of ['draw','video','range','pose','moments']) await expect(page.locator(name==='range'?'#commonPlayer':`#panel-${name}`)).toBeVisible();
   await page.locator('#workspaceHelp').click();await page.locator('[data-help-task="draw"]').click();
   await expect(page.locator('#panel-draw')).toBeFocused();
   await page.keyboard.press('Tab');await expect(page.locator('.drawing-colors button').first()).toBeFocused();
@@ -53,11 +53,11 @@ test('expanded sections have natural keyboard access and help focuses the reques
 });
 test('cancelling removal or replacement preserves drawings, range and video',async({page})=>{
   await page.goto('/');await load(page,0);await draw(page,0);
-  await focusSection(page,'range');await page.locator('#rangeStart').fill('0.5');
+  await focusSection(page,'range');await page.locator('#timeline').fill('0.5');
   const src=await slot(page,0).locator('video').getAttribute('src');
   await slot(page,0).locator('.remove').click();await expect(page.locator('#discardDialog')).toBeVisible();await expect(page.locator('#discardCancel')).toBeFocused();
   await page.locator('#discardCancel').click();await expect(slot(page,0).locator('video')).toHaveAttribute('src',src);
-  await expect(page.locator('#drawingCount')).toHaveText('1 drawing');await expect(page.locator('#rangeStart')).toHaveValue('0.5');
+  await expect(page.locator('#drawingCount')).toHaveText('1 drawing');await expect(page.locator('#timeline')).toHaveValue('0.5');
   await slot(page,0).locator('input[type=file]').setInputFiles(new URL('./fixtures/landscape.mp4',import.meta.url).pathname);
   await expect(page.locator('#discardDialog')).toBeVisible();await page.keyboard.press('Escape');
   await expect(slot(page,0).locator('video')).toHaveAttribute('src',src);await expect(page.locator('#drawingCount')).toHaveText('1 drawing');
@@ -67,8 +67,8 @@ test('cancelling removal or replacement preserves drawings, range and video',asy
 test('selected clip and interval are explicit and completed analysis has a results action',async({page})=>{
   await page.route('https://cdn.jsdelivr.net/**/vision_bundle.mjs',r=>r.fulfill({contentType:'application/javascript',headers:{'access-control-allow-origin':'*'},body:'export const FilesetResolver={forVisionTasks:async()=>({})};export const PoseLandmarker={createFromOptions:async()=>({close(){},detectForVideo(){return {landmarks:[]}}})};'}));
   await page.goto('/');await page.locator('#compareMode').click();await load(page,0);await load(page,1);
-  await focusSection(page,'range');await page.locator('#rangeStart').fill('1');await page.locator('#rangeEnd').fill('1.2');
-  await expect(page.locator('#reviewContext')).toHaveText('Swing B · 1.000–1.200 s');await expect(page.locator('#analyze')).toHaveText('Analyze B');
+  await focusSection(page,'range');await slot(page,1).locator('.clip-timeline').fill('1.2');
+  await expect(page.locator('#analyze')).toHaveAttribute('title',/swing B.*0.000–4.000 s/);await expect(page.locator('#analyze')).toHaveText('Analyze B');
   await page.locator('#analyze').click();await expect(page.locator('#status')).toContainText('No clear pose found');
   await expect(page.locator('#viewResults')).toBeVisible();await page.locator('#viewResults').click();
   await expect(page.locator('#panel-pose')).toBeFocused();await expect(page.locator('#resultsEmpty')).toBeHidden();
@@ -92,8 +92,8 @@ for(const [width,height] of [[390,844],[320,568],[844,390]]) {
       expect(footer.height).toBeLessThan(height);
       await page.locator('#commonPlayer').scrollIntoViewIfNeeded();
       await expect(page.locator('#play')).toBeInViewport();
-      await page.locator('#panel-range').scrollIntoViewIfNeeded();
-      await expect(page.locator('#rangeStart')).toBeInViewport();
+      await page.locator('#commonPlayer').scrollIntoViewIfNeeded();
+      await expect(page.locator('#timeline')).toBeInViewport();
       await expect(page.locator('#analyze')).toBeInViewport();
     }
     await page.screenshot({path:`/tmp/ux-after-independent-${width}.png`});

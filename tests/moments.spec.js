@@ -38,18 +38,16 @@ test('each player has adjacent moments with frame editing, jump, deletion and in
   await row.getByRole('button',{name:'Reset Impact moment'}).click();await page.keyboard.press('Escape');
   await expect(moment(page,1,'impact').locator('.key-frame-time')).toContainText('Not set');
 });
-test('frame-aware clocks, range inputs and retiming use real seconds without moving saved frames',async({page})=>{
+test('frame-aware clocks, analysis windows and retiming use real seconds without moving saved frames',async({page})=>{
   await setup(page);await card(page,1).locator('.clip-next').click();
   await expect(card(page,1).locator('.clip-time')).toHaveText('0.008 s · F1');
   await expect(card(page,1).locator('.clip-duration')).toHaveText('0.008 / 2.000 s');
   await card(page,1).locator('.clip-timeline').fill('0.5');await moment(page,1,'impact').locator('.moment-mark').click();
-  await page.locator('#rangeStart').fill('0.25');await page.locator('#rangeEnd').fill('1.5');
   let data=await page.evaluate(async()=>(await import('/app.js')).reportData());
-  expect(data.selectedRange).toEqual([1,6]);expect(data.marks.impact).toBe(2);
-  await expect(page.locator('#rangeSummary')).toHaveText('Pinned · 1.250 s');
+  expect(data.selectedRange).toEqual([0,8]);expect(data.marks.impact).toBe(2);
   await card(page,1).locator('.fps').selectOption('60');
   await expect(moment(page,1,'impact').locator('.key-frame-time')).toContainText('1.000 s');
-  await expect(page.locator('#rangeStart')).toHaveValue('0.500');await expect(page.locator('#rangeEnd')).toHaveValue('3.000');
+  expect(await card(page,1).locator('.timeline-rail').getAttribute('data-end')).toBe('8');
   data=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(data.marks.impact).toBe(2);
   await moment(page,1,'impact').locator('.key-frame').click();
   await expect(card(page,1).locator('.clip-time')).toHaveText('1.000 s · F120');

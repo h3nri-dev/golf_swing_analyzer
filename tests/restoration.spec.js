@@ -29,8 +29,8 @@ test('restored measurement, overlay and crop controls preserve per-video work',a
 
 test('detailed analysis uses the larger model and selected file-frame rate',async({page})=>{
  await mock(page);await page.goto('/');await load(page,0,'timing-60.mp4');await page.locator('.fps').first().selectOption('60');
- await page.locator('#rangeEnd').fill('0.5');await page.locator('.analysis-quality').first().selectOption('detailed');await analyze(page);
- const report=await data(page);expect(report.measurements).toHaveLength(30);expect(report.measurements[1].time).toBeCloseTo(1/60,6);
+ await page.locator('.analysis-quality').first().selectOption('detailed');await analyze(page);
+ const report=await data(page);expect(report.measurements).toHaveLength(120);expect(report.measurements[1].time).toBeCloseTo(1/60,6);
  expect(await page.evaluate(()=>window.modelOptions.baseOptions.modelAssetPath)).toContain('pose_landmarker_heavy');
  await page.locator('.video-crop').first().selectOption('right');await slot(page,0).locator('.remove').click();await expect(page.locator('#discardDialog')).toBeVisible();await page.locator('#discardCancel').click();expect((await data(page)).crop).toBe('right');
 });
@@ -59,12 +59,13 @@ test('phase alignment considers shot FPS, and markers plus reset remain local wi
  await page.locator('[data-edit-slot="0"]').click();await page.locator('.moment-reset-all').click();expect((await data(page)).marks).toEqual({});await page.locator('.moment-reset-all').click();expect((await data(page)).marks.impact).toBe(.5);
 });
 
-test('loop window repeats independently and Follow turns looping off',async({page})=>{
- await page.goto('/');await page.locator('#compareMode').click();await load(page);await load(page,1);await page.locator('#independent').click();await page.locator('[data-select="0"]').click();
- await page.locator('#rangeStart').fill('0.3');await page.locator('#rangeEnd').fill('0.6');await page.locator('#loopRange').click();await expect(page.locator('#loopRange')).toHaveAttribute('aria-pressed','true');
- const clock=await page.locator('#time').textContent();await slot(page,1).locator('.clip-play').click();await slot(page,0).locator('.clip-play').click();await page.waitForTimeout(900);
- const time=await slot(page,0).locator('video').evaluate(v=>v.currentTime);expect(time).toBeGreaterThanOrEqual(.3);expect(time).toBeLessThan(.65);expect(await slot(page,1).locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(.7);await expect(page.locator('#time')).toHaveText(clock);
- await page.locator('#rangeReset').click();await expect(page.locator('#loopRange')).toHaveAttribute('aria-pressed','false');await page.locator('#rangeStart').fill('3');await expect(page.locator('#loopRange')).toBeDisabled();
+test('loop captures fixed boundaries while the analysis window keeps following independent playback',async({page})=>{
+ await page.goto('/');await page.locator('#compareMode').click();await load(page,0,'window-60s.mp4');await load(page,1,'window-60s.mp4');await page.locator('#independent').click();
+ await seek(page,0,20);await page.locator('#loopRange').click();await expect(page.locator('#loopRange')).toHaveAttribute('aria-pressed','true');
+ await seek(page,0,24.8);const clock=await page.locator('#time').textContent();await slot(page,1).locator('.clip-play').click();await slot(page,0).locator('.clip-play').click();await page.waitForTimeout(900);
+ const time=await slot(page,0).locator('video').evaluate(v=>v.currentTime);expect(time).toBeGreaterThanOrEqual(15);expect(time).toBeLessThan(17);expect(await slot(page,1).locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(.7);await expect(page.locator('#time')).toHaveText(clock);
+ expect((await data(page)).selectedRange[0]).toBeCloseTo(time-5,0);
+ await page.locator('#loopRange').click();await expect(page.locator('#loopRange')).toHaveAttribute('aria-pressed','false');
 });
 
 for(const [width,height] of [[1440,900],[1280,720],[2560,1440],[390,844]])test(`analyzed workspace retains readable, visible tools at ${width}x${height}`,async({page})=>{
@@ -76,10 +77,10 @@ for(const [width,height] of [[1440,900],[1280,720],[2560,1440],[390,844]])test(`
 
 test('linked looping respects calibrated overlap and loops through the natural clip end',async({page})=>{
  await page.goto('/');await page.locator('#compareMode').click();await load(page);await load(page,1,'timing-slow.mp4');await slot(page,1).locator('.shot-fps').selectOption('120');
- await page.locator('[data-select="0"]').click();await page.locator('#rangeStart').fill('1.5');await page.locator('#rangeEnd').fill('2');await page.locator('#loopRange').click();await page.locator('#play').click();
- await page.waitForTimeout(900);let times=await page.locator('.video-card video').evaluateAll(v=>v.map(x=>x.currentTime));expect(times[0]).toBeGreaterThanOrEqual(1.5);expect(times[0]).toBeLessThan(2);expect(Math.abs(times[1]/4-times[0])).toBeLessThan(.1);
+ await page.locator('[data-select="0"]').click();await page.locator('#timeline').fill('1.8');await page.locator('#loopRange').click();await page.locator('#play').click();
+ await page.waitForTimeout(900);let times=await page.locator('.video-card video').evaluateAll(v=>v.map(x=>x.currentTime));expect(times[0]).toBeGreaterThanOrEqual(0);expect(times[0]).toBeLessThan(1);expect(times[0]).toBeLessThan(2);expect(Math.abs(times[1]/4-times[0])).toBeLessThan(.1);
  await expect(page.locator('#play')).toContainText('Pause');await page.locator('#independent').click();await page.locator('[data-select="0"]').click();await page.waitForTimeout(650);
- expect(await slot(page,0).locator('video').evaluate(v=>v.paused)).toBe(false);expect(await slot(page,0).locator('video').evaluate(v=>v.currentTime)).toBeGreaterThanOrEqual(1.5);
+ expect(await slot(page,0).locator('video').evaluate(v=>v.paused)).toBe(false);expect(await slot(page,0).locator('video').evaluate(v=>v.currentTime)).toBeGreaterThanOrEqual(0);
 });
 
 test('cropped mirrored views keep drawings and exported images aligned',async({page})=>{

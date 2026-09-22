@@ -4,10 +4,10 @@ export function createStudioScreen({ slots, state, changed }) {
   const $ = id => document.getElementById(id);
   const studio = $('studio'), inspector = $('analysisPanel');
   let scheduled = false;
-  const definitions = [['draw','Draw'],['video','Video'],['range','Range'],['pose','Results'],['moments','Moments']];
+  const definitions = [['draw','Draw'],['video','Video'],['pose','Results'],['moments','Moments']];
   const original = selector => inspector.querySelector(selector);
   const pieces = {
-    hand: original('.setting-row'), summary: original('.analysis-range-summary'),
+    hand: original('.setting-row'),
     overlays: original('.overlay-options'), metrics: $('metrics'), note: original('.metric-note'),
     tempo: original('.tempo'), tempoNote: $('tempoNote'), export: $('export'),
   };
@@ -21,12 +21,8 @@ export function createStudioScreen({ slots, state, changed }) {
   // Synchronization and alignment belong with the player that controls both clips.
   footer.prepend($('comparisonBar'));
   studio.append(footer);
-  const commands = document.createElement('div'); commands.className = 'screen-commands';
-  const context = document.createElement('button'); context.id = 'reviewContext'; context.className = 'review-context';
-  context.title = 'Change the analysis range'; context.onclick = () => focusSection('range');
-  commands.append(context, $('analyze'), $('cancel'));
   const notice = document.createElement('div'); notice.className = 'screen-notice';
-  notice.append($('status'), $('drawingHint'), $('progress')); footer.append(notice);
+  notice.append($('status'), $('drawingHint'), $('progress'), $('analyzedRangeNote')); footer.append(notice);
   footer.append(document.querySelector('[data-consent-banner]'));
   const resultsAction = document.createElement('button'); resultsAction.id = 'viewResults'; resultsAction.textContent = 'View results'; resultsAction.hidden = true;
   resultsAction.onclick = () => focusSection('pose');
@@ -40,8 +36,6 @@ export function createStudioScreen({ slots, state, changed }) {
   }));
   panels.draw.append($('drawingSettings'), $('drawingActions'));
   panels.draw.querySelector('.drawing-settings-panel').append(panels.draw.querySelector('.drawing-footer'));
-  panels.range.classList.add('range-dock');
-  panels.range.querySelector('h2').textContent='Analyze range';
   const rangeTargets=document.createElement('div');rangeTargets.className='range-targets';
   rangeTargets.setAttribute('role','group');rangeTargets.setAttribute('aria-label','Choose swing to analyze');
   slots.forEach((s,i)=>{
@@ -49,12 +43,17 @@ export function createStudioScreen({ slots, state, changed }) {
     button.setAttribute('aria-label',`Analyze range for swing ${i?'B':'A'}`);
     button.onclick=()=>document.querySelector(`[data-select="${i}"]`).click();rangeTargets.append(button);
   });
-  panels.range.querySelector('.section-heading').append(rangeTargets, $('rangeReset'), commands);
-  panels.range.append($('rangeSelection'), pieces.summary);
-  footer.prepend(panels.range);
   const common=document.createElement('div');common.id='commonPlayer';common.className='common-player';
   common.setAttribute('role','group');common.setAttribute('aria-label','Playback controls');
-  common.append($('comparisonBar'),footer.querySelector('.timeline-row'),footer.querySelector('.transport-row'));footer.insertBefore(common,notice);
+  common.append($('comparisonBar'),footer.querySelector('.transport-row'),footer.querySelector('.timeline-row'));footer.insertBefore(common,notice);
+  panels.range=common;common.tabIndex=-1;
+  const controls=common.querySelector('.transport-row');
+  controls.querySelector('.speed-label').after($('analyze'), $('cancel'), rangeTargets);
+  const hint=document.createElement('span');hint.id='analysisWindowHint';hint.className='analysis-window-hint';
+  hint.textContent='Analyze ±5s around frame';
+  hint.title='The light-green analysis window follows playback, using real time and stopping at clip edges.';
+  const description=document.createElement('div');description.className='timeline-description';description.append(hint);
+  common.querySelector('.timeline-row').prepend(description);
   pieces.note.textContent='2D estimates at the playhead. Camera angle and visibility affect accuracy.';
   const resultsEmpty = document.createElement('p'); resultsEmpty.id = 'resultsEmpty'; resultsEmpty.className = 'screen-panel-help';
   resultsEmpty.textContent = 'Pause at your swing, then Analyze. You can play and draw without analysis.';
@@ -86,6 +85,11 @@ export function createStudioScreen({ slots, state, changed }) {
     s.get('.clip-transport').before(viewSettings);viewSettings.append(s.get('.clip-timing'),s.get('.zoom-controls'));
     s.get('.clip-transport').setAttribute('aria-label', `Swing ${i?'B':'A'} playback controls`);
     s.get('.clip-frame-controls').insertBefore(s.get('.clip-play'),s.get('.clip-next'));
+    const analyze=document.createElement('button');analyze.className='clip-analyze';
+    analyze.textContent=`Analyze ${i?'B':'A'}`;
+    analyze.onclick=()=>{review.click();$('analyze').click();};
+    s.get('.clip-speed').closest('label').after(analyze);
+    s.get('.clip-frame-controls').append(s.get('.clip-restart'));
   });
   const inspectorHeader=document.createElement('div');inspectorHeader.className='sidebar-heading';
   const target=panels.draw.querySelector('.drawing-target');
@@ -108,15 +112,6 @@ export function createStudioScreen({ slots, state, changed }) {
   const placeLegalFooter = () => (desktop.matches ? notice : studio).append(legalFooter);
   desktop.addEventListener('change', placeLegalFooter);
   placeLegalFooter();
-  // A compact range editor stays readable even on a phone-sized controls panel.
-  $('rangeTitle').textContent='10-second analysis window';
-  $('rangeSetStart').textContent=$('rangeSetEnd').textContent='Set';
-  $('rangeSetStart').setAttribute('aria-label','Set analysis start at current frame');
-  $('rangeSetEnd').setAttribute('aria-label','Set analysis end at current frame');
-  $('rangeGoStart').textContent=$('rangeGoEnd').textContent='Go';
-  $('rangeGoStart').setAttribute('aria-label','Go to range start');$('rangeGoEnd').setAttribute('aria-label','Go to range end');
-  $('analyzeSelection').textContent='Analyze range';
-  const editRange=pieces.summary.querySelector('a');editRange.onclick=e=>{e.preventDefault();focusSection('range');};
 
   function focusSection(id) {
     const section=panels[id]; if(!section) return;
@@ -143,11 +138,6 @@ export function createStudioScreen({ slots, state, changed }) {
     rangeTargets.hidden=mode!=='compare';
     target.hidden=mode!=='compare';
     slots.forEach(slot=>slot.get('.slot-badge').hidden=mode!=='compare');
-    const resetBesideSummary=matchMedia('(max-width: 600px), (min-width: 1180px)').matches;
-    const reset=$('rangeReset'),resetParent=resetBesideSummary?panels.range.querySelector('.range-footer'):panels.range.querySelector('.section-heading');
-    if(reset.parentElement!==resetParent){
-      if(resetBesideSummary)resetParent.append(reset);else resetParent.insertBefore(reset,commands);
-    }
     rangeTargets.querySelectorAll('button').forEach((button,i)=>{button.disabled=busy;button.setAttribute('aria-pressed',i===active);});
     $('resultsEmpty').hidden = !!s.analyzedRange;
     $('resultsEmpty').textContent=mode==='compare'&&hasResults?`Analyze swing ${active?'B':'A'} to fill its measurements. The other video’s results remain shown.`:'Pause at your swing, then Analyze. You can play and draw without analysis.';

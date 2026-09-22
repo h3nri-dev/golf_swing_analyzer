@@ -143,3 +143,12 @@ Completed checks for this follow-up: 47 unit tests and 77 distinct Chrome browse
 ## Marker replacement after analysis
 
 Per the user's updated workflow, every completed analysis replaces previous markers on the analyzed video. The new estimates immediately drive the moment cards, timeline, exact-frame editor, tempo and exports. Completed scans with uncertain phases show the new labeled range previews instead of stale manual phase marks. Results are prepared before replacing saved review state, so a cancelled or failed run preserves the old markers and results. The other comparison video's markers, drawings, timing and zoom remain independent. The marker editor and gallery explain that a new analysis resets markers; corrections remain available between runs. Regression checks cover all seven manual edits being replaced, A/B isolation, sampled fallback, cancellation, failure, exact-frame editing and cached crop results.
+
+
+## Unified playback and analysis timeline
+
+The latest user request supersedes the separate range row, numeric Start/End fields and pin/follow workflow above. There is now one 48-pixel-high native scrubber per player. A translucent light-green ±5-real-second band follows its current frame, with a tall capped vertical playhead. Dragging seeks and selects together; Analyze sits directly after Speed in each local player and the common controller. The common A/B target remains beside the action. The legend identifies the green band's purpose without relying on color alone, and keyboard/touch selection remains available.
+
+This removes an extra timeline and reduces pointer travel. FPS calibration changes the file-time width, never the intended real-time duration. Independent players cannot move the common controller's indicator or window. Analyze freezes its interval while scanning; cancellation preserves prior results. Looping captures a separate fixed interval so the following analysis highlight does not turn looping into a moving target. Saved analyzed-range magnification and colored exact-frame markers remain available on every timeline.
+
+Browser checks exercise drag-to-seek, keyboard frame steps, phone touch, playback following, edge clipping, slow-motion calibration, local/common isolation, analysis completion/cancellation, looping and proximity at laptop, large desktop and phone widths.

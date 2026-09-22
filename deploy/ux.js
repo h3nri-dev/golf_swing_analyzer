@@ -20,7 +20,7 @@ export function createTaskHelp({ screen, compare }) {
       const task = button.dataset.helpTask;
       if (task === 'compare') { compare(); screen.focus(); }
       else screen.focusSection(task);
-      const destination = task === 'compare' ? document.querySelector('[data-slot="1"] .dropzone') : $(`panel-${task}`);
+      const destination = task === 'compare' ? document.querySelector('[data-slot="1"] .dropzone') : task === 'range' ? $('commonPlayer') : $(`panel-${task}`);
       if (!destination?.hidden) destination?.focus({ preventScroll: true });
     };
   });

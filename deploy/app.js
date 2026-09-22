@@ -144,7 +144,7 @@ function resetSlot(index) {
   pauseControlled(index); const s = slots[index]; s.version++; s.ready = false; s.video.onerror = null;
   s.video.removeAttribute('src'); s.video.load();
   if (s.url) URL.revokeObjectURL(s.url);
-  Object.assign(s, { url: null, samples: [], keyMoments: [], analyzedRange: null, analysisAttempted: false, marks: {}, anchor: null, start: 0, end: 0, rangeAuto: true, windowCenter: 0, windowSpan: 0, status: 'Add a video to get started.' });
+  Object.assign(s, { url: null, samples: [], keyMoments: [], analyzedRange: null, analysisAttempted: false, marks: {}, anchor: null, start: 0, end: 0, windowCenter: 0, windowSpan: 0, status: 'Add a video to get started.' });
   s.fps = 30; s.shotFps = null; s.speed = 1; s.review=defaultReview(); s.crop='full'; s.regionResults={}; s.quality='fast'; s.analysisQuality=null; s.loop=null;
   s.get('.fps').value = '30'; s.get('.shot-fps').value = 'same';
   for (const option of s.get('.shot-fps').options) option.disabled = option.value !== 'same' && Number(option.value) < 30;
@@ -232,15 +232,14 @@ function updatePlayback() {
 function updateAnalysisControls() {
   const s = slots[active];
   const disabled = !s.ready || !!job || !!analysisRangeError(s.start, s.end, s.video.duration, timingRate(s));
-  $('analyze').disabled = $('analyzeSelection').disabled = disabled;
+  $('analyze').disabled = disabled;
+  slots.forEach((slot,i)=>{const button=slot.get('.clip-analyze');if(button){button.disabled=!slot.ready||!!job;button.title=`Analyze swing ${names[i]}: five real seconds either side of its current frame. Replaces its markers when complete.`;}});
   const target = mode === 'compare' ? ` ${names[active]}` : '';
   $('analyze').textContent = `Analyze${target}`;
   const range = s.ready ? Number.isFinite(s.start) && Number.isFinite(s.end) ? `${seconds(realTime(s.start,s))}–${seconds(realTime(s.end,s))} s` : 'set range' : 'no video';
   $('analyze').title = `Analyze${target ? ` swing${target}` : ''} · ${range}. Replaces this video's markers when complete.`;
-  $('reviewContext').textContent = `${target ? `Swing${target}` : 'Your swing'} · ${range}`;
-  $('reviewContext').disabled = !s.ready || !!job;
   navigation?.render();
-  if (s.ready && !s.analysisAttempted) $('status').textContent = analysisRangeError(s.start,s.end,s.video.duration,timingRate(s)) || (s.rangeAuto !== false ? 'Pause at your swing, then Analyze.' : 'Ready. Analyze your pinned window.');
+  if (s.ready && !s.analysisAttempted) $('status').textContent = analysisRangeError(s.start,s.end,s.video.duration,timingRate(s)) || 'Move to your swing, then Analyze the green window.';
 }
 function update() {
   const s = slots[active], busy = !!job;
@@ -264,6 +263,7 @@ function update() {
   $('hand').value = s.hand;
   $('status').textContent = s.status; $('activeLabel').textContent = mode === 'compare' ? 'BOTH' : 'VIDEO';
   for (const [id, label] of [['previous','Previous frame'],['next','Next frame'],['restart','Restart'],['speed','Playback speed']]) $(id).setAttribute('aria-label', `${label}${mode === 'compare' ? ' both swings' : ''}`);
+  $('restart').title = $('restart').getAttribute('aria-label');
   $('restart').innerHTML = '<span aria-hidden="true">↺</span><span class="restart-word"> Restart</span>';
   $('linked').setAttribute('aria-pressed', linked); $('independent').setAttribute('aria-pressed', !linked);
   $('syncHint').textContent = !linked ? 'Individual controls leave the common controller unchanged.' : aligned ? `Aligned · B offset ${offset >= 0 ? '+' : ''}${offset.toFixed(2)} real s` : 'Sync is locked. Individual controls turn sync off.';
@@ -292,20 +292,6 @@ function seekActive(time, reference = active) {
     const targets = model.mediaTimes(model.commonTime(time, reference));
     slots.forEach((slot, i) => slot.video.currentTime = targets[i]);
   } else slots[active].video.currentTime = clamp(time, 0, slots[active].video.duration);
-  render();
-}
-function seekRangeBoundary(time) {
-  const s = slots[active];
-  if (!s.ready || job || !Number.isFinite(time)) return;
-  pauseControlled();
-  // An analysis range may extend beyond the synchronized clips' shared range.
-  // Preview the selected clip's exact boundary; keep the companion as close as possible.
-  s.video.currentTime = clamp(time, 0, s.video.duration);
-  if (isLinked()) {
-    const other = slots[1 - active];
-    const common = s.video.currentTime / timingRate(s) - (active ? offset : 0);
-    other.video.currentTime = clamp((common + (active ? 0 : offset)) * timingRate(other), 0, other.video.duration);
-  }
   render();
 }
 async function togglePlay(both = false) {
@@ -421,18 +407,20 @@ function loopPlayback(ended=false) {
   if(job)return false;
   if(isLinked()&&slots.some(s=>s.loop)){
     const model=syncModel();if(!model)return false;
-    const start=Math.max(model.bounds.start,...slots.map((s,i)=>s.loop?s.start/timingRate(s)-(i?offset:0):-Infinity));
-    const end=Math.min(model.bounds.end,...slots.map((s,i)=>s.loop?s.end/timingRate(s)-(i?offset:0):Infinity));
+    const start=Math.max(model.bounds.start,...slots.map((s,i)=>s.loop?s.loop[0]/timingRate(s)-(i?offset:0):-Infinity));
+    const end=Math.min(model.bounds.end,...slots.map((s,i)=>s.loop?s.loop[1]/timingRate(s)-(i?offset:0):Infinity));
     if(end<=start){slots.forEach(s=>s.loop=null);toast('These loop windows do not overlap. Adjust them or turn Sync off.');return false;}
     const time=slots[0].video.currentTime/timingRate(slots[0]);
-    if((!slots[0].video.paused||ended)&&(time>=end-model.endTolerance||time<start)){
+    // Either calibrated clip can reach its natural end first by a fraction
+    // of a frame. An ended event must restart the pair's captured loop.
+    if((!slots[0].video.paused||ended)&&(ended||time>=end-model.endTolerance||time<start)){
       const times=model.mediaTimes(start);slots.forEach((s,i)=>{s.video.currentTime=times[i];if(ended)s.video.play().catch(()=>{});});return true;
     }
   }else{
     let looped=false;
-    slots.forEach((s,i)=>{if(!s.loop||!s.ready||(i===1&&mode!=='compare')||s.end<=s.start)return;
-      if((!s.video.paused||(ended&&s.video.ended))&&(s.video.currentTime>=s.end-.5/s.fps||s.video.currentTime<s.start)){
-        s.video.currentTime=s.start;if(ended)s.video.play().catch(()=>{});looped=true;
+    slots.forEach((s,i)=>{if(!s.loop||!s.ready||(i===1&&mode!=='compare')||s.loop[1]<=s.loop[0])return;
+      if((!s.video.paused||(ended&&s.video.ended))&&(s.video.currentTime>=s.loop[1]-.5/s.fps||s.video.currentTime<s.loop[0])){
+        s.video.currentTime=s.loop[0];if(ended)s.video.play().catch(()=>{});looped=true;
       }
     });return looped;
   }
@@ -471,8 +459,7 @@ async function analyze() {
   // Freeze the playhead before selecting the automatic window so the restored
   // frame and analyzed interval have the same anchor, even during playback.
   pauseAll();
-  // Refresh at the click, not at a previous playback/render tick. Pinned ranges
-  // remain exactly as the user chose them throughout scanning and cancellation.
+  // Capture the playhead's window now, then freeze it throughout the scan.
   rangeSelector.prepare();
   const start = s.start, end = s.end, rangeError = analysisRangeError(start, end, s.video.duration, timingRate(s));
   if (rangeError) return toast(rangeError);
@@ -503,7 +490,7 @@ async function analyze() {
       ctx.drawImage(s.video,region.x*s.video.videoWidth,0,region.width*s.video.videoWidth,s.video.videoHeight,0,0,buffer.width,buffer.height);
       const result = detector.detectForVideo(buffer, realTime(i * interval,s) * 1000 + 1);
       samples.push({ time, points: mapCropPoints(result.landmarks[0]?.map(p => ({ x: p.x, y: p.y, visibility: p.visibility })),s.crop) });
-      $('progress').value = (i + 1) / count; s.status = `Looking closer… ${Math.round((i + 1) / count * 100)}% · ${i + 1} / ${count} samples`; $('status').textContent = $('rangeStatus').textContent = s.status;
+      $('progress').value = (i + 1) / count; s.status = `Looking closer… ${Math.round((i + 1) / count * 100)}% · ${i + 1} / ${count} samples`; $('status').textContent = s.status;
       await yieldFrame();
     }
     if (!token.cancelled) {
@@ -555,7 +542,7 @@ $('previous').onclick = () => stepBoth(-1); $('next').onclick = () => stepBoth(1
 $('speed').onchange = e => setSpeed(Number(e.target.value), true);
 $('hand').onchange = e => { slots[active].hand = e.target.value; render(); };
 
-$('analyze').onclick = $('analyzeSelection').onclick = analyze; $('cancel').onclick = $('cancelSelection').onclick = () => { if (job) { job.cancelled = true; job.controller.abort(); $('status').textContent = $('rangeStatus').textContent = 'Cancelling… finishing the current model operation.'; } };
+$('analyze').onclick = analyze; $('cancel').onclick = () => { if (job) { job.cancelled = true; job.controller.abort(); $('status').textContent = 'Cancelling… finishing the current model operation.'; } };
 // Shared report model: timestamps remain in media seconds internally so
 // drawings and analyzed samples stay attached to their original frames.
 export function reportData(index = active) {
@@ -635,13 +622,13 @@ slots.forEach((slot, index) => {
   });
 });
 annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!job }), selectSlot, pauseAll, pauseControlled, seekActive, toast, changed: updatePhases });
-rangeSelector = createRangeSelector({ slots, state: () => ({ active, mode, busy: !!job, reviewFocused:navigation?.isFocused(active) }), seek: seekRangeBoundary, pause: pauseControlled, changed: updateAnalysisControls });
+rangeSelector = createRangeSelector({ slots, state: () => ({ active, mode, busy: !!job, reviewFocused:navigation?.isFocused(active) }), changed: updateAnalysisControls });
 studioScreen = createStudioScreen({ slots, state: () => ({ active, mode, linked, busy: !!job }), changed: () => { slots.forEach(s => s.viewport?.cancelGesture()); render(); } });
 moments = createMoments({slots, state:()=>({mode,busy:!!job}), controlClip, pause:pauseControlled, seek:seekActive, changed:updatePhases});
 keyframeViews = createKeyframeViews({slots, state:()=>({mode,busy:!!job}), controlClip, seek:seekActive, play:togglePlay, changed:updatePhases, paintDrawings:annotations.paintFrame, focusVideo:()=>studioScreen.focus(),markMoment:(i,key)=>moments.set(i,key),editMoments:i=>moments.open(i),alignMoment:key=>{const times=slots.map(s=>phaseTimes(s)[key]);if(times.every(Number.isFinite))alignFrames(times);}});
 reviewTools=createReviewTools({slots,state:()=>({active,mode,busy:!!job}),changed:()=>{render();updatePhases();},cropChanged});
 navigation=createMomentNavigation({slots,state:()=>({active,mode,busy:!!job,controller:commonState()}),jump:(i,time)=>controlClip(i,()=>seekActive(time)),jumpCommon:seekBoth,changed:render,select:selectSlot,loop:()=>{
-  if(job||!slots[active].ready)return;const s=slots[active];rangeSelector.prepare();s.loop=!s.loop;if(s.loop)s.rangeAuto=false;update();
+  if(job||!slots[active].ready)return;const s=slots[active];rangeSelector.prepare();s.loop=s.loop?null:[s.start,s.end];update();
 }});
 createTaskHelp({screen: studioScreen, compare: () => setMode('compare')});
 setMode('single'); requestAnimationFrame(playbackLoop);

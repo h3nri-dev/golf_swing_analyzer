@@ -11,14 +11,18 @@ for (const [width, height] of [[1440,900],[1280,720],[2560,1440],[390,844],[320,
     await page.setViewportSize({width,height}); await page.goto('/'); await load(page,0);
     for (const compare of [false,true]) {
       if(compare) { await page.locator('#compareMode').click(); await load(page,1); }
-      const range=page.locator('#panel-range'), player=page.locator('#commonPlayer');
-      await expect(range.locator('#analyze')).toBeVisible();
-      await expect(page.locator('#analysisPanel #panel-range')).toHaveCount(0);
-      await expect(range.locator('.range-targets')).toBeVisible({visible:compare});
-      const r=await range.boundingBox(), p=await player.boundingBox();
-      expect(p.y-r.y-r.height).toBeGreaterThanOrEqual(-1);
-      expect(p.y-r.y-r.height).toBeLessThanOrEqual(8);
+      const player=page.locator('#commonPlayer');
+      await expect(player.locator('#analyze')).toBeVisible();
+      await expect(page.locator('#rangeSelection,#rangeStart,#rangeEnd')).toHaveCount(0);
+      await expect(player.locator('.range-targets')).toBeVisible({visible:compare});
+      expect(await page.locator('#speed').evaluate(e=>e.closest('label').nextElementSibling.id)).toBe('analyze');
+      expect((await page.locator('#timeline').boundingBox()).height).toBeGreaterThanOrEqual(44);
       for(const i of compare?[0,1]:[0]) {
+        if(compare){
+          expect(await slot(page,i).locator('.clip-speed').evaluate(e=>e.closest('label').nextElementSibling.className)).toBe('clip-analyze');
+          const action=await slot(page,i).locator('.clip-analyze').evaluate(e=>({w:e.clientWidth,sw:e.scrollWidth,h:e.offsetHeight}));
+          expect(action.sw).toBeLessThanOrEqual(action.w+1);expect(action.h).toBeLessThanOrEqual(44);
+        }
         await expect(slot(page,i).locator('.zoom-controls .zoom-fit')).toBeVisible();
         const zoom=await slot(page,i).locator('.zoom-controls').evaluate(e=>({w:e.clientWidth,sw:e.scrollWidth}));
         expect(zoom.sw).toBeLessThanOrEqual(zoom.w+1);
@@ -41,18 +45,18 @@ test('the nearby range target preserves per-clip ranges, independent playback an
   await page.route('**/vision_bundle.mjs',r=>r.fulfill({contentType:'text/javascript',body:'export const FilesetResolver={forVisionTasks:async()=>({})};export const PoseLandmarker={createFromOptions:async()=>({close(){},detectForVideo(){return{landmarks:[]}}})};'}));
   await page.goto('/'); await page.locator('#compareMode').click(); await load(page,0); await load(page,1);
   await page.locator('#independent').click();
-  await page.locator('[data-range-slot="0"]').click(); await page.locator('#rangeEnd').fill('0.5');
-  await page.locator('[data-range-slot="1"]').click(); await page.locator('#rangeStart').fill('1'); await page.locator('#rangeEnd').fill('1.5');
+  await page.locator('[data-range-slot="0"]').click(); await slot(page,0).locator('.clip-timeline').fill('0.5');
+  await page.locator('[data-range-slot="1"]').click(); await slot(page,1).locator('.clip-timeline').fill('1.5');
   await slot(page,1).locator('.clip-speed').selectOption('0.25'); await slot(page,1).locator('.clip-play').click();
   const common=await page.locator('#time').textContent();
   await page.locator('[data-range-slot="0"]').click();
-  await expect(page.locator('#rangeEnd')).toHaveValue('0.500'); await expect(page.locator('#analyze')).toHaveText('Analyze A');
+  expect(await slot(page,0).locator('video').evaluate(v=>v.currentTime)).toBe(.5); await expect(page.locator('#analyze')).toHaveText('Analyze A');
   expect(await slot(page,1).locator('video').evaluate(v=>v.paused)).toBe(false);
   await expect(page.locator('#time')).toHaveText(common);
   await slot(page,1).locator('.clip-play').click(); await page.locator('[data-range-slot="0"]').click();
   await page.locator('#analyze').click(); await expect(page.locator('#status')).toContainText('No clear pose');
   await page.locator('[data-range-slot="1"]').click();
-  await expect(page.locator('#rangeStart')).toHaveValue('1.000'); await expect(page.locator('#rangeEnd')).toHaveValue('1.500');
+  expect(await slot(page,1).locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(1.5);
   await page.locator('#analyze').click(); await expect(page.locator('#status')).toContainText('No clear pose');
   await expect(page.locator('.key-card')).toHaveCount(7);
   for(const [width,height,minStage] of [[1440,900,200],[1280,720,100],[2560,1440,500]]) {

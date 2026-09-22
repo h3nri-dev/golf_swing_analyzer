@@ -113,9 +113,9 @@ test('new analysis replaces every marker only on the analyzed video',async({page
 test('completed analysis without a detectable pose replaces old marks with honest range previews',async({page})=>{
  await setup(page,{empty:true});await page.locator('#timeline').fill('3.5');
  await page.getByRole('button',{name:'Set Impact here',exact:true}).click();
- await page.locator('#rangeStart').fill('0.2');await page.locator('#rangeEnd').fill('1.2');await analyze(page);
+ await page.locator('#timeline').fill('1');await analyze(page);
  const report=await page.evaluate(async()=>(await import('/app.js')).reportData());
- expect(report.marks).toEqual({});expect(report.keyMoments.every(e=>e.source==='sampled'&&e.time>=.2&&e.time<=1.2)).toBe(true);
+ expect(report.marks).toEqual({});expect(report.keyMoments.every(e=>e.source==='sampled'&&e.time>=0&&e.time<=4)).toBe(true);
  expect(report.phaseTimes).toEqual({});expect(report.tempo).toBeNull();
  await expect(page.locator('#commonPlayer .timeline-moments button')).toHaveCount(0);
  await expect(page.locator('.key-card-title').first()).toHaveText('Preview 1 ↗');
