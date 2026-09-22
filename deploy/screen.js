@@ -84,7 +84,7 @@ export function createStudioScreen({ slots, state, changed }) {
     const viewSettings=document.createElement('div');viewSettings.className='clip-view-settings';
     s.get('.clip-transport').before(viewSettings);viewSettings.append(s.get('.clip-timing'),s.get('.zoom-controls'));
     s.get('.clip-transport').setAttribute('aria-label', `Swing ${i?'B':'A'} playback controls`);
-    s.get('.clip-frame-controls').insertBefore(s.get('.clip-play'),s.get('.clip-next'));
+    s.get('.clip-playback-buttons').insertBefore(s.get('.clip-play'),s.get('.clip-next'));
     const analyze=document.createElement('button');analyze.className='clip-analyze';
     analyze.textContent=`Analyze ${i?'B':'A'}`;
     analyze.onclick=()=>{review.click();$('analyze').click();};

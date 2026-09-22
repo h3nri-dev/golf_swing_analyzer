@@ -54,17 +54,22 @@ test('individual jumps leave the other player and common controller alone; share
  await expect(page.locator('#independent')).toHaveAttribute('aria-pressed','true');
 });
 
-test('second jumps stay beside frame controls at desktop and phone sizes',async({page})=>{
+test('second jumps bookend playback controls at desktop and phone sizes',async({page})=>{
  await setup(page,true);
  for(const [width,height] of [[2560,1440],[1440,900],[1280,720],[390,844],[320,740]]){
   await page.setViewportSize({width,height});
   for(const compare of [false,true]){
    await page.locator(compare?'#compareMode':'#singleMode').click();
-   const groups=[page.locator('.play-buttons'),...(compare?[card(page,0).locator('.clip-frame-controls'),card(page,1).locator('.clip-frame-controls')]:[])];
+   const groups=[page.locator('.play-buttons'),...(compare?[card(page,0).locator('.clip-playback-buttons'),card(page,1).locator('.clip-playback-buttons')]:[])];
    for(const group of groups){
-    const back=group.locator('.time-jump').first(),forward=group.locator('.time-jump').last();await expect(back).toBeVisible();await expect(forward).toBeVisible();
-    const b=await back.boundingBox(),f=await forward.boundingBox();expect(Math.abs(b.y-f.y),`${width}px ${compare?'compare':'single'} ${await group.getAttribute('class')}`).toBeLessThan(1);expect(f.x).toBeGreaterThan(b.x);expect(b.width).toBeGreaterThanOrEqual(40);
-    expect(await group.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);
+    const back=group.locator('.time-jump').first(),forward=group.locator('.time-jump').last();await expect(back).toBeVisible();await expect(forward).toBeVisible();await expect(back).toHaveText('< -1s');await expect(forward).toHaveText('> +1s');
+    // Read the whole group in one layout snapshot while responsive sizing settles.
+    const geometry=await group.evaluate(e=>({width:e.clientWidth,scrollWidth:e.scrollWidth,controls:[...e.querySelectorAll('button')].map(button=>{const r=button.getBoundingClientRect();return {jump:button.classList.contains('time-jump'),x:r.x,y:r.y,width:r.width,right:r.right};})}));
+    const [b,f]=geometry.controls.filter(c=>c.jump);
+    expect(Math.abs(b.y-f.y),`${width}px ${compare?'compare':'single'} ${await group.getAttribute('class')}`).toBeLessThan(1);expect(f.x).toBeGreaterThan(b.x);expect(b.width).toBeGreaterThanOrEqual(40);
+    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.width+1);
+    expect(b.x).toBeCloseTo(Math.min(...geometry.controls.map(c=>c.x)),1);expect(f.right).toBeCloseTo(Math.max(...geometry.controls.map(c=>c.right)),1);
+    expect(await group.locator('button').first().getAttribute('class')).toContain('time-jump');expect(await group.locator('button').last().getAttribute('class')).toContain('time-jump');
    }
    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
    if(width>=901){const stage=await card(page).locator('.stage').boundingBox();expect(stage.height).toBeGreaterThan(100);const end=await page.locator('.screen-transport').boundingBox();expect(end.y+end.height).toBeLessThanOrEqual(height);}
