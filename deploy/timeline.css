@@ -1,0 +1,104 @@
+/* Review a short swing at the scale of its analysis, beside its playback tools. */
+.timeline-review { display:contents; }
+.timeline-review.has-review { display:block; min-width:0; width:100%; flex:1; }
+.timeline-focus-controls { display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px; margin-bottom:3px; font-size:14px; line-height:1.2; }
+.timeline-scopes { display:flex; gap:3px; }
+.timeline-toggle { display:none; }
+.timeline-scopes button { min-height:28px; padding:3px 6px; border:1px solid #aabc9c; border-radius:5px; background:#f6f8f1; color:#253e2e; font:inherit; }
+.timeline-scopes [aria-pressed=true] { background:#35533b; border-color:#35533b; color:#fff; }
+.timeline-bounds { margin-left:auto; font-variant-numeric:tabular-nums; }
+.timeline-moments svg { position:absolute; top:0; left:0; overflow:visible; pointer-events:none; opacity:.65; }
+.playhead-outside .clip-duration::before,.playhead-outside .timeline-row>output::before { content:'Outside range · '; }
+.timeline-review.has-review .timeline-moments { position:relative; width:100%; height:0; margin:0; }
+.timeline-review.is-focused .timeline-moments { margin-top:2px; }
+.timeline-review.is-focused .timeline-moments button { width:24px; height:24px; min-height:24px; color:#fff; font-size:14px; font-weight:700; border-radius:5px; border:1px solid #fff; line-height:22px; padding:0; }
+.timeline-review.is-focused .timeline-moments button:hover,.timeline-review.is-focused .timeline-moments button:focus-visible { transform:translateX(-50%); outline:2px solid #8eb852; outline-offset:1px; }
+.screen-ready .timeline-review.has-review input[type=range] { display:block; width:100%; min-width:0; margin:0; height:24px; }
+.persistent-sidebar .common-player.has-timeline-review { display:grid; grid-template-columns:auto auto minmax(0,1fr); gap:3px 10px; }
+.persistent-sidebar .common-player.has-timeline-review .comparison-bar { grid-row:1; grid-column:1; }
+.persistent-sidebar .common-player.has-timeline-review .transport-row { grid-row:1; grid-column:2; }
+.persistent-sidebar .common-player.has-timeline-review>.timeline-focus-controls { grid-column:3; grid-row:1; justify-content:flex-end; margin:0; }
+.persistent-sidebar .common-player.has-timeline-review>.timeline-focus-controls .timeline-bounds { margin:0; }
+.persistent-sidebar .common-player.has-timeline-review:has(#comparisonBar[hidden]) .transport-row { grid-column:1; }
+.persistent-sidebar .common-player.has-timeline-review:has(#comparisonBar[hidden])>.timeline-focus-controls { grid-column:2/-1; }
+.persistent-sidebar .common-player.has-timeline-review .timeline-row { grid-row:2; grid-column:1/-1; flex-wrap:nowrap; gap:0 8px; align-items:flex-end; }
+.persistent-sidebar .common-player.has-timeline-review:has(#comparisonBar[hidden]) .timeline-row { grid-column:1/-1; grid-row:2; }
+.persistent-sidebar .common-player.has-timeline-review .timeline-row>.small-label { display:none; }
+.persistent-sidebar .common-player.has-timeline-review .timeline-row>output { margin-left:auto; }
+.persistent-sidebar .common-player.has-timeline-review .timeline-review { flex:1; width:0; }
+.persistent-sidebar .clip-transport.has-timeline-review { display:grid; grid-template-columns:28px auto 28px minmax(0,1fr) 28px 58px; gap:3px; }
+.persistent-sidebar .clip-transport.has-timeline-review .clip-timeline-row,
+.persistent-sidebar .clip-transport.has-timeline-review .clip-frame-controls { display:contents; }
+.persistent-sidebar .clip-transport.has-timeline-review .timeline-review { grid-column:1/-1; grid-row:1; }
+.persistent-sidebar .clip-transport.has-timeline-review .clip-previous { grid-column:1; grid-row:2; }
+.persistent-sidebar .clip-transport.has-timeline-review .clip-play { grid-column:2; grid-row:2; }
+.persistent-sidebar .clip-transport.has-timeline-review .clip-next { grid-column:3; grid-row:2; }
+.persistent-sidebar .clip-transport.has-timeline-review .clip-duration { display:block; grid-column:4; grid-row:2; text-align:right; font-size:14px; line-height:1.15; white-space:normal; overflow-wrap:anywhere; }
+.persistent-sidebar .clip-transport.has-timeline-review .clip-restart { grid-column:5; grid-row:2; }
+.persistent-sidebar .clip-transport.has-timeline-review .clip-speed-label { grid-column:6; grid-row:2; margin:0; }
+.clip-transport .timeline-focus-controls { color:#e4eddf; }
+.persistent-sidebar .timeline-compact .timeline-focus-controls { grid-column:1/4; grid-row:2; margin:0; }
+.timeline-compact .timeline-scopes,.timeline-compact .timeline-bounds { display:none; }
+.timeline-compact .timeline-toggle { display:block; font-size:14px; min-height:28px; padding:2px 5px; background:#35533b; color:white; border:1px solid #849a78; border-radius:4px; }
+.persistent-sidebar .timeline-compact .clip-duration { grid-column:4/-1; grid-row:2; }
+.timeline-compact.playhead-outside .clip-duration::before { content:''; }
+@media(min-width:901px) and (max-height:900px){
+  .persistent-sidebar .timeline-compact { display:grid; grid-template-columns:28px auto 28px minmax(0,1fr) 28px 58px; gap:2px 4px; }
+  .persistent-sidebar .timeline-compact .clip-timeline-row,.persistent-sidebar .timeline-compact .clip-frame-controls { display:contents; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) { grid-template-columns:minmax(0,1fr) 320px; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) .drawing-settings { display:flex; flex-wrap:wrap; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) .drawing-actions { grid-template-columns:1fr 1fr; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) .review-metrics .review-tables { grid-template-columns:1fr; }
+  .persistent-sidebar .common-player.has-timeline-review { grid-template-columns:auto auto 205px minmax(0,1fr); }
+  .persistent-sidebar .common-player.has-timeline-review>.timeline-focus-controls { grid-column:3; grid-row:1; justify-content:center; }
+  .persistent-sidebar .common-player.has-timeline-review .timeline-row { grid-column:4; grid-row:1; }
+  .persistent-sidebar .common-player.has-timeline-review:has(#comparisonBar[hidden]) { grid-template-columns:auto 205px minmax(0,1fr); }
+  .persistent-sidebar .common-player.has-timeline-review:has(#comparisonBar[hidden])>.timeline-focus-controls { grid-column:2; }
+  .persistent-sidebar .common-player.has-timeline-review:has(#comparisonBar[hidden]) .timeline-row { grid-column:3; grid-row:1; }
+  .persistent-sidebar .common-player.has-timeline-review .timeline-row>output { max-width:135px; white-space:normal; font-size:14px; }
+  .persistent-sidebar .timeline-compact .clip-timeline-row .clip-timeline { grid-column:1/-1; grid-row:1; width:100%; }
+  .persistent-sidebar .timeline-compact .clip-previous { grid-column:1; grid-row:2; }
+  .persistent-sidebar .timeline-compact .clip-play { grid-column:2; grid-row:2; }
+  .persistent-sidebar .timeline-compact .clip-next { grid-column:3; grid-row:2; }
+  .persistent-sidebar .timeline-compact .clip-restart { grid-column:5; grid-row:2; }
+  .persistent-sidebar .timeline-compact .clip-speed-label { grid-column:6; grid-row:2; }
+  .persistent-sidebar .timeline-compact .timeline-focus-controls { grid-column:4; grid-row:2; }
+  .persistent-sidebar .timeline-compact .clip-duration { grid-column:1/-1; grid-row:3; }
+  .persistent-sidebar .timeline-compact .clip-speed { width:58px; }
+  .persistent-sidebar .timeline-compact .clip-speed-label { min-width:0; }
+  .timeline-compact .timeline-moments button { min-height:12px; height:12px; }
+}
+@media(min-width:1180px) and (max-height:820px){
+  .persistent-sidebar:has(.common-player.has-timeline-review) .screen-transport #panel-range { padding:4px 6px; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) .range-dock .analysis-range { grid-template-columns:minmax(100px,1fr) auto auto auto; gap:0 6px; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) .range-dock .range-track { grid-column:1; grid-row:1; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) .range-dock .range-footer { display:contents; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) #rangeSummary { grid-column:1; grid-row:2; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) #loopRange { grid-column:2; grid-row:1; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) #rangeReset { grid-column:3; grid-row:1; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) .range-dock .range-boundaries { grid-column:4; grid-row:1/3; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) .key-moment-strip header button { min-height:28px; }
+  .persistent-sidebar.is-compare:has(.common-player.has-timeline-review) .key-card-title { min-height:26px; }
+  .persistent-sidebar.is-compare:has(.common-player.has-timeline-review) .key-moment-strip header { margin-bottom:2px; }
+  .persistent-sidebar.is-compare:has(.common-player.has-timeline-review) .key-moment-strip { padding:2px; }
+}
+@media(max-width:600px){
+  .persistent-sidebar .common-player.has-timeline-review { grid-template-columns:minmax(0,1fr); }
+  .persistent-sidebar .common-player.has-timeline-review .comparison-bar { grid-column:1; grid-row:1; }
+  .persistent-sidebar .common-player.has-timeline-review .transport-row { grid-column:1; grid-row:2; }
+  .persistent-sidebar .common-player.has-timeline-review>.timeline-focus-controls,
+  .persistent-sidebar .common-player.has-timeline-review:has(#comparisonBar[hidden])>.timeline-focus-controls { grid-column:1; grid-row:3; justify-content:flex-start; }
+  .persistent-sidebar .common-player.has-timeline-review .timeline-row { grid-column:1; grid-row:4; }
+  .persistent-sidebar .common-player.has-timeline-review:has(#comparisonBar[hidden]) .timeline-row { grid-column:1; grid-row:4; }
+  .persistent-sidebar .clip-transport.has-timeline-review { grid-template-columns:28px minmax(0,1fr) 28px; }
+  .persistent-sidebar .clip-transport.has-timeline-review .clip-speed-label { grid-column:2; grid-row:3; justify-self:end; }
+  .persistent-sidebar .clip-transport.has-timeline-review .clip-restart { grid-column:3; grid-row:3; }
+  .persistent-sidebar .clip-transport.has-timeline-review .clip-duration { grid-column:1/-1; grid-row:4; }
+  .persistent-sidebar .common-player.has-timeline-review .timeline-row { flex-wrap:wrap; }
+  .persistent-sidebar .common-player.has-timeline-review .timeline-review { flex-basis:100%; }
+  .timeline-scopes { flex-wrap:wrap; }
+}
+@media(min-width:901px) and (max-width:1600px){
+  .persistent-sidebar:has(.common-player.has-timeline-review) .screen-transport { grid-column:1/-1; }
+  .persistent-sidebar:has(.common-player.has-timeline-review) .analysis-panel { grid-row:2; }
+}

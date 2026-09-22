@@ -60,6 +60,10 @@ Each comparison clip keeps its own selection, even with synchronized playback. R
 
 Changing the range preserves earlier results and marks, with a reminder to analyze again. PDF reports identify the selected and analyzed intervals separately, so earlier results are not mistaken for a newly selected range. Cancelling an analysis preserves previous results and their original interval. Analysis restores the playhead and retains zoom and drawings. The processing cap also applies to slow-motion footage: 240 samples in Fast or 2,400 in Detailed.
 
+After analyzing part of a clip, its playback timeline automatically expands to that **Analyzed range**. Start/end times and magnification appear beside the timeline. Numbered, color-coded markers match the seven moment cards; nearby labels spread apart with lines pointing to their exact timestamps. Click a marker to jump to its frame. **Full video** restores the overview, and **Analyzed range** returns to the expanded view without moving the playhead or changing video zoom. The review window stays fixed during playback and while the next analysis selection follows the playhead. If playback moves beyond it, the common clock says **Outside range**; Full video reveals the playhead again. Cancellation retains the previous review window.
+
+Comparison keeps a separate timeline view for each player. Local markers control one video; the common timeline's markers control both using their calibrated real-time offset. Completing analysis makes the analyzed clip the common review clock. Subsequent individual playback with Sync off leaves that common clock and view unchanged. Short desktop screens use compact local phase dots and a single scope toggle to retain video space; the common timeline keeps its numbered markers.
+
 ## Analysis and privacy
 
 The app lazy-loads pinned MediaPipe Tasks Vision 0.10.21 and the Pose Landmarker Lite model. Code/WASM comes from jsDelivr and model weights come from Google's public storage; **video pixels stay in browser memory**. A network connection is required for uncached model assets. Regular video review works without the model. Fonts are served locally and there is no video upload endpoint.
@@ -148,7 +152,7 @@ Removing or replacing a clip with drawings, moments or analysis asks before clea
 
 ## Visual key moments
 
-After **Analyze**, seven visual previews appear alongside the player: Address, Backswing, Top of backswing, Downswing, Impact, Follow-through and Finish. Portrait videos use a tall player beside a two-column gallery on wide desktops. Landscape videos use a filmstrip below the player; comparison pairs A/B images for each moment. Phones place the gallery after playback controls, followed by the expanded sidebar sections.
+After **Analyze**, seven visual previews appear alongside the player: Address, Backswing, Top of backswing, Downswing, Impact, Follow-through and Finish. Portrait videos use a tall player beside a four-column, two-row gallery on wide desktops. Landscape videos use a filmstrip below the player; comparison pairs A/B images for each moment. Phones place the gallery after playback controls, followed by the expanded sidebar sections.
 
 Click an image to jump that player to its frame. **Enlarge & edit** (or a card heading) opens a large single/paired view with frame numbers, real-time timestamps, available angles, previous/next frame, Set from player, Play from here and Draw on frame. Editing a frame saves a manual mark. Each preview has a neighboring Set A / Set B button. All seven moments are visible without a phase dropdown; Edit A / Edit B opens exact frame editing. The sidebar shows tempo and PDF export. User marks override suggestions and survive reanalysis and FPS changes.
 

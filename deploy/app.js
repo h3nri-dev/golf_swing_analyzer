@@ -152,7 +152,7 @@ function resetSlot(index) {
   s.input.value = ''; s.get('.file-name').textContent = index ? 'Reference swing' : 'Your swing';
   s.video.hidden = true; s.drop.hidden = false; s.canvas.hidden = true;
   s.stage.classList.remove('mirrored'); s.get('.mirror').setAttribute('aria-pressed', false);
-  s.viewport?.reset(); annotations?.reset(index); invalidateSync(); update();
+  s.viewport?.reset(); annotations?.reset(index); navigation?.reset(index); invalidateSync(); update();
 }
 async function loadFile(index, file) {
   if (job) return toast('Finish or cancel analysis before replacing a video.');
@@ -336,10 +336,11 @@ function step(direction) { const s = slots[active]; if (s.ready) seekActive(fram
 function seekBoth(time) {
   if (mode !== 'compare' || isLinked()) return seekActive(time);
   if (job || !Number.isFinite(time) || !slots.every(s => s.ready)) return;
-  const delta = time - slots[commonTransport.clock].video.currentTime;
+  const clock = slots[commonTransport.clock];
+  const delta = (time - clock.video.currentTime) / timingRate(clock);
   commonTransport.following = true;
   pauseAll();
-  slots.forEach(s => { s.video.currentTime = clamp(s.video.currentTime + delta, 0, s.video.duration); });
+  slots.forEach(s => { s.video.currentTime = clamp(s.video.currentTime + delta * timingRate(s), 0, s.video.duration); });
   updatePlayback(); render();
 }
 function stepBoth(direction) {
@@ -365,7 +366,6 @@ function render() {
   slots.forEach(slot => slot.viewport?.apply());
   const controller = commonState(), clockName = mode === 'compare' ? names[controller.clock] + ' ' : '';
   const elapsed = controller.time / controller.rate, duration = controller.duration / controller.rate;
-  $('timeline').max = duration || 1; $('timeline').value = elapsed;
   const frame = frameNumber(controller.time,controller.fps,controller.duration);
   $('timeline').setAttribute('aria-valuetext',`${seconds(elapsed)} real seconds, frame ${frame}`);
   $('timeline').setAttribute('aria-label', mode === 'compare' ? `Both videos timeline, swing ${names[controller.clock]} clock` : 'Video timeline');
@@ -375,8 +375,6 @@ function render() {
   $('time').textContent = `${clockName}${seconds(elapsed)} / ${seconds(duration)} s`;
   $('time').title = `${seconds(elapsed)} real seconds · Frame ${frame} (first frame is 0)`;
   slots.forEach(slot => {
-    slot.get('.clip-timeline').max = slot.ready ? realTime(slot.video.duration,slot) : 1;
-    slot.get('.clip-timeline').value = realTime(slot.video.currentTime || 0,slot);
     slot.get('.clip-timeline').setAttribute('aria-valuetext',frameStamp(slot.video.currentTime || 0,slot));
     slot.get('.clip-duration').textContent = `${seconds(realTime(slot.video.currentTime,slot))} / ${seconds(realTime(slot.ready ? slot.video.duration : 0,slot))} s`;
     slot.get('.clip-duration').title = 'Elapsed / total real seconds, using File FPS and Shot FPS';
@@ -511,6 +509,10 @@ async function analyze() {
     if (!token.cancelled) {
       s.samples = smoothSamples(samples); s.tolerance = interval * 0.6;
       s.analyzedRange = [start, s.end]; s.analysisQuality=s.quality;
+      navigation.focusAnalysis(active);
+      // Analyze is an explicit review command. Subsequent individual playback
+      // still leaves the common controller and its chosen clock untouched.
+      if(isIndependent())Object.assign(commonTransport,playerState(active),{time:originalTime,following:false});
       s.keyMoments = suggestKeyMoments(s.samples,start,s.end,s.fps,{anchor:originalTime,rate:timingRate(s)}); s.analysisVersion++; trackUsage('analysis_complete',mode);
       const valid = samples.filter(x => x.points && [11,12,23,24].every(i => visible(x.points[i]))).length;
       const detected=s.keyMoments.some(e=>e.source==='estimated');
@@ -628,12 +630,12 @@ slots.forEach((slot, index) => {
   });
 });
 annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!job }), selectSlot, pauseAll, pauseControlled, seekActive, toast, changed: updatePhases });
-rangeSelector = createRangeSelector({ slots, state: () => ({ active, mode, busy: !!job }), seek: seekRangeBoundary, pause: pauseControlled, changed: updateAnalysisControls });
+rangeSelector = createRangeSelector({ slots, state: () => ({ active, mode, busy: !!job, reviewFocused:navigation?.isFocused(active) }), seek: seekRangeBoundary, pause: pauseControlled, changed: updateAnalysisControls });
 studioScreen = createStudioScreen({ slots, state: () => ({ active, mode, linked, busy: !!job }), changed: () => { slots.forEach(s => s.viewport?.cancelGesture()); render(); } });
 moments = createMoments({slots, state:()=>({mode,busy:!!job}), controlClip, pause:pauseControlled, seek:seekActive, changed:updatePhases});
 keyframeViews = createKeyframeViews({slots, state:()=>({mode,busy:!!job}), controlClip, seek:seekActive, play:togglePlay, changed:updatePhases, paintDrawings:annotations.paintFrame, focusVideo:()=>studioScreen.focus(),markMoment:(i,key)=>moments.set(i,key),editMoments:i=>moments.open(i),alignMoment:key=>{const times=slots.map(s=>phaseTimes(s)[key]);if(times.every(Number.isFinite))alignFrames(times);}});
 reviewTools=createReviewTools({slots,state:()=>({active,mode,busy:!!job}),changed:()=>{render();updatePhases();},cropChanged});
-navigation=createMomentNavigation({slots,state:()=>({active,mode,busy:!!job,clock:commonState().clock}),jump:(i,time)=>controlClip(i,()=>seekActive(time)),select:selectSlot,loop:()=>{
+navigation=createMomentNavigation({slots,state:()=>({active,mode,busy:!!job,controller:commonState()}),jump:(i,time)=>controlClip(i,()=>seekActive(time)),jumpCommon:seekBoth,changed:render,select:selectSlot,loop:()=>{
   if(job||!slots[active].ready)return;const s=slots[active];rangeSelector.prepare();s.loop=!s.loop;if(s.loop)s.rangeAuto=false;update();
 }});
 createTaskHelp({screen: studioScreen, compare: () => setMode('compare')});

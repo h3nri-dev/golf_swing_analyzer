@@ -119,3 +119,11 @@ Verification for this restoration: 45 unit tests passed; browser checks covered 
 ## Portrait gallery density
 
 The portrait gallery now uses four columns and two rows on desktop, replacing the two-column, four-row layout that left large empty areas beside narrow video frames. The seven moments fill the first four and next three cells; Finish has the same width as the other cards. More of the review area is allocated to the gallery while retaining the tall player and nearby controls. Text sizes, full-frame aspect ratios and moment actions are preserved. Checked the grid and equal card widths at 1180, 1280, 1440, 1920 and 2560 pixels; key-moment and proximity browser checks passed on desktop and phone layouts.
+
+## Reviewing a short analyzed interval
+
+The full-clip playback scale clustered swing events into a few pixels on long recordings. Completing analysis now expands the timeline to that saved interval. Analyzed range / Full video controls, interval endpoints and magnification live beside the timeline. Markers retain phase colors and numbers; crowded labels spread apart with connectors to exact timestamp anchors. Scope changes do not seek or change spatial zoom. Playback and the following selection for the next analysis cannot move the review viewport; cancellation preserves it.
+
+Individual timelines retain separate view states and single-video marker actions. Common marker actions preserve sync when enabled and use calibrated real-time changes for independent normal/slow-motion clips. Short desktop layouts use full-width local scrubbers, compact non-overlapping dots and adjacent scope toggles; the common controller keeps numbered markers. The workspace gives more width to the players on short screens, with internal inspector scrolling instead of collapsing video height. All key-moment cards and playback controls remain available.
+
+Validation includes 47 unit tests and 51 browser regressions covering window selection, cancellation, markers, FPS calibration, independent/common controls, keyframe views, drawings and responsive layouts. Screenshots were inspected for single and comparison review at laptop, desktop and phone sizes. Focused checks additionally verify compact marker click targets do not overlap and scope toggles preserve playheads and synchronization.

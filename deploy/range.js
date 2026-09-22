@@ -113,7 +113,7 @@ export function createRangeSelector({ slots, state, seek, pause, changed }) {
     const previous = s.analyzedRange;
     // Restoring a playing video's frame can round its timestamp to microseconds.
     const sameRange = previous && Math.abs(previous[0] - s.start) < 0.000002 && Math.abs(previous[1] - s.end) < 0.000002;
-    $('analyzedRangeNote').hidden = !previous || sameRange;
+    $('analyzedRangeNote').hidden = !previous || sameRange || s.rangeAuto !== false && state().reviewFocused;
     $('analyzedRangeNote').textContent = previous ? `Results are for ${show(previous[0])}–${show(previous[1])} s. Analyze again to update them.` : '';
     paintPlayhead();
   }

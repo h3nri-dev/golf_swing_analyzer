@@ -33,7 +33,7 @@ test('Analyze captures ±5s at the current frame, keeps that window while scanni
   expect(Math.min(...scanned)).toBe(27);expect(Math.max(...scanned)).toBeLessThan(37);
   expect(await card(page).locator('video').evaluate(v=>v.currentTime)).toBe(32);
   await bounds(page,27,37);
-  await page.locator('#timeline').fill('59');await bounds(page,54,60);
+  await page.locator('#commonPlayer .timeline-full').click();await page.locator('#timeline').fill('59');await bounds(page,54,60);
   await expect(page.locator('#analyzedRangeNote')).toContainText('Analyze again');
   await page.locator('#speed').selectOption('0.25');await page.locator('#play').click();
   await expect.poll(async()=>Number(await page.locator('#rangeStart').inputValue())).toBeGreaterThan(54.05);
