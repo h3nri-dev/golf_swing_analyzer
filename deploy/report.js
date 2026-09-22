@@ -116,10 +116,13 @@ export async function createPdfReport(report) {
       let notesY=landscape?imageY+imageHeight+8:201;
       const notesLimit=height-19;
       if(notes.length&&notesY+8<notesLimit) {
-        text('What to review',notesX,notesY,11,green,true);notesY+=6;
-        // Two phase-specific findings and their guide are shared with the
-        // frame viewer. Print every finding instead of silently truncating it.
-        for(const note of notes)notesY+=wrap(note,notesX,notesY,notesWidth,9)+2;
+        text('Coaching suggestions',notesX,notesY,11,green,true);notesY+=6;
+        // The wording and status labels match the online frame report.
+        // Color reinforces the written label; it never replaces it.
+        for(const note of notes){
+          const color=note.startsWith('Looks good:')?'#256842':note.startsWith('Check this:')?'#83500A':note.startsWith('Try next:')?'#225E70':muted;
+          notesY+=wrap(note,notesX,notesY,notesWidth,9,color)+2;
+        }
       }
     }
   }

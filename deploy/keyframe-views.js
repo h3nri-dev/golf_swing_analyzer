@@ -2,16 +2,24 @@ import { KEY_MOMENTS, keyMomentEntries, MOMENT_COLORS, momentSource, MOMENT_NAME
 import { frameNumber, frameStamp, lastFrame } from './timing.js';
 import { drawReview, cropRegion, frameAnalysis, currentMoment } from './review.js';
 import { MEASUREMENTS } from './analysis.js';
+import { FEEDBACK_LABELS } from './coaching.js';
 
 const sourceLabel=momentSource;
 const name=i=>i?'B':'A';
 const angle=(value,delta=false)=>Number.isFinite(value)?`${delta&&value>0?'+':''}${Math.round(value)}°`:'—';
 const compactLabels={elbow:'Elbow',trailElbow:'Trail el.',lean:'Torso',knee:'Knee',wrist:'Wrist'};
-const analysisMarkup='<h4>Frame analysis</h4><p class="key-phase-guide"></p><ul class="key-posture-notes"></ul><table class="key-detail-metrics"><thead><tr><th>2D measurement</th><th>Angle</th><th>vs address</th></tr></thead><tbody></tbody></table>';
+const analysisMarkup='<h4>Frame analysis</h4><ul class="key-posture-notes key-coaching"></ul><p class="key-coaching-basis"></p><h5>Supporting measurements</h5><p class="key-phase-guide"></p><table class="key-detail-metrics"><thead><tr><th>2D measurement</th><th>Angle</th><th>vs address</th></tr></thead><tbody></tbody></table>';
 function showAnalysis(element,analysis) {
   element.querySelector('.key-phase-guide').textContent=analysis.guide||'';
   element.querySelector('.key-phase-guide').hidden=!analysis.guide;
-  element.querySelector('.key-posture-notes').replaceChildren(...analysis.observations.map(note=>{const li=document.createElement('li');li.textContent=note;return li;}));
+  const feedback=[...analysis.coaching.findings,{kind:'practice',body:analysis.coaching.practice}];
+  element.querySelector('.key-coaching').replaceChildren(...feedback.map(({kind,title,body})=>{
+    const li=document.createElement('li');li.className=`key-feedback key-feedback-${kind}`;
+    const label=document.createElement('span');label.className='key-feedback-label';label.textContent=`${FEEDBACK_LABELS[kind]}: `;li.append(label);
+    if(title){const heading=document.createElement('strong');heading.textContent=`${title}. `;li.append(heading);}
+    const explanation=document.createElement('span');explanation.textContent=body;li.append(explanation);return li;
+  }));
+  element.querySelector('.key-coaching-basis').textContent=analysis.coaching.basis;
   element.querySelector('tbody').innerHTML=MEASUREMENTS.map(([key,label])=>`<tr data-frame-metric="${key}"><th scope="row">${label}</th><td>${angle(analysis.measurements[key])}</td><td>${angle(analysis.changes[key],true)}</td></tr>`).join('');
 }
 
@@ -89,7 +97,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
   window.addEventListener('resize',scheduleReportResize);
   const panels=slots.map((s,index)=>{
     const panel=document.createElement('section');panel.className='key-review-panel';panel.dataset.reviewSlot=index;
-    panel.innerHTML='<h3><span class="key-swing-label"></span> <span class="key-source"></span></h3><div class="key-large-frame"><canvas></canvas><p></p></div><div class="key-detail-line"><strong class="key-detail-time"></strong></div><div class="key-detail-results"><h4>Frame analysis</h4><p class="key-phase-guide"></p><ul class="key-posture-notes"></ul><table class="key-detail-metrics"><thead><tr><th>2D measurement</th><th>Angle</th><th>vs address</th></tr></thead><tbody></tbody></table></div><div class="key-edit-controls"><button class="key-frame-back">−1</button><label>Frame <input type="number" min="0" step="1"></label><button class="key-frame-next">+1</button><button class="key-set-current">Set from player</button></div><div class="key-review-actions"><button class="key-play-from">▶ Play from here</button><button class="key-draw-frame">Draw on frame ↗</button></div>';
+    panel.innerHTML='<h3><span class="key-swing-label"></span> <span class="key-source"></span></h3><div class="key-large-frame"><canvas></canvas><p></p></div><div class="key-detail-line"><strong class="key-detail-time"></strong></div><div class="key-detail-results">'+analysisMarkup+'</div><div class="key-edit-controls"><button class="key-frame-back">−1</button><label>Frame <input type="number" min="0" step="1"></label><button class="key-frame-next">+1</button><button class="key-set-current">Set from player</button></div><div class="key-review-actions"><button class="key-play-from">▶ Play from here</button><button class="key-draw-frame">Draw on frame ↗</button></div>';
     dialog.querySelector('.key-review-panels').append(panel);
     const input=panel.querySelector('input');
     const save=frame=>{

@@ -37,7 +37,7 @@ test('keyframe analysis uses its explicit phase, exact tracked frame and address
  const slot={samples:[{time:0,points:p},{time:.2,points:p2},{time:.4,points:null}],tolerance:.05,fps:30,hand:'right',marks:{address:0,top:.2,impact:.2},keyMoments:[],video:{videoWidth:200,videoHeight:400}};
  const impact=frameAnalysis(slot,.2,{key:'impact',source:'marked'});
  assert.equal(impact.measurements.elbow,180);assert.equal(impact.changes.elbow,90);
- assert.match(impact.guide,/ball contact/);assert.deepEqual(impact.highlights.map(h=>h.key),['elbow','wrist']);assert.match(impact.observations.join(' '),/\+90.0° vs address/);
+ assert.match(impact.guide,/ball contact/);assert.deepEqual(impact.highlights.map(h=>h.key),['elbow','wrist']);assert.match(impact.observations.join(' '),/Try next:/);assert.match(impact.observations.join(' '),/Check actual contact/);
  slot.hand='left';assert.equal(frameAnalysis(slot,.2,{key:'impact',source:'marked'}).changes.elbow,0);
  const gap=frameAnalysis(slot,.4,{key:'impact',source:'marked'});assert.equal(gap.tracked,false);assert.equal(gap.guide,null);assert.ok(Object.values(gap.changes).every(v=>v===null));
  const preview=frameAnalysis(slot,.2,{key:'top',source:'sampled'});assert.equal(preview.guide,null);

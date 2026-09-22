@@ -34,6 +34,8 @@ test('each keyframe shows results immediately; edits, handedness and PDF use the
  const original=await data(page);expect(original.keyMoments.every(e=>e.source==='estimated')).toBe(true);
  await page.getByRole('button',{name:'Full Impact analysis',exact:true}).click();
  const panel=page.locator('[data-review-slot="0"]');await expect(panel.locator('[data-frame-metric]')).toHaveCount(8);await expect(panel.locator('.key-phase-guide')).toContainText('ball contact');
+ await expect(panel.locator('.key-feedback-practice')).toContainText('Try next:');
+ await expect(panel.locator('.key-feedback-check')).toContainText('Check actual contact');
  const frame=page.getByRole('spinbutton',{name:'Key moment frame',exact:true});await frame.fill('20');await frame.press('Tab');
  const edited=(await data(page)).keyMoments.find(e=>e.key==='impact');await expect(panel.locator('[data-frame-metric=elbow] td').first()).toHaveText(angle(edited.analysis.measurements.elbow));
  await page.screenshot({path:'/tmp/frame-results-detail.png'});await page.keyboard.press('Escape');await checkCards(page);
@@ -70,7 +72,7 @@ test('single and paired results stay readable beside the videos across screen si
   const content=pages[i*8+j+1];expect(content).toContain(`(Swing ${i?'B':'A'} / ${frame.label})`);expect(content).toContain('vs address');
   if(frame.analysis.guide)expect(text(content)).toContain(frame.analysis.guide);
   for(const observation of frame.analysis.observations)expect(text(content)).toContain(observation);
-  expect(content).toContain('What to review');
+  expect(content).toContain('Coaching suggestions');
  }
  for(const [i,clip] of before.entries())expect((await data(page,i)).keyMoments).toEqual(clip.keyMoments);
 });
@@ -94,6 +96,9 @@ test('inline analysis toggles beside Set, stays frame-specific and leaves playba
  for(const [key,value] of Object.entries(impact.analysis.measurements))await expect(reportA.locator(`[data-frame-metric="${key}"] td`).first()).toHaveText(angle(value));
  await expect(reportA.locator('.key-phase-guide')).toHaveText(impact.analysis.guide);
  for(const note of impact.analysis.observations)await expect(reportA).toContainText(note);
+ const advice=await reportA.locator('.key-coaching').boundingBox(),numbers=await reportA.locator('.key-detail-metrics').boundingBox();
+ expect(advice.y+advice.height).toBeLessThan(numbers.y);
+ await expect(reportA.locator('.key-feedback-practice')).toContainText(impact.analysis.coaching.practice);
  await toggleB.click();await expect(reportB).toBeVisible();await expect(reportA).toBeVisible();
  await toggleA.click();await expect(reportA).toBeHidden();await expect(reportB).toBeVisible();
  await toggleA.click();await page.locator('#hand').selectOption('left');
@@ -136,7 +141,7 @@ test('open reports adapt to mode and size changes, refresh after analysis and ex
  await setup(page,true);await analyze(page,0);
  const moment=page.locator('.key-card[data-key=impact]'),toggle=moment.locator('[data-moment-slot="0"] .moment-analysis-toggle'),report=page.locator('#frame-analysis-0-impact');
  await moment.locator('[data-moment-slot="1"] .moment-mark').click();await moment.locator('[data-moment-slot="1"] .moment-analysis-toggle').click();
- await expect(page.locator('#frame-analysis-1-impact')).toContainText('Analyze this video to see measurements');
+ await expect(page.locator('#frame-analysis-1-impact')).toContainText('Analyze this video to get feedback');
  await expect(page.locator('#frame-analysis-1-impact .key-phase-guide')).toBeHidden();
  await toggle.click();
  for(const [width,height,mode] of [[1280,720,'single'],[1440,900,'compare'],[390,844,'single'],[1280,720,'compare']]){

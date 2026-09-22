@@ -1,6 +1,7 @@
 import {visible, measurements, nearestSample} from './analysis.js';
 import {fileTime} from './timing.js';
 import {keyMomentEntries} from './keyframes.js';
+import {coachingFeedback, coachingObservations} from './coaching.js';
 
 export const CONNECTIONS=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[15,19],[16,20],[27,29],[29,31],[28,30],[30,32]];
 export const defaultReview=()=>({visible:true,skeleton:true,landmarks:true,angles:false,lead:true,trail:false,head:false,grid:false,size:2,path:'swing'});
@@ -29,12 +30,8 @@ export function frameAnalysis(slot,time,entry=currentMoment(slot,time)) {
   const labels={elbow:'Lead elbow',trailElbow:'Trail elbow',knee:'Lead knee',lean:'Torso lean',wrist:'Lead wrist'};
   const highlights=keys.map(key=>({key,label:labels[key],value:values[key],change:changes[key]}));
   const guide=tracked&&phase?PHASE_GUIDES[phase]:null;
-  const observations=tracked?highlights.map(({label,value,change})=>{
-    if(!Number.isFinite(value))return `${label}: tracking unavailable at this frame.`;
-    const delta=Number.isFinite(change)&&entry?.key!=='address'?` (${change>=0?'+':''}${change.toFixed(1)}° vs address)`:'';
-    return `${label}: ${value.toFixed(1)}°${delta}.`;
-  }):[slot.samples.length?'No reliable pose at this frame. Step to a tracked frame or measure with Angle.':'Analyze this video to see measurements for this frame.'];
-  return {measurements:values,changes,highlights,guide,observations,tracked};
+  const coaching=coachingFeedback(slot,time,entry,{tracked});
+  return {measurements:values,changes,highlights,guide,observations:coachingObservations(coaching),coaching,tracked};
 }
 export function postureNotes(slot,time) {
   const points=nearestSample(slot.samples,time,slot.tolerance)?.points;
