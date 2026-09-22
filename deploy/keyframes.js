@@ -12,14 +12,65 @@ export const MOMENT_COLORS = {address:'#287749',backswing:'#287dc0',top:'#7952ad
 export const MOMENT_NAMES = {address:'Address',backswing:'Backswing',top:'Top',downswing:'Downswing',impact:'Impact',follow:'Follow-through',finish:'Finish'};
 export const momentSource = source => ({marked:'Your mark',estimated:'Auto estimate',sampled:'Range preview',empty:'Not set'})[source];
 
+function settledAddress(points, y, base, top, rate, aspect) {
+  // Restore the original detector's quiet-hand setup, using both axes. Height
+  // alone cannot distinguish address from a low, sideways takeaway. Search
+  // this swing's low-hand region, not a percentage of the whole uploaded clip.
+  const elapsed=(a,b)=>(points[b].time-points[a].time)/rate;
+  const low=y[base]-.15*(y[base]-y[top]);
+  let start=base,end=base;
+  while(start>0&&elapsed(start-1,top)<=3&&y[start-1]>=low)start--;
+  while(end+1<top-1&&y[end+1]>=low)end++;
+  const sizes=points.slice(start,end+1).filter(p=>p.observed).map(p=>p.torso).sort((a,b)=>a-b);
+  const scale=sizes[Math.floor(sizes.length/2)];
+  const speed=points.map((p,i)=>{
+    if(i<=start||i>end||!p.observed||!points[i-1].observed)return Infinity;
+    const previous=points[i-1],dt=elapsed(i-1,i);
+    // Compare the same wrist across samples. Losing one hand must not make
+    // the average jump to the other hand and look like takeaway motion.
+    const wrists=[15,16].filter(id=>p.hands[id]&&previous.hands[id]);
+    return dt>0&&wrists.length&&scale>0?wrists.reduce((sum,id)=>sum+Math.hypot(
+      (p.hands[id].x-previous.hands[id].x)*aspect,p.hands[id].y-previous.hands[id].y
+    ),0)/wrists.length/scale/dt:Infinity;
+  });
+  const quiet=speed.map((v,i)=>Number.isFinite(v)&&Number.isFinite(speed[i-1])&&Number.isFinite(speed[i+1])
+    ? [speed[i-1],v,speed[i+1]].sort((a,b)=>a-b)[1]:v);
+  const values=quiet.filter(Number.isFinite).sort((a,b)=>a-b);
+  // Adapt to modest pose jitter, with a ceiling so sustained movement does
+  // not become "still" merely because the whole window is already moving.
+  const threshold=Math.min(.2,Math.max(.05,(values[Math.floor(values.length*.3)]??0)*1.5));
+  let first=start,settled=null;
+  for(let i=start+1;i<=end+1;i++) {
+    if(i<=end&&quiet[i]<=threshold)continue;
+    const last=i-1;
+    if(last-first>=2&&elapsed(first,last)>=.1)settled=[first,last];
+    first=i;
+  }
+  if(settled) {
+    // A representative frame within the last held setup, after any waggle,
+    // retains the original stillness-based Address evaluation.
+    const middle=(points[settled[0]].time+points[settled[1]].time)/2;
+    let index=settled[0];
+    for(let i=index+1;i<=settled[1];i++)if(points[i].observed&&Math.abs(points[i].time-middle)<Math.abs(points[index].time-middle))index=i;
+    return index;
+  }
+  // Short clips may contain too little setup to establish stillness. Keep an
+  // observed low-hand estimate; never advance into the backswing by a fixed
+  // height percentage or select a pose invented across a tracking gap.
+  let index=start;
+  for(let i=start;i<=end;i++)if(points[i].observed&&(!points[index].observed||y[i]>y[index]))index=i;
+  return index;
+}
+
 // Recover the original hand-path phase sequence, but evaluate each continuous
 // swing locally: idle/occluded tails must not invalidate a visible swing.
 // Times remain file coordinates; timing limits use real seconds for slow-mo.
-export function suggestKeyMoments(samples, start, end, fps, {anchor=(start+end)/2, rate=1}={}) {
+export function suggestKeyMoments(samples, start, end, fps, {anchor=(start+end)/2, rate=1, aspect=1}={}) {
   const snap=time=>Math.max(start,Math.min(lastFrame(end,fps)/fps,frameNumber(time,fps)/fps));
   const fallback=()=>KEY_MOMENTS.map(([key],i)=>({key,time:snap(start+(end-start)*i/(KEY_MOMENTS.length-1)),source:'sampled',label:`Range frame ${i+1}`}));
   if(samples.length<12)return fallback();
   rate=Number.isFinite(rate)&&rate>0?rate:1;
+  aspect=Number.isFinite(aspect)&&aspect>0?aspect:1;
   const tracked=samples.map(sample=>{
     const p=sample.points;
     if(!p)return null;
@@ -27,7 +78,8 @@ export function suggestKeyMoments(samples, start, end, fps, {anchor=(start+end)/
     if(!shoulders.length||!hips.length||!wrists.length)return null;
     const mean=(indices,axis)=>indices.reduce((sum,i)=>sum+p[i][axis],0)/indices.length;
     const hip=mean(hips,'y'),torso=hip-mean(shoulders,'y');
-    return torso>.05?{time:sample.time,y:(mean(wrists,'y')-hip)/torso,observed:true}:null;
+    return torso>.05?{time:sample.time,y:(mean(wrists,'y')-hip)/torso,torso,
+      hands:Object.fromEntries(wrists.map(id=>[id,p[id]])),observed:true}:null;
   });
   // Bridge only brief tracking dropouts inside a run, never a long occlusion.
   for(let i=1;i<tracked.length-1;i++){
@@ -59,9 +111,7 @@ export function suggestKeyMoments(samples, start, end, fps, {anchor=(start+end)/
         if(y[i]>y[base])base=i;
       }
       const rise=y[base]-y[top];if(rise<.45)continue;
-      // Last address-like frame before takeaway; exclude a long idle lead-in.
-      let address=base;
-      for(let i=base+1;i<top-1;i++)if(y[i]>=y[base]-.08*rise)address=i;
+      const address=settledAddress(points,y,base,top,rate,aspect);
       if(top-address<2)continue;
       for(let impact=top+2;impact<points.length-3&&elapsed(top,impact)<=1.5;impact++){
         if(y[impact]<y[impact-1]||y[impact]<y[impact+1]||y[impact]===y[impact-1])continue;

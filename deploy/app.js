@@ -580,7 +580,7 @@ async function analyze() {
       // Completed analysis owns this clip's markers; cancellation or failure
       // must leave its previous manual edits and detected moments intact.
       const smoothed = smoothSamples(samples);
-      const keyMoments = suggestKeyMoments(smoothed,start,s.end,s.fps,{anchor:originalTime,rate:timingRate(s)});
+      const keyMoments = suggestKeyMoments(smoothed,start,s.end,s.fps,{anchor:originalTime,rate:timingRate(s),aspect:s.video.videoWidth/s.video.videoHeight});
       Object.assign(s,{samples:smoothed,tolerance:interval*.6,analyzedRange:[start,s.end],analysisQuality:s.quality,keyMoments,marks:{}});
       s.analysisVersion++;
       navigation.focusAnalysis(active);

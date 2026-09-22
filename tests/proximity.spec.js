@@ -43,7 +43,11 @@ for (const [width, height] of [[1440,900],[1280,720],[2560,1440],[390,844],[320,
 
 test('the nearby range target preserves per-clip ranges, independent playback and usable visual results',async({page})=>{
   await page.route('**/vision_bundle.mjs',r=>r.fulfill({contentType:'text/javascript',body:'export const FilesetResolver={forVisionTasks:async()=>({})};export const PoseLandmarker={createFromOptions:async()=>({close(){},detectForVideo(){return{landmarks:[]}}})};'}));
-  await page.goto('/'); await page.locator('#compareMode').click(); await load(page,0); await load(page,1);
+  await page.goto('/');
+  // Measure the review workspace after its first-visit privacy choice, as in
+  // the analyzed-frame layout checks. Consent itself has separate coverage.
+  await page.getByRole('button',{name:'No thanks',exact:true}).click();
+  await page.locator('#compareMode').click(); await load(page,0); await load(page,1);
   await page.locator('#independent').click();
   await page.locator('[data-range-slot="0"]').click(); await slot(page,0).locator('.clip-timeline').fill('0.5');
   await page.locator('[data-range-slot="1"]').click(); await slot(page,1).locator('.clip-timeline').fill('1.5');

@@ -138,6 +138,19 @@
 .clip-playback-buttons { display:flex; flex:none; flex-wrap:nowrap; gap:4px; align-items:center; }
 .persistent-sidebar .common-player .play-buttons .time-jump,
 .persistent-sidebar .clip-frame-controls .time-jump { flex:none; min-width:52px; width:52px; padding:3px; font-size:14px; font-weight:650; white-space:nowrap; }
+@media(min-width:1180px) and (max-width:1500px) and (max-height:1000px){
+  /* Keep each video's full playback group on one row on short laptops. The
+     speed dropdown retains its accessible label and sits beside Analyze. */
+  .persistent-sidebar.is-compare .clip-transport .clip-frame-controls,
+  .persistent-sidebar.is-compare .clip-playback-buttons { gap:2px; }
+  .persistent-sidebar.is-compare .clip-frame-controls .time-jump { width:44px; min-width:44px; }
+  .persistent-sidebar.is-compare .clip-transport .clip-speed-label { font-size:0; gap:0; }
+  .persistent-sidebar.is-compare .clip-transport .clip-speed { width:60px; padding-inline:2px; }
+  .persistent-sidebar.is-compare .clip-transport .clip-analyze { padding:4px 2px; }
+  .persistent-sidebar.is-compare .clip-transport .clip-restart { min-width:28px; padding-inline:2px; }
+  .is-compare .key-card.paired .key-frame-image { height:40px; }
+  .is-compare .key-frame-results thead button { min-height:18px; padding:0; }
+}
 @media(max-width:600px){
   /* Narrow side-by-side videos get two deliberate rows: time jumps at the
      outer edges, then previous frame / play / next frame directly below. */

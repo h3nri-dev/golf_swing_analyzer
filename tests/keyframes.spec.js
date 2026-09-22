@@ -8,6 +8,32 @@ async function setup(page,{compare=false,empty=false}={}) {
  for(const i of compare?[0,1]:[0]){await card(page,i).locator('input[type=file]').setInputFiles(fixture(i?'timing-slow.mp4':'portrait.mp4'));await expect(card(page,i).locator('video')).toBeVisible();}
 }
 async function analyze(page,index=0){const target=page.locator(`[data-select="${index}"]`);if(await target.isVisible())await target.click();await page.locator('#analyze').click();await expect(page.locator('#status')).toContainText(/Analysis ready|No clear pose/,{timeout:20000});await expect(page.locator(`.key-frame[data-preview-slot="${index}"] canvas`).first()).toBeVisible();}
+test('a low sideways takeaway keeps automatic Address in the setup in cards, jumps and reports',async({page})=>{
+ await setup(page);
+ await page.route('**/vision_bundle.mjs',route=>route.fulfill({contentType:'text/javascript',body:`
+  export const FilesetResolver={forVisionTasks:async()=>({})};
+  export const PoseLandmarker={createFromOptions:async()=>({close(){},detectForVideo(canvas,time){
+   const t=time/1000,nodes=[[0,.5,.72],[.8,.5,.72],[1.2,.7,.72],[1.8,.8,.2],[2.1,.5,.74],[2.8,.25,.2],[4,.25,.2]];
+   let i=1;while(i<nodes.length-1&&nodes[i][0]<t)i++;
+   const a=nodes[i-1],b=nodes[i],f=(t-a[0])/(b[0]-a[0]);
+   const p=Array.from({length:33},()=>({x:.5,y:.5,visibility:1}));
+   p[11].y=p[12].y=.35;p[23].y=p[24].y=.65;
+   p[15].x=p[16].x=a[1]+(b[1]-a[1])*f;p[15].y=p[16].y=a[2]+(b[2]-a[2])*f;
+   return {landmarks:[p]};
+  }})};`}));
+ await page.locator('#timeline').fill('1.5');await analyze(page);
+ const report=await page.evaluate(async()=>(await import('/app.js')).reportData());
+ const address=report.keyMoments.find(e=>e.key==='address');
+ expect(address.source).toBe('estimated');expect(address.time).toBeGreaterThan(.1);expect(address.time).toBeLessThan(.8);
+ expect(report.phaseTimes.address).toBe(address.time);expect(report.tempo).toBeGreaterThan(0);
+ const frame=page.locator('.key-card[data-key="address"] .key-frame').first();
+ await expect(frame.locator('canvas')).toBeVisible();await frame.click();
+ expect(await card(page,0).locator('video').evaluate(v=>v.currentTime)).toBeCloseTo(address.time,5);
+ await page.locator('.key-card[data-key="address"] .key-card-title').click();
+ await expect(page.getByRole('spinbutton',{name:'Key moment frame',exact:true})).toHaveValue(String(Math.round(address.time*30)));
+ await expect(page.locator('[data-review-slot="0"] .key-source')).toHaveText('Auto estimate');
+ await page.screenshot({path:'/tmp/address-setup-regression.png'});
+});
 test('analysis replaces edited markers with seven new estimates and cancellation preserves later edits',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await setup(page);
  await page.locator('.zoom-slider').first().fill('2');await page.locator('#timeline').fill('0.7');await analyze(page);

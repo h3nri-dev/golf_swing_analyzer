@@ -81,7 +81,9 @@
 @media(min-width:1351px) and (min-height:821px) and (max-height:1000px) {
   .studio.persistent-sidebar.is-compare.has-key-moments { grid-template-columns:minmax(0,1fr) 420px; }
 }
-@media(min-width:1180px) and (max-height:820px) {
+/* Keep the complete comparison controls compact on laptop-height screens,
+   including the FPS status row, so the gallery cannot squeeze out the video. */
+@media(min-width:1180px) and (max-height:1000px) {
   .is-compare .clip-view-settings { grid-template-columns:236px minmax(0,1fr); }
   .persistent-sidebar.is-compare .clip-timing label { flex-direction:row; gap:3px; }
   .persistent-sidebar.is-compare .clip-timing { gap:6px; padding:2px 4px; }
