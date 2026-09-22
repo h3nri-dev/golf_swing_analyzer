@@ -1,0 +1,21 @@
+/* A shared watermark for every native popup, including dynamically created
+   editors and cookie settings on the legal pages. Reserve its own short row
+   so it never competes with a title, close button or other popup controls. */
+dialog::before {
+  content: 'FreeGolfSwingAnalyzer.com';
+  display: block;
+  margin: 0 0 10px;
+  color: #53664f;
+  font: 600 14px/1.3 'DM Sans', sans-serif;
+  text-align: right;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* About has a full-width sticky heading with a negative top margin. Leave
+   the new branding row above it instead of pulling the heading over it. */
+#aboutDialog .task-dialog-heading { margin-top: 0; }
+
+/* This popup alone positions its close button absolutely in the corner. */
+#privacyDialog::before { padding-right: 28px; }
