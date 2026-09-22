@@ -46,7 +46,7 @@ test('angle tool measures in image space, and reset clears only the replaced vid
   await page.goto('/');await load(page,0);await page.locator('[data-tool="angle"]').click();await surface(page,0).scrollIntoViewIfNeeded();const b=await surface(page,0).boundingBox();
   for(const [x,y] of [[.2,.5],[.5,.5],[.5,.2]])await page.mouse.click(b.x+b.width*x,b.y+b.height*y);
   let data=await reportModel(page);expect(data.drawings[0].angle).toBeCloseTo(90,1);
-  await focusSection(page,'draw');await page.locator('#drawingClear').click();await expect(page.locator('#drawingCount')).toHaveText('0 drawings on A');await page.locator('#drawingUndo').click();await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
+  await focusSection(page,'draw');await page.locator('#drawingClear').click();await expect(page.locator('#drawingCount')).toHaveText('0 drawings');await page.locator('#drawingUndo').click();await expect(page.locator('#drawingCount')).toHaveText('1 drawing');
   await page.locator('#compareMode').click();await load(page,1);await page.locator('[data-tool="pen"]').click();await line(page,1);
   await load(page,1);await expect(page.locator('#drawingCount')).toHaveText('0 drawings on B');await page.locator('[data-select="0"]').click();await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
 });

@@ -50,3 +50,6 @@ Use readable ES modules and browser APIs; there is no build step. Keep uploaded 
 - Keep one coherent set of six colored moment cards. Each card owns its full frame preview, jump target, time and Set A/Set B action. Keep Edit A/B and enlargement in the gallery header. Do not add a second marker rail that steals video height, bury phases in a dropdown or move marking across the screen.
 - Use the same phase colors, names and numbers throughout cards, editor and reports. Keep Auto estimate, Your mark and Range preview distinct; sampled previews never count toward tempo. Manual corrections override auto estimates and can be reset to the estimate.
 - Apply proximity to every change: identify the object and controls used together; place them together; inspect loaded/analysed single and comparison states at laptop, large desktop and phone sizes. Check actual video height, pointer reachability and independent controller state, not just element existence.
+
+### Mode-aware wording
+- Single video mode uses Play/Pause, Your swing, Set here and Edit frames. Hide A/B target selectors and omit A/B from range, drawing counts, accessibility labels, tooltips, dialogs and exported PDF/PNG labels. Compare mode retains explicit A/B labels. Relabel when modes change without resetting videos, marks, drawings, timing or zoom.

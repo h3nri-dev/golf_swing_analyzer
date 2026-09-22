@@ -7,7 +7,7 @@ async function setup(page,{compare=false,empty=false}={}) {
  await page.goto('/');if(compare)await page.locator('#compareMode').click();
  for(const i of compare?[0,1]:[0]){await card(page,i).locator('input[type=file]').setInputFiles(fixture(i?'timing-slow.mp4':'portrait.mp4'));await expect(card(page,i).locator('video')).toBeVisible();}
 }
-async function analyze(page,index=0){await page.locator(`[data-select="${index}"]`).click();await page.locator('#analyze').click();await expect(page.locator('#status')).toContainText(/Analysis ready|No clear pose/,{timeout:20000});await expect(page.locator(`.key-frame[data-preview-slot="${index}"] canvas`).first()).toBeVisible();}
+async function analyze(page,index=0){const target=page.locator(`[data-select="${index}"]`);if(await target.isVisible())await target.click();await page.locator('#analyze').click();await expect(page.locator('#status')).toContainText(/Analysis ready|No clear pose/,{timeout:20000});await expect(page.locator(`.key-frame[data-preview-slot="${index}"] canvas`).first()).toBeVisible();}
 test('analysis restores six visible images, local jumps, enlarged frame edits and preserved reanalysis',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await setup(page);
  await page.locator('.zoom-slider').first().fill('2');await page.locator('#timeline').fill('0.7');await analyze(page);
@@ -16,7 +16,7 @@ test('analysis restores six visible images, local jumps, enlarged frame edits an
  expect(await card(page,0).locator('video').evaluate(v=>v.currentTime)).toBeCloseTo(.7,3);await expect(page.locator('.zoom-value').first()).toHaveText('2.00×');
  await page.locator('.key-card[data-key="top"] .key-frame').first().click();expect(await card(page,0).locator('video').evaluate(v=>v.currentTime)).toBeCloseTo(1.3,1);await expect(card(page,0).locator('.clip-time')).toContainText('F38');
  await page.locator('.key-card[data-key="impact"] .key-card-title').click();await expect(page.locator('#keyMomentDialog')).toBeVisible();
- const field=page.getByRole('spinbutton',{name:'Key moment frame in swing A'});await field.fill('54');await field.press('Tab');
+ const field=page.getByRole('spinbutton',{name:'Key moment frame',exact:true});await field.fill('54');await field.press('Tab');
  await expect(page.locator('[data-review-slot="0"] .key-source')).toHaveText('Your mark');await expect(page.locator('[data-review-slot="0"] .key-detail-time')).toContainText('1.800 s · F54');
  await page.locator('[data-review-slot="0"] .key-frame-next').click();await expect(field).toHaveValue('55');
  await expect(page.locator('[data-review-slot="0"] canvas')).toBeVisible();await page.screenshot({path:'/tmp/keyframes-large.png'});await page.keyboard.press('Escape');await analyze(page);
@@ -58,7 +58,7 @@ test('thumbnail drawings update immediately and unchanged previews do not repain
  await page.locator('[data-tool="line"]').click();
  const box=await card(page,0).locator('.annotation-canvas').boundingBox();
  await page.mouse.move(box.x+box.width*.25,box.y+box.height*.3);await page.mouse.down();await page.mouse.move(box.x+box.width*.8,box.y+box.height*.7,{steps:4});await page.mouse.up();
- await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
+ await expect(page.locator('#drawingCount')).toHaveText('1 drawing');
  await expect.poll(()=>thumb.evaluate(c=>c.toDataURL())).not.toBe(raw);
  const drawn=await thumb.evaluate(c=>c.toDataURL());
  await page.locator('#drawingVisibility').click();await expect.poll(()=>thumb.evaluate(c=>c.toDataURL())).toBe(raw);

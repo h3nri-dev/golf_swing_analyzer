@@ -26,12 +26,12 @@ export function createTaskHelp({ screen, compare }) {
   });
 }
 
-export function confirmDiscard(slot, action, hasWork) {
+export function confirmDiscard(slot, action, hasWork, mode) {
   if (!hasWork) return Promise.resolve(true);
   const dialog = $('discardDialog');
   if (dialog.open) return Promise.resolve(false);
   const name = slot.card.dataset.slot === '0' ? 'A' : 'B';
-  $('discardTitle').textContent = `${action} swing ${name}?`;
+  $('discardTitle').textContent = `${action} ${mode==='compare'?`swing ${name}`:'video'}?`;
   $('discardFile').textContent = slot.get('.file-name').textContent;
   $('discardConfirm').textContent = `${action} video`;
   dialog.returnValue = '';

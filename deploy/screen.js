@@ -133,6 +133,8 @@ export function createStudioScreen({ slots, state, changed }) {
     panels.video.querySelectorAll('[data-settings-slot]').forEach(el=>el.hidden=Number(el.dataset.settingsSlot)!==active);
     const s = slots[active], hasResults = !!s.analyzedRange;
     rangeTargets.hidden=mode!=='compare';
+    target.hidden=mode!=='compare';
+    slots.forEach(slot=>slot.get('.slot-badge').hidden=mode!=='compare');
     const resetBesideSummary=matchMedia('(max-width: 600px), (min-width: 1180px)').matches;
     const reset=$('rangeReset'),resetParent=resetBesideSummary?panels.range.querySelector('.range-footer'):panels.range.querySelector('.section-heading');
     if(reset.parentElement!==resetParent){
@@ -143,7 +145,7 @@ export function createStudioScreen({ slots, state, changed }) {
     panels.video.querySelectorAll('[data-settings-slot] h3').forEach((title,i)=>{title.textContent=slots[i].get('.file-name').textContent;});
     pieces.metrics.hidden = !hasResults; pieces.note.hidden = !hasResults;
     $('viewResults').hidden = !hasResults || busy;
-    inspector.setAttribute('aria-label', `Controls for swing ${active?'B':'A'}`);
+    inspector.setAttribute('aria-label', mode==='compare' ? `Controls for swing ${active?'B':'A'}` : 'Tools and analysis');
     studio.classList.toggle('has-video', slots.some(s=>s.ready));
     $('status').title=$('status').textContent;
   }

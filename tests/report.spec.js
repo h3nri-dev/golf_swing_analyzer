@@ -41,8 +41,10 @@ test('a PDF can be saved before analysis or marking, and a failed library load c
   await expect(page.locator('#reportDialog')).toBeHidden();await expect(page.locator('#export')).toBeEnabled();
   await page.unroute('**/vendor/jspdf.umd.min.js');
   const download=page.waitForEvent('download');await page.locator('#export').click();const result=await download;
-  expect(result.suggestedFilename()).toBe('swing-a-report.pdf');await result.saveAs('/tmp/swing-empty-report.pdf');
+  expect(result.suggestedFilename()).toBe('swing-report.pdf');await result.saveAs('/tmp/swing-empty-report.pdf');
   const pdf=(await fs.readFile(await result.path())).toString('latin1');expect(pdf).toContain('Not marked');expect(pdf).toContain('Not analyzed');
+  expect(pdf.includes('(YOUR SWING)')).toBe(true);expect(pdf.includes('(Your swing / Key moments)')).toBe(true);
+  expect(/\(SWING [AB]\)|\(Swing [AB] \//.test(pdf)).toBe(false);
 });
 test('canceling PDF export restores the playhead and controls',async({page})=>{
   await page.route('**/vendor/jspdf.umd.min.js',async r=>{await new Promise(resolve=>setTimeout(resolve,500));await r.continue();});

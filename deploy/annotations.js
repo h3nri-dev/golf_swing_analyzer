@@ -150,6 +150,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     slots.forEach((slot,i)=>{
       slot.viewport.apply();
       const canvas=slot.annotationCanvas; canvas.hidden=!slot.ready;
+      canvas.setAttribute('aria-label',mode==='compare'?`Drawing surface for swing ${i?'B':'A'}`:'Drawing surface');
       canvas.classList.toggle('drawing-active',!busy && visible && tool!=='view');
       canvas.classList.toggle('select-tool',tool==='select');
       if(!slot.ready || (mode==='single' && i===1)) return;
@@ -173,7 +174,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     $('drawingCopy').hidden=mode!=='compare'; $('drawingCopy').textContent=`Copy ${selected?'selected':'visible'} to ${active?'A':'B'}`;
     $('drawingCopy').disabled=busy||!slots[1-active].ready||!displayed(active).length;
     $('drawingSnapshot').textContent=mode==='compare'?'↓ Save comparison':'↓ Save image';
-    $('drawingCount').textContent=`${history.items.length} drawing${history.items.length===1?'':'s'} on ${active?'B':'A'}`;
+    $('drawingCount').textContent=`${history.items.length} drawing${history.items.length===1?'':'s'}${mode==='compare'?` on ${active?'B':'A'}`:''}`;
     const hints={view:'Choose a tool to draw. Zoom stays while playing.',select:'Drag a drawing or its white handles to edit it.',pen:'Drag to trace a path.',line:'Drag to draw a reference line.',arrow:'Drag from the tail to the arrow tip.',circle:'Drag around the area to highlight.',angle:draft?'Tap '+(draft.shape.points.length===1?'the joint, then the other endpoint.':'the last endpoint to finish.'):'Angle: tap the first endpoint, joint, then other endpoint.'};
     const hint=!s.ready?'Add a video, then choose a drawing tool. No analysis needed.':busy?'Drawing is paused while analysis runs.':!visible?'Drawings are hidden. Show them again to edit.':hints[tool];
     if($('drawingHint').textContent!==hint) $('drawingHint').textContent=hint;
@@ -210,7 +211,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
       indices.forEach((i,column)=>{
         const s=slots[i],left=column*(cellWidth+gap);
         const view=s.viewport.geometry(),w=view.image.width,h=view.image.height;
-        ctx.fillStyle='#d6ee9c';ctx.font='600 22px sans-serif';ctx.fillText(`Swing ${i?'B':'A'}  ·  ${frameStamp(s.video.currentTime,s)}  ·  ${view.zoom.toFixed(2)}×`,left+22,40);
+        ctx.fillStyle='#d6ee9c';ctx.font='600 22px sans-serif';ctx.fillText(`${mode==='compare'?`Swing ${i?'B':'A'}`:'Your swing'}  ·  ${frameStamp(s.video.currentTime,s)}  ·  ${view.zoom.toFixed(2)}×`,left+22,40);
         // Export the same cropped viewport the user is inspecting. Clip before
         // scaling so enlarged video and drawings cannot cover the other panel.
         const scale=Math.min(cellWidth/view.stage.width,imageHeight/view.stage.height);

@@ -33,15 +33,16 @@ export function createMoments({slots, state, controlClip, pause, seek, changed})
   });
   function renderEditor() {
     const s = slots[editing];
-    dialog.querySelector('h2').textContent = `Swing ${editing?'B':'A'} moments`;
+    const suffix = state().mode==='compare' ? ` in swing ${editing?'B':'A'}` : '';
+    dialog.querySelector('h2').textContent = state().mode==='compare' ? `Swing ${editing?'B':'A'} moments` : 'Swing moments';
     rows.forEach(({key,label,row,input}) => {
       const entry = keyMomentEntries(s).find(e=>e.key===key), time = entry.time, exists = Number.isFinite(time) && entry.source !== 'sampled';
       row.querySelector('.moment-jump').disabled = !exists;
-      row.querySelector('.moment-jump').setAttribute('aria-label',`Jump to ${label} in swing ${editing?'B':'A'}`);
+      row.querySelector('.moment-jump').setAttribute('aria-label',`Jump to ${label}${suffix}`);
       row.querySelector('span').textContent = exists ? frameStamp(time,s) : 'Not marked';
       input.value = exists ? frameNumber(time,s.fps) : '';
       input.max = lastFrame(s.video.duration,s.fps); input.removeAttribute('aria-invalid');
-      input.setAttribute('aria-label',`${label} frame in swing ${editing?'B':'A'}`);
+      input.setAttribute('aria-label',`${label} frame${suffix}`);
       const reset=row.querySelector('.moment-delete');reset.disabled = !Number.isFinite(s.marks[key]);reset.textContent=s.keyMoments?.some(e=>e.key===key&&e.source==='estimated')?'↺':'×';
     });
   }

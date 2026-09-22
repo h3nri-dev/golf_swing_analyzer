@@ -60,7 +60,7 @@ export async function createPdfReport(report) {
   const gap=8,w=(178-gap*(report.clips.length-1))/report.clips.length;
   report.clips.forEach((clip,index)=>{
     const x=16+index*(w+gap);
-    text(`SWING ${clip.name}`,x,73,11,green,true);filename(clip.file,x,76,w);
+    text(report.clips.length===2?`SWING ${clip.name}`:'YOUR SWING',x,73,11,green,true);filename(clip.file,x,76,w);
     image(clip.currentImage,x,87,w,100);
     text(stamp(clip.currentTime,clip),x,195,9,green,true);
     text(`File ${clip.frameRate} FPS  /  Shot ${clip.recordingFrameRate} FPS`,x,202,9,muted);
@@ -74,7 +74,7 @@ export async function createPdfReport(report) {
   rect(16,261,178,18,pale);
   wrap('All times are real elapsed seconds, calibrated with File FPS and Shot FPS. Frame numbers start at 0. Frames include the visible drawings, pose overlays, zoom and mirror settings.',20,268,170,9,muted,2);
   for(const clip of report.clips) {
-    doc.addPage();header(`Swing ${clip.name} / Key moments`,'Frames, timing and measurements');filename(clip.file,16,47,178);
+    doc.addPage();header(report.clips.length===2?`Swing ${clip.name} / Key moments`:'Your swing / Key moments','Frames, timing and measurements');filename(clip.file,16,47,178);
     text(`${clip.hand==='left'?'Left':'Right'}-handed  |  File ${clip.frameRate} FPS  |  Shot ${clip.recordingFrameRate} FPS`,16,61,10);
     const analysis = clip.analyzedRange ? `${clip.measurements.length} samples  /  ${clip.coverage}% pose coverage  /  ${interval(clip.analyzedRange,clip)}` : 'Not analyzed. Review and mark moments without running analysis.';
     text(analysis,16,68,9,muted);
@@ -98,7 +98,7 @@ export async function createPdfReport(report) {
   }
   for(const clip of report.clips) {
     if(!clip.visualMoments?.length)continue;
-    doc.addPage();header(`Swing ${clip.name} / Visual moments`,'A closer look, frame by frame');filename(clip.file,16,47,178);
+    doc.addPage();header(report.clips.length===2?`Swing ${clip.name} / Visual moments`:'Your swing / Visual moments','A closer look, frame by frame');filename(clip.file,16,47,178);
     text('Your marks take priority. Estimates use hand motion; verify impact in the video.',16,61,9,muted);
     text('Range previews are sampled frames when swing phases could not be identified.',16,67,9,muted);
     clip.visualMoments.forEach((entry,i)=>{

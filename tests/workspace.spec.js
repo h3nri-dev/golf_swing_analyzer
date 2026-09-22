@@ -25,9 +25,9 @@ test('drawing rail stays beside the video while switching tools and undoing', as
   const before=await page.evaluate(()=>scrollY);
   await page.locator('[data-tool="line"]').click();
   expect(await page.evaluate(()=>scrollY)).toBeCloseTo(before,0);
-  await drawLine(page,0); await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
-  await page.locator('#drawingUndo').click(); await expect(page.locator('#drawingCount')).toHaveText('0 drawings on A');
-  await page.locator('#drawingRedo').click(); await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
+  await drawLine(page,0); await expect(page.locator('#drawingCount')).toHaveText('1 drawing');
+  await page.locator('#drawingUndo').click(); await expect(page.locator('#drawingCount')).toHaveText('0 drawings');
+  await page.locator('#drawingRedo').click(); await expect(page.locator('#drawingCount')).toHaveText('1 drawing');
   await page.locator('#videoEditor').screenshot({path:'/tmp/swing-side-tools-desktop.png'});
 });
 

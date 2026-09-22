@@ -94,7 +94,7 @@ test('withdrawal from another tab removes GA cookies and preserves video, zoom a
   await page.mouse.down();
   await page.mouse.move(canvas.x + canvas.width * .7, canvas.y + canvas.height * .7);
   await page.mouse.up();
-  await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
+  await expect(page.locator('#drawingCount')).toHaveText('1 drawing');
   const src = await page.locator('video').first().evaluate(v => v.src);
   const policy = await context.newPage();
   await policy.goto('/privacy.html');
@@ -105,7 +105,7 @@ test('withdrawal from another tab removes GA cookies and preserves video, zoom a
   expect((await commands(page)).filter(c => c[0] === 'consent').at(-1)[2].analytics_storage).toBe('denied');
   expect(await page.locator('video').first().evaluate(v => v.src)).toBe(src);
   await expect(page.locator('.zoom-value').first()).toHaveText('2.00×');
-  await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
+  await expect(page.locator('#drawingCount')).toHaveText('1 drawing');
   await settingsFromStudio(page);
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.locator('#workspaceHelp')).toBeFocused();

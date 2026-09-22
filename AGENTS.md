@@ -11,3 +11,5 @@ The user's standing UX requirement is **proximity**: controls used together belo
 - Preserve neighboring range/Analyze/playback controls, neighboring sync/alignment controls, compact persistent zoom, and vertical drawing tools beside the footage.
 - Judge layouts with loaded and analyzed videos at laptop, large desktop and phone sizes. Check usable video size, readable labels, reachable click targets and no overlapping controls. Preserve the enlarged key-frame viewer and PDF export.
 - Keep the app static and local-only, consent-gated analytics, legal links and golf branding intact. Run applicable unit/browser checks and inspect screenshots before committing/deploying.
+
+- Use neutral labels in Single video mode: Play, Pause, Your swing, Set here and Edit frames. Reserve A/B identifiers and target selectors for Compare mode, including dialogs, accessibility labels and exports.

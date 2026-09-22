@@ -39,7 +39,7 @@ const slots = names.map((name, index) => {
   const slot = { card, video: get('video'), canvas: get('canvas'), stage: get('.stage'), input: get('.file-input'), drop: get('.dropzone'), get, ready: false, url: null, version: 0, playGeneration: 0, fps: 30, shotFps: null, speed: 1, hand: 'right', samples: [], keyMoments: [], analysisVersion: 0, marks: {}, anchor: null, start: 0, end: 0, tolerance: 0.1, status: 'Add a video to get started.' };
   slot.drop.onclick = () => slot.input.click();
   get('.replace').onclick = () => slot.input.click();
-  get('.remove').onclick = async () => { if (await confirmDiscard(slot, 'Remove', hasSavedWork(slot, index))) resetSlot(index); };
+  get('.remove').onclick = async () => { if (await confirmDiscard(slot, 'Remove', hasSavedWork(slot, index), mode)) resetSlot(index); };
   slot.input.onchange = () => { if (slot.input.files[0]) loadFile(index, slot.input.files[0]); };
   for (const type of ['dragenter', 'dragover']) slot.stage.addEventListener(type, e => { e.preventDefault(); slot.drop.classList.add('dragover'); });
   slot.stage.addEventListener('dragleave', () => slot.drop.classList.remove('dragover'));
@@ -147,7 +147,7 @@ async function loadFile(index, file) {
   if (job) return toast('Finish or cancel analysis before replacing a video.');
   if (!file.type.startsWith('video/') && !/\.(mp4|mov|webm|m4v|ogv)$/i.test(file.name)) return toast('Choose a video file, such as MP4, MOV or WebM.');
   const s = slots[index];
-  if (!await confirmDiscard(s, 'Replace', hasSavedWork(s, index))) { s.input.value = ''; return; }
+  if (!await confirmDiscard(s, 'Replace', hasSavedWork(s, index), mode)) { s.input.value = ''; return; }
   if (job) return;
   resetSlot(index); const version = s.version;
   s.status = 'Opening your video…'; s.get('.file-name').textContent = file.name;
@@ -182,6 +182,23 @@ function setMode(next) {
   $('comparisonBar').hidden = $('analysisTarget').hidden = mode !== 'compare';
   $('videoGrid').classList.toggle('compare', mode === 'compare');
   slots[1].card.hidden = mode !== 'compare';
+  slots.forEach((s, i) => {
+    const prefix = mode === 'compare' ? `Swing ${names[i]} ` : '';
+    const suffix = mode === 'compare' ? ` swing ${names[i]}` : '';
+    s.card.setAttribute('aria-label', mode === 'compare' ? `Swing ${names[i]}` : 'Your swing');
+    for (const [selector, label] of [
+      ['.remove', `Remove${suffix || ' video'}`], ['.dropzone', `Add${suffix} video`],
+      ['.file-input', `${prefix}video file`], ['.fps', `${prefix}file frame rate`],
+      ['.shot-fps', `${prefix}recording frame rate`], ['.clip-timing', `${prefix}video timing`],
+      ['.clip-transport', `${prefix}playback controls`], ['.clip-timeline', `${prefix}timeline`],
+      ['.clip-restart', `Restart${suffix}`], ['.clip-previous', `Previous frame${suffix}`],
+      ['.clip-next', `Next frame${suffix}`], ['.clip-speed', `${prefix}playback speed`],
+      ['.zoom-controls', `${prefix}zoom controls`], ['.zoom-slider', `${prefix}zoom`],
+      ['.zoom-in', `Zoom in${suffix}`], ['.zoom-out', `Zoom out${suffix}`],
+      ['.zoom-fit', `Fit${suffix || ' video'} to view`],
+    ]) s.get(selector).setAttribute('aria-label', label[0].toUpperCase() + label.slice(1));
+    s.get('.clip-timeline-row').querySelector('span').textContent = mode === 'compare' ? `SWING ${names[i]}` : 'VIDEO';
+  });
   if (isLinked()) { setSpeed(slots[active].speed); seekActive(slots[active].video.currentTime); }
   $('modeCaption').textContent = mode === 'compare' ? 'Same moment. A new perspective.' : 'A little perspective goes a long way.';
   update();
@@ -191,14 +208,14 @@ function updatePlayback() {
   if (!slots.length) return;
   const both = mode === 'compare';
   const playing = commonState().playing;
-  const action = playing ? 'Pause' : 'Play', target = both ? 'both swings' : `swing ${names[active]}`;
-  $('play').innerHTML = `<span aria-hidden="true">${playing ? 'Ⅱ' : '▶'}</span><span class="play-word">${action} ${both ? 'both' : names[active]}</span>`;
+  const action = playing ? 'Pause' : 'Play', target = both ? 'both swings' : 'video';
+  $('play').innerHTML = `<span aria-hidden="true">${playing ? 'Ⅱ' : '▶'}</span><span class="play-word">${action}${both ? ' both' : ''}</span>`;
   $('play').setAttribute('aria-label', `${action} ${target}`);
   slots.forEach((s, i) => {
     const paused = s.video.paused;
-    s.get('.clip-play').textContent = `${paused ? '▶ Play' : 'Ⅱ Pause'} ${names[i]}`;
-    s.get('.clip-play').dataset.shortLabel = `${paused ? '▶' : 'Ⅱ'} ${names[i]}`;
-    s.get('.clip-play').setAttribute('aria-label', `${paused ? 'Play' : 'Pause'} swing ${names[i]}`);
+    s.get('.clip-play').textContent = `${paused ? '▶ Play' : 'Ⅱ Pause'}${both ? ` ${names[i]}` : ''}`;
+    s.get('.clip-play').dataset.shortLabel = both ? `${paused ? '▶' : 'Ⅱ'} ${names[i]}` : paused ? '▶ Play' : 'Ⅱ Pause';
+    s.get('.clip-play').setAttribute('aria-label', `${paused ? 'Play' : 'Pause'} ${both ? `swing ${names[i]}` : 'video'}`);
   });
 }
 function updateAnalysisControls() {
@@ -208,8 +225,8 @@ function updateAnalysisControls() {
   const target = mode === 'compare' ? ` ${names[active]}` : '';
   $('analyze').textContent = `Analyze${target}`;
   const range = s.ready ? Number.isFinite(s.start) && Number.isFinite(s.end) ? `${seconds(realTime(s.start,s))}–${seconds(realTime(s.end,s))} s` : 'set range' : 'no video';
-  $('analyze').title = `Analyze swing ${names[active]} · ${range}`;
-  $('reviewContext').textContent = `Swing ${names[active]} · ${range}`;
+  $('analyze').title = `Analyze${target ? ` swing${target}` : ''} · ${range}`;
+  $('reviewContext').textContent = `${target ? `Swing${target}` : 'Your swing'} · ${range}`;
   $('reviewContext').disabled = !s.ready || !!job;
   if (s.ready && !s.analysisAttempted) $('status').textContent = analysisRangeError(s.start,s.end,s.video.duration,timingRate(s)) || (s.rangeAuto !== false ? 'Pause at your swing, then Analyze.' : 'Ready. Analyze your pinned window.');
 }
@@ -233,8 +250,8 @@ function update() {
   $('align').disabled = busy || !slots.every(x => x.ready);
   $('cancel').hidden = !busy; $('progress').hidden = !busy;
   $('hand').value = s.hand;
-  $('status').textContent = s.status; $('activeLabel').textContent = mode === 'compare' ? 'BOTH' : 'SWING A';
-  for (const [id, label] of [['previous','Previous frame'],['next','Next frame'],['restart','Restart'],['speed','Playback speed']]) $(id).setAttribute('aria-label', `${label} ${mode === 'compare' ? 'both swings' : 'swing A'}`);
+  $('status').textContent = s.status; $('activeLabel').textContent = mode === 'compare' ? 'BOTH' : 'VIDEO';
+  for (const [id, label] of [['previous','Previous frame'],['next','Next frame'],['restart','Restart'],['speed','Playback speed']]) $(id).setAttribute('aria-label', `${label}${mode === 'compare' ? ' both swings' : ''}`);
   $('restart').innerHTML = '<span aria-hidden="true">↺</span><span class="restart-word"> Restart</span>';
   $('linked').setAttribute('aria-pressed', linked); $('independent').setAttribute('aria-pressed', !linked);
   $('syncHint').textContent = !linked ? 'Individual controls leave the common controller unchanged.' : aligned ? `Aligned · B offset ${offset >= 0 ? '+' : ''}${offset.toFixed(2)} real s` : 'Sync is locked. Individual controls turn sync off.';
@@ -338,8 +355,8 @@ function render() {
   $('timeline').max = duration || 1; $('timeline').value = elapsed;
   const frame = frameNumber(controller.time,controller.fps,controller.duration);
   $('timeline').setAttribute('aria-valuetext',`${seconds(elapsed)} real seconds, frame ${frame}`);
-  $('timeline').setAttribute('aria-label', mode === 'compare' ? `Both videos timeline, swing ${names[controller.clock]} clock` : 'Swing A timeline');
-  $('timeline').title = mode === 'compare' ? `Seek both by the same time change. Clock: swing ${names[controller.clock]}.` : 'Seek swing A';
+  $('timeline').setAttribute('aria-label', mode === 'compare' ? `Both videos timeline, swing ${names[controller.clock]} clock` : 'Video timeline');
+  $('timeline').title = mode === 'compare' ? `Seek both by the same time change. Clock: swing ${names[controller.clock]}.` : 'Seek video';
   $('speed').value = controller.speed;
   $('time').dataset.shortTime = `${clockName}${seconds(elapsed)} s · F${frame}`;
   $('time').textContent = `${clockName}${seconds(elapsed)} / ${seconds(duration)} s`;
@@ -473,7 +490,7 @@ async function analyze() {
       s.keyMoments = suggestKeyMoments(s.samples,start,s.end,s.fps,{anchor:originalTime,rate:timingRate(s)}); s.analysisVersion++;
       const valid = samples.filter(x => x.points && [11,12,23,24].every(i => visible(x.points[i]))).length;
       const detected=s.keyMoments.some(e=>e.source==='estimated');
-      s.status = detected ? 'Analysis ready · 6 key moments estimated automatically. Click a frame to review; Set A / Set B corrects it.'
+      s.status = detected ? 'Analysis ready · 6 key moments estimated automatically. Click a frame to review; use its Set button to correct it.'
         : valid === 0 ? 'No clear pose found. Try a well-lit clip with your whole body visible.'
         : 'Analysis ready · Swing phases unclear. Range previews are available; set moments below the player.';
     }
@@ -547,14 +564,14 @@ $('export').onclick = async () => {
       for(const [key,label] of phases) {
         if(token.cancelled)return;
         if(!Number.isFinite(clip.phaseTimes[key]))continue;
-        reportDialog.querySelector('p').textContent=`Preparing swing ${names[index]}: ${label.toLowerCase()}…`;
+        reportDialog.querySelector('p').textContent=`Preparing ${mode === 'compare' ? `swing ${names[index]}` : 'your swing'}: ${label.toLowerCase()}…`;
         await seekDecoded(s.video,clip.phaseTimes[key]);render();
         clip.momentImages[key]=annotations.capture(index,1020,660).toDataURL('image/jpeg',.92);
       }
       clip.visualMoments = (s.keyMoments.length || Number.isFinite(s.marks.downswing) || Number.isFinite(s.marks.follow)) ? clip.keyMoments.filter(entry=>Number.isFinite(entry.time)) : [];
       for(const entry of clip.visualMoments) {
         if(token.cancelled)return;
-        reportDialog.querySelector('p').textContent=`Preparing swing ${names[index]}: ${entry.label.toLowerCase()}…`;
+        reportDialog.querySelector('p').textContent=`Preparing ${mode === 'compare' ? `swing ${names[index]}` : 'your swing'}: ${entry.label.toLowerCase()}…`;
         await seekDecoded(s.video,entry.time);render();
         entry.image=annotations.capture(index,1020,600).toDataURL('image/jpeg',.92);
       }
@@ -564,7 +581,7 @@ $('export').onclick = async () => {
     const blob=await createPdfReport(report);
     if(token.cancelled)return;
     const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
-    a.download=indices.length===2?'swing-comparison-report.pdf':`swing-${names[indices[0]].toLowerCase()}-report.pdf`;
+    a.download=indices.length===2?'swing-comparison-report.pdf':'swing-report.pdf';
     a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('PDF saved with your frames, moments and results.');
   } catch(error) { toast(`PDF could not be created. ${error.message}`); }
   finally {
@@ -583,7 +600,7 @@ slots.forEach((slot, index) => {
   });
 });
 annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!job }), selectSlot, pauseAll, pauseControlled, seekActive, toast, changed: updatePhases });
-rangeSelector = createRangeSelector({ slots, state: () => ({ active, busy: !!job }), seek: seekRangeBoundary, pause: pauseControlled, changed: updateAnalysisControls });
+rangeSelector = createRangeSelector({ slots, state: () => ({ active, mode, busy: !!job }), seek: seekRangeBoundary, pause: pauseControlled, changed: updateAnalysisControls });
 studioScreen = createStudioScreen({ slots, state: () => ({ active, mode, linked, busy: !!job }), changed: () => { annotations?.interrupt(); slots.forEach(s => s.viewport?.cancelGesture()); render(); } });
 moments = createMoments({slots, state:()=>({mode,busy:!!job}), controlClip, pause:pauseControlled, seek:seekActive, changed:updatePhases});
 keyframeViews = createKeyframeViews({slots, state:()=>({mode,busy:!!job}), controlClip, seek:seekActive, play:togglePlay, changed:updatePhases, paintDrawings:annotations.paintFrame, focusVideo:()=>studioScreen.focus(),markMoment:(i,key)=>moments.set(i,key),editMoments:i=>moments.open(i)});

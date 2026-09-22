@@ -57,12 +57,12 @@ test('cancelling removal or replacement preserves drawings, range and video',asy
   const src=await slot(page,0).locator('video').getAttribute('src');
   await slot(page,0).locator('.remove').click();await expect(page.locator('#discardDialog')).toBeVisible();await expect(page.locator('#discardCancel')).toBeFocused();
   await page.locator('#discardCancel').click();await expect(slot(page,0).locator('video')).toHaveAttribute('src',src);
-  await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');await expect(page.locator('#rangeStart')).toHaveValue('0.5');
+  await expect(page.locator('#drawingCount')).toHaveText('1 drawing');await expect(page.locator('#rangeStart')).toHaveValue('0.5');
   await slot(page,0).locator('input[type=file]').setInputFiles(new URL('./fixtures/landscape.mp4',import.meta.url).pathname);
   await expect(page.locator('#discardDialog')).toBeVisible();await page.keyboard.press('Escape');
-  await expect(slot(page,0).locator('video')).toHaveAttribute('src',src);await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
+  await expect(slot(page,0).locator('video')).toHaveAttribute('src',src);await expect(page.locator('#drawingCount')).toHaveText('1 drawing');
   await slot(page,0).locator('.remove').click();await page.locator('#discardConfirm').click();
-  await expect(slot(page,0).locator('.dropzone')).toBeVisible();await expect(page.locator('#drawingCount')).toHaveText('0 drawings on A');
+  await expect(slot(page,0).locator('.dropzone')).toBeVisible();await expect(page.locator('#drawingCount')).toHaveText('0 drawings');
 });
 test('selected clip and interval are explicit and completed analysis has a results action',async({page})=>{
   await page.route('https://cdn.jsdelivr.net/**/vision_bundle.mjs',r=>r.fulfill({contentType:'application/javascript',headers:{'access-control-allow-origin':'*'},body:'export const FilesetResolver={forVisionTasks:async()=>({})};export const PoseLandmarker={createFromOptions:async()=>({close(){},detectForVideo(){return {landmarks:[]}}})};'}));

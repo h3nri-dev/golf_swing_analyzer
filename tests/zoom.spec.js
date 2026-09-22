@@ -45,7 +45,7 @@ test('drawing coordinates, editing and mirrored overlays remain correct when zoo
   const surface=clip(page,0).locator('.annotation-canvas');const stage=clip(page,0).locator('.stage');await stage.scrollIntoViewIfNeeded();const sb=await stage.boundingBox(),cb=await surface.boundingBox();
   const start={x:sb.x+sb.width*.45,y:sb.y+sb.height*.45},end={x:sb.x+sb.width*.55,y:sb.y+sb.height*.55};
   await page.mouse.move(start.x,start.y);await page.mouse.down();await page.mouse.move(end.x,end.y,{steps:6});await page.mouse.up();
-  await expect(page.locator('#drawingCount')).toHaveText('1 drawing on A');
+  await expect(page.locator('#drawingCount')).toHaveText('1 drawing');
   let data=await reportModel(page);expect(data.viewport.zoom).toBe(2);expect(data.drawings[0].points[0].x).toBeCloseTo(1-(start.x-cb.x)/cb.width,3);expect(data.drawings[0].points[0].y).toBeCloseTo((start.y-cb.y)/cb.height,3);
   await page.locator('[data-tool="select"]').click();await stage.scrollIntoViewIfNeeded();const updated=await surface.boundingBox(),shape=data.drawings[0];
   const midpoint={x:updated.x+updated.width*(1-(shape.points[0].x+shape.points[1].x)/2),y:updated.y+updated.height*(shape.points[0].y+shape.points[1].y)/2};

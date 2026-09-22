@@ -73,17 +73,17 @@ export function createRangeSelector({ slots, state, seek, pause, changed }) {
     slide(e.key === 'Home' ? 0 : e.key === 'End' ? realTime(s.video.duration,s) : at + direction * step);
   };
   function render(preserveInputs = false) {
-    const s = current(), { active, busy } = state(), duration = s.ready ? s.video.duration : 0;
+    const s = current(), { active, mode, busy } = state(), duration = s.ready ? s.video.duration : 0;
     slots.forEach(followCurrent);
     const error = s.ready ? analysisRangeError(s.start, s.end, duration, clipRate(s)) : '';
     const show = time => format(realTime(time, s));
-    const name = active ? 'B' : 'A';
+    const name = mode==='compare' ? `Swing ${active ? 'B' : 'A'}` : 'Your swing';
     panel.querySelectorAll('input,button').forEach(el => el.disabled = !s.ready || busy);
     $('rangeReset').disabled = !s.ready || busy;
     $('cancelSelection').hidden = !busy; $('cancelSelection').disabled = !busy;
     $('rangeStatus').hidden = !s.analysisAttempted; $('rangeStatus').textContent = s.status;
     $('analyzeSelection').disabled = !s.ready || busy || !!error;
-    $('rangeTarget').textContent = `Swing ${name}`;
+    $('rangeTarget').textContent = name;
     $('rangeClipDuration').textContent = `${show(duration)} s real`;
     for (const [suffix, field] of [['Start', 'start'], ['End', 'end']]) {
       const input = $(`range${suffix}`);
@@ -105,7 +105,7 @@ export function createRangeSelector({ slots, state, seek, pause, changed }) {
     panel.classList.toggle('invalid-range', !!error);
     $('rangeError').hidden = !error; $('rangeError').textContent = error;
     $('rangeSummary').textContent = !s.ready ? 'Pause at your swing, then Analyze.' : error ? 'Adjust the selected range.' : `${s.rangeAuto !== false ? 'Following' : 'Pinned'} · ${show(s.end - s.start)} s`;
-    $('analysisRangeSummary').textContent = !s.ready ? 'Add a video to select a range.' : error ? 'Adjust the selection in Range.' : `Swing ${name} · ${show(s.start)}–${show(s.end)} s`;
+    $('analysisRangeSummary').textContent = !s.ready ? 'Add a video to select a range.' : error ? 'Adjust the selection in Range.' : `${name} · ${show(s.start)}–${show(s.end)} s`;
     $('rangeReset').textContent = 'Follow ±5s';
     $('rangeReset').setAttribute('aria-pressed', s.rangeAuto !== false);
     $('rangeReset').title = s.rangeAuto !== false ? 'Window follows playback: five real seconds before and after the current frame. Click to pin it.' : 'Return to five real seconds before and after the current frame. Clip edges shorten the window.';

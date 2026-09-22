@@ -36,13 +36,13 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
   });
   const panels=slots.map((s,index)=>{
     const panel=document.createElement('section');panel.className='key-review-panel';panel.dataset.reviewSlot=index;
-    panel.innerHTML=`<h3>Swing ${name(index)} <span class="key-source"></span></h3><div class="key-large-frame"><canvas></canvas><p></p></div><div class="key-detail-line"><strong class="key-detail-time"></strong><span class="key-detail-metrics"></span></div><div class="key-edit-controls"><button class="key-frame-back" aria-label="Previous key frame swing ${name(index)}">−1</button><label>Frame <input type="number" min="0" step="1" aria-label="Key moment frame in swing ${name(index)}"></label><button class="key-frame-next" aria-label="Next key frame swing ${name(index)}">+1</button><button class="key-set-current">Set from player</button></div><div class="key-review-actions"><button class="key-play-from">▶ Play from here</button><button class="key-draw-frame">Draw on frame ↗</button></div>`;
+    panel.innerHTML='<h3><span class="key-swing-label"></span> <span class="key-source"></span></h3><div class="key-large-frame"><canvas></canvas><p></p></div><div class="key-detail-line"><strong class="key-detail-time"></strong><span class="key-detail-metrics"></span></div><div class="key-edit-controls"><button class="key-frame-back">−1</button><label>Frame <input type="number" min="0" step="1"></label><button class="key-frame-next">+1</button><button class="key-set-current">Set from player</button></div><div class="key-review-actions"><button class="key-play-from">▶ Play from here</button><button class="key-draw-frame">Draw on frame ↗</button></div>';
     dialog.querySelector('.key-review-panels').append(panel);
     const input=panel.querySelector('input');
     const save=frame=>{
       if(state().busy || !s.ready)return;
       const error=dialog.querySelector('.key-review-error');
-      if(!Number.isInteger(frame) || frame<0 || frame>lastFrame(s.video.duration,s.fps)) {error.textContent=`Swing ${name(index)}: enter a whole frame from 0 to ${lastFrame(s.video.duration,s.fps)}.`;error.hidden=false;input.setAttribute('aria-invalid','true');return;}
+      if(!Number.isInteger(frame) || frame<0 || frame>lastFrame(s.video.duration,s.fps)) {error.textContent=`${state().mode==='compare'?`Swing ${name(index)}: enter`:'Enter'} a whole frame from 0 to ${lastFrame(s.video.duration,s.fps)}.`;error.hidden=false;input.setAttribute('aria-invalid','true');return;}
       error.hidden=true;input.removeAttribute('aria-invalid');s.marks[KEY_MOMENTS[selected][0]]=frame/s.fps;changed();renderDialog();
     };
     input.onchange=()=>save(input.valueAsNumber);
@@ -132,11 +132,16 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
     dialog.querySelectorAll('nav button').forEach((b,i)=>b.setAttribute('aria-current',i===selected?'true':'false'));
     panels.forEach((panel,index)=>{
       panel.hidden=index===1 && mode!=='compare';const s=slots[index],entry=keyMomentEntries(s)[selected],has=Number.isFinite(entry.time);
+      const suffix=mode==='compare'?` swing ${name(index)}`:'';
+      panel.querySelector('.key-swing-label').textContent=mode==='compare'?`Swing ${name(index)}`:'Your swing';
+      panel.querySelector('.key-frame-back').setAttribute('aria-label',`Previous key frame${suffix}`);
+      panel.querySelector('.key-frame-next').setAttribute('aria-label',`Next key frame${suffix}`);
+      panel.querySelector('input').setAttribute('aria-label',`Key moment frame${suffix?` in${suffix}`:''}`);
       panel.style.setProperty('--moment-color',entry.source==='sampled'?'#667466':MOMENT_COLORS[entry.key]);
       panel.querySelector('.key-source').textContent=sourceLabel(entry.source);
       const success=has && paint(panel.querySelector('canvas'),index,entry);
       if(!has)panel.querySelector('canvas').hidden=true;
-      panel.querySelector('.key-large-frame p').textContent=success?'':has?(failed[index].has(cacheKey(s,entry.time))?'Preview unavailable. Open this frame in the player.':'Loading frame…'):`Analyze swing ${name(index)} or set this moment from the player.`;
+      panel.querySelector('.key-large-frame p').textContent=success?'':has?(failed[index].has(cacheKey(s,entry.time))?'Preview unavailable. Open this frame in the player.':'Loading frame…'):`Analyze${suffix} or set this moment from the player.`;
       panel.querySelector('.key-detail-time').textContent=has?`${entry.label} · ${frameStamp(entry.time,s)}`:'Choose a frame';
       const values=has?measurements(nearestSample(s.samples,entry.time,s.tolerance)?.points,s.video.videoWidth,s.video.videoHeight,s.hand):{};
       panel.querySelector('.key-detail-metrics').textContent=[['elbow','Elbow'],['knee','Knee'],['lean','Torso']].map(([k,l])=>`${l} ${Number.isFinite(values[k])?`${Math.round(values[k])}°`:'—'}`).join(' · ');
@@ -154,7 +159,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
     const next=JSON.stringify([mode,busy,slots.map((s,i)=>[s.ready,s.url,s.fps,s.shotFps,s.card.classList.contains('selected'),data[i]])]);
     if(signature!==next){
       signature=next;strip.querySelector('.key-enlarge').disabled=busy;
-      strip.querySelectorAll('[data-edit-slot]').forEach((b,i)=>{b.hidden=i===1&&mode!=='compare';b.disabled=busy||!slots[i].ready;});
+      strip.querySelectorAll('[data-edit-slot]').forEach((b,i)=>{b.hidden=i===1&&mode!=='compare';b.disabled=busy||!slots[i].ready;b.textContent=mode==='compare'?`Edit ${name(i)}`:'Edit frames';});
       const fallback=data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>e.source==='sampled'));
       const detected=data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>e.source==='estimated'));
       strip.classList.toggle('has-previews',data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>Number.isFinite(e.time))));
@@ -169,15 +174,18 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
       cellViews.forEach(({button,position,index})=>{
         const entry=data[index][position],has=Number.isFinite(entry.time);
         const cell=button.parentElement;cell.hidden=index===1&&mode!=='compare';cell.classList.toggle('is-active',slots[index].card.classList.contains('selected'));cell.dataset.source=entry.source;cell.dataset.empty=!has;cell.querySelector('.moment-mark').disabled=!slots[index].ready||busy;
-        const mark=cell.querySelector('.moment-mark');mark.textContent=`Set ${name(index)}`;
-        if(entry.source==='sampled')mark.innerHTML=`Set ${name(index)}<span class="moment-assignment">${entry.key==='follow'?'Follow':MOMENT_NAMES[entry.key]}</span>`;
+        const suffix=mode==='compare'?` in swing ${name(index)}`:'';
+        const mark=cell.querySelector('.moment-mark'),markLabel=mode==='compare'?`Set ${name(index)}`:'Set here';mark.textContent=markLabel;
+        mark.setAttribute('aria-label',`Set ${KEY_MOMENTS[position][1]} here${suffix}`);
+        mark.title=`Replace ${KEY_MOMENTS[position][1]} with the frame currently displayed${suffix}`;
+        if(entry.source==='sampled')mark.innerHTML=`${markLabel}<span class="moment-assignment">${entry.key==='follow'?'Follow':MOMENT_NAMES[entry.key]}</span>`;
         button.hidden=false;button.disabled=!has||busy;
-        button.querySelector('.key-slot-badge').textContent=mode==='compare'?`${name(index)} · ${{marked:'Marked',estimated:'Auto',sampled:'Preview',empty:'Unset'}[entry.source]}`:`${name(index)} · ${sourceLabel(entry.source)}`;
+        button.querySelector('.key-slot-badge').textContent=mode==='compare'?`${name(index)} · ${{marked:'Marked',estimated:'Auto',sampled:'Preview',empty:'Unset'}[entry.source]}`:sourceLabel(entry.source);
         button.title=has?`${entry.label} · ${sourceLabel(entry.source)} · ${frameStamp(entry.time,slots[index])}`:`Pause at ${KEY_MOMENTS[position][1]} and set it from the player`;
         const stamp=button.querySelector('.key-frame-time');
-        stamp.textContent=has?frameStamp(entry.time,slots[index]):`${name(index)} · Not set`;
+        stamp.textContent=has?frameStamp(entry.time,slots[index]):`${mode==='compare'?`${name(index)} · `:''}Not set`;
         if(mode==='compare'&&has){const [time,frame]=frameStamp(entry.time,slots[index]).split(' · ');stamp.innerHTML=`<span>${time}</span> <span>${frame}</span>`;}
-        button.setAttribute('aria-label',has?`Jump to ${entry.label} in swing ${name(index)}, ${frameStamp(entry.time,slots[index])}`:`No ${KEY_MOMENTS[position][1]} in swing ${name(index)}`);
+        button.setAttribute('aria-label',has?`Jump to ${entry.label}${suffix}, ${frameStamp(entry.time,slots[index])}`:`No ${KEY_MOMENTS[position][1]}${suffix}`);
       });
       slots.forEach((s,i)=>{if(!s.ready){caches[i].clear();failed[i].clear();}});
     }

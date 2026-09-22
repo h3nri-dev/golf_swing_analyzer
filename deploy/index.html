@@ -38,10 +38,10 @@
           <section class="drawing-actions-panel" id="drawingActions" aria-label="Drawing actions"></section>
         </div>
         <div class="transport">
-          <div class="timeline-row"><span id="activeLabel" class="small-label">SWING A</span><input id="timeline" type="range" min="0" max="1" step="0.001" value="0" aria-label="Active video timeline" disabled><output id="time">0.00 / 0.00 s</output></div>
+          <div class="timeline-row"><span id="activeLabel" class="small-label">VIDEO</span><input id="timeline" type="range" min="0" max="1" step="0.001" value="0" aria-label="Active video timeline" disabled><output id="time">0.00 / 0.00 s</output></div>
           <div class="transport-row"><div class="play-buttons"><button id="previous" aria-label="Previous frame" title="Previous frame (←)" disabled>Ⅰ‹</button><button id="play" class="main-play" aria-label="Play" disabled>▶</button><button id="next" aria-label="Next frame" title="Next frame (→)" disabled>›Ⅰ</button></div><label class="speed-label">Speed <select id="speed" aria-label="Playback speed"><option value="mixed" disabled>Mixed</option><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option></select></label><span class="shortcut-hint"><kbd>←</kbd><kbd>→</kbd> frame by frame <span>·</span> <kbd>space</kbd> play</span><button id="restart" class="text-button" disabled>↺ Restart</button></div>
           <section class="analysis-range" id="rangeSelection" aria-labelledby="rangeTitle">
-            <div class="range-heading"><h3 id="rangeTitle">Select a range to analyze</h3><span id="rangeTarget">Swing A</span></div>
+            <div class="range-heading"><h3 id="rangeTitle">Select a range to analyze</h3><span id="rangeTarget">Your swing</span></div>
             <p class="range-help">Analyze five seconds before and after the current frame. Drag the window to pin it, or enter exact times. The window stops at the clip’s edges.</p>
             <div class="range-track"><div class="range-rail"><span id="rangeBand"></span><span id="rangePlayhead"></span></div><input id="rangeWindow" type="range" min="0" max="1" step="0.001" value="0" aria-label="Move analysis window" aria-describedby="rangeSummary" disabled></div>
             <div class="range-limits"><span>0.000 s</span><span id="rangeClipDuration">0.000 s</span></div>
