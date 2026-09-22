@@ -1,5 +1,6 @@
 import { DrawingHistory, clone, isDrawingVisible, toVideoPoint, hitShape, movePoints, paintShape, angleDegrees, scaleShape } from './drawing.js';
 import { frameStamp } from './timing.js';
+import { BRAND, drawWatermark } from './branding.js';
 
 const tools = [
   ['view','View','<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'],
@@ -259,8 +260,15 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
         ctx.drawImage(s.video,0,0,w,h);ctx.drawImage(s.canvas,0,0,w,h);ctx.restore();
         for(const shape of displayed(i)) paintShape(ctx,shape,w,h,mirrored(i));
         ctx.restore();
+        // Brand each visible image, not the surrounding player letterboxing.
+        const imageLeft=x+sw/2+view.offset.x*scale+(view.crop.x-.5)*w*view.zoom*scale;
+        const imageTop=y+sh/2+view.offset.y*scale-h*view.zoom*scale/2;
+        const visibleLeft=Math.max(x,imageLeft),visibleTop=Math.max(y,imageTop);
+        const visibleRight=Math.min(x+sw,imageLeft+view.crop.width*w*view.zoom*scale);
+        const visibleBottom=Math.min(y+sh,imageTop+h*view.zoom*scale);
+        drawWatermark(ctx,{x:visibleLeft,y:visibleTop,width:visibleRight-visibleLeft,height:visibleBottom-visibleTop});
       });
-      ctx.fillStyle='#b7c5b5';ctx.font='16px sans-serif';ctx.fillText('FreeGolfSwingAnalyzer.com',22,canvas.height-15);
+      ctx.fillStyle='#b7c5b5';ctx.font='16px sans-serif';ctx.fillText(BRAND,22,canvas.height-15);
       const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
       if(!blob) throw new Error('Could not create an image. Please try again.');
       const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=indices.length===2?'swing-comparison.png':'swing-annotated-frame.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);

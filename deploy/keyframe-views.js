@@ -3,6 +3,7 @@ import { frameNumber, frameStamp, lastFrame } from './timing.js';
 import { drawReview, cropRegion, frameAnalysis, currentMoment } from './review.js';
 import { MEASUREMENTS } from './analysis.js';
 import { FEEDBACK_LABELS } from './coaching.js';
+import { drawWatermark } from './branding.js';
 
 const sourceLabel=momentSource;
 const name=i=>i?'B':'A';
@@ -166,10 +167,18 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
     const stamp=JSON.stringify([entry.time,s.url,s.analysisVersion,paintVersion,mirrored,previewsOverlay,s.review,s.hand,s.crop,drawingSignature]);
     if(canvas.dataset.paint===stamp)return true;
     const region=cropRegion(s.crop),w=Math.round(raw.width*region.width),h=raw.height;
-    canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');
+    // Keep text and vector overlays crisp when a low-resolution clip is
+    // enlarged. Source video/drawing coordinates remain unchanged.
+    const renderScale=Math.max(1,960/Math.max(w,h));
+    canvas.width=Math.round(w*renderScale);canvas.height=Math.round(h*renderScale);
+    const ctx=canvas.getContext('2d');ctx.scale(renderScale,renderScale);
     ctx.save();if(mirrored){ctx.translate(w,0);ctx.scale(-1,1);}ctx.translate(-region.x*raw.width,0);ctx.drawImage(raw,0,0);
     if(previewsOverlay)drawReview(ctx,s,entry.time,raw.width,h,{color:index?'#9ecdf2':'#dcf59c',mirrorText:mirrored});
-    ctx.restore();paintDrawings(ctx,index,entry.time,w,h,mirrored,region);canvas.dataset.paint=stamp;return true;
+    ctx.restore();paintDrawings(ctx,index,entry.time,w,h,mirrored,region);
+    // The source badge sits below the preview; keep branding at its top.
+    // It is part of the image in both gallery and popup, even with overlays off.
+    drawWatermark(ctx,{width:w,height:h,edge:'top'});
+    canvas.dataset.paint=stamp;return true;
   }
   function paintAll() {
     for(const {button,canvas,position,index} of cellViews){

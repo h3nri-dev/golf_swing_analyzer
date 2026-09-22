@@ -1,6 +1,7 @@
 import { MOMENT_COLORS, momentSource } from './keyframes.js';
 import { seconds, frameNumber } from './timing.js';
 import { MEASUREMENTS } from './analysis.js';
+import { BRAND } from './branding.js';
 
 let library;
 function pdfLibrary() {
@@ -15,7 +16,6 @@ function pdfLibrary() {
   return library;
 }
 
-const BRAND = 'FreeGolfSwingAnalyzer.com';
 const real = (time,clip) => time / clip.mediaSecondsPerRealSecond;
 const stamp = (time,clip) => `${seconds(real(time,clip))} real s  |  Frame ${frameNumber(time,clip.frameRate,clip.duration)}`;
 const interval = (range,clip) => range ? `${seconds(real(range[0],clip))} - ${seconds(real(range[1],clip))} s` : 'Not analyzed';

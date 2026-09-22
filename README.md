@@ -66,6 +66,8 @@ Comparison keeps a separate timeline view for each player. Local markers control
 
 ## Understand your results
 
+FreeGolfSwingAnalyzer.com watermarks appear on the players, every keyframe preview and enlarged popup, and each image in PNG/PDF exports. They remain upright when the footage is mirrored, follow the visible crop, and remain present when drawings or pose overlays are hidden.
+
 Open **Analysis** beside **Set** on a keyframe. Suggestions explain **Looks good**, **Check this** and **Try next** before the numbers. Findings compare visible movement within your own swing; uncertain phases or missing tracking get clear next steps instead of an invented judgment. The enlarged view and every PDF frame page include the same feedback. See [the feedback rules, coaching sources and limitations](COACHING_REVIEW.md).
 
 ## Analysis and privacy
