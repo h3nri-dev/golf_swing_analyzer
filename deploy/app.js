@@ -236,7 +236,7 @@ function updateAnalysisControls() {
   const target = mode === 'compare' ? ` ${names[active]}` : '';
   $('analyze').textContent = `Analyze${target}`;
   const range = s.ready ? Number.isFinite(s.start) && Number.isFinite(s.end) ? `${seconds(realTime(s.start,s))}–${seconds(realTime(s.end,s))} s` : 'set range' : 'no video';
-  $('analyze').title = `Analyze${target ? ` swing${target}` : ''} · ${range}`;
+  $('analyze').title = `Analyze${target ? ` swing${target}` : ''} · ${range}. Replaces this video's markers when complete.`;
   $('reviewContext').textContent = `${target ? `Swing${target}` : 'Your swing'} · ${range}`;
   $('reviewContext').disabled = !s.ready || !!job;
   navigation?.render();
@@ -507,13 +507,18 @@ async function analyze() {
       await yieldFrame();
     }
     if (!token.cancelled) {
-      s.samples = smoothSamples(samples); s.tolerance = interval * 0.6;
-      s.analyzedRange = [start, s.end]; s.analysisQuality=s.quality;
+      // Prepare the new results before replacing any saved review state.
+      // Completed analysis owns this clip's markers; cancellation or failure
+      // must leave its previous manual edits and detected moments intact.
+      const smoothed = smoothSamples(samples);
+      const keyMoments = suggestKeyMoments(smoothed,start,s.end,s.fps,{anchor:originalTime,rate:timingRate(s)});
+      Object.assign(s,{samples:smoothed,tolerance:interval*.6,analyzedRange:[start,s.end],analysisQuality:s.quality,keyMoments,marks:{}});
+      s.analysisVersion++;
       navigation.focusAnalysis(active);
       // Analyze is an explicit review command. Subsequent individual playback
       // still leaves the common controller and its chosen clock untouched.
       if(isIndependent())Object.assign(commonTransport,playerState(active),{time:originalTime,following:false});
-      s.keyMoments = suggestKeyMoments(s.samples,start,s.end,s.fps,{anchor:originalTime,rate:timingRate(s)}); s.analysisVersion++; trackUsage('analysis_complete',mode);
+      trackUsage('analysis_complete',mode);
       const valid = samples.filter(x => x.points && [11,12,23,24].every(i => visible(x.points[i]))).length;
       const detected=s.keyMoments.some(e=>e.source==='estimated');
       s.status = detected ? 'Analysis ready · 7 key moments estimated automatically. Click a frame to review; use its Set button to correct it.'

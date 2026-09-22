@@ -22,7 +22,7 @@ The redesign had lost useful review capabilities. A cleaner layout did not justi
 | Colored timeline phase pips (`Vt`), active moment and phase keyboard jumps | Missing | Colored, clickable timeline marks, highlighted current moment, `[` / `]` phase jumps. Sampled range previews are not presented as detected phase marks. |
 | Rectangle, label pin, custom color, size and rotation (`draw-tool-btn`, drawing pointer handlers) | Rectangle/label/rotation/scaling/custom color missing | Box and Label in the vertical rail, custom color, editable text, rotation and scaling beside the selected drawing. Existing pen/line/arrow/circle/angle/selection remain. |
 | Mirror new drawings (`mirrorDrawings`, `.panel-mirror-btn`) | Only explicit copy remained | Optional **Copy new drawings to other video**, plus explicit copy. Copies are independently editable, with their own undo histories. Copying does not reverse the image. |
-| Reset edited keyframes (`kfResetBtn`, `originalKeyframes`) | Only individual reset | Reset all edits with Undo reset, plus individual reset to estimates. Reanalysis still preserves manual changes. |
+| Reset edited keyframes (`kfResetBtn`, `originalKeyframes`) | Only individual reset | Reset all edits with Undo reset, plus individual reset to estimates. Per the subsequent user request, a completed new analysis replaces prior markers; cancellation or failure preserves them. |
 | 0.1× playback (`speedSelect`), keyboard tool shortcuts and Help | Some omitted | 0.1× restored locally and commonly; V/M/F/L/A/C/R/D, H, 1/2, phase navigation and existing playback/undo shortcuts documented in Help. |
 | Feedback contact (`feedbackBtn` handler) | Missing | Original email address linked from Help. No automatic email or clipboard writes. |
 

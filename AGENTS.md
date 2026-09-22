@@ -6,7 +6,7 @@ The user's standing UX requirement is **proximity**: controls used together belo
 
 - Preserve automatic key-frame detection and the seven visible visual moment cards. Never replace Analyze results with a manual-only workflow.
 - Put one-click Set A / Set B and jump actions on those cards. Keep phase colors, names and numbers consistent. Do not hide phases in a dropdown, add duplicate marker rails or move marking to the far-right settings sidebar.
-- Keep automatic estimates, user edits and uncertain range previews distinct. Manual edits survive reanalysis and can be reset. Only real phase estimates/marks contribute to tempo.
+- Keep automatic estimates, user edits and uncertain range previews distinct. A completed analysis replaces all prior markers on the analyzed video with its new results, including clearing manual edits. Cancelled or failed runs preserve prior markers; analyzing one video must not reset the other. Edits can be reset individually between runs. Only real phase estimates/marks contribute to tempo.
 - Keep each video's full playback controls and the common controller visible. Local actions leave the common display and the other independently playing video alone.
 - Preserve neighboring range/Analyze/playback controls, neighboring sync/alignment controls, compact persistent zoom, and vertical drawing tools beside the footage.
 - Judge layouts with loaded and analyzed videos at laptop, large desktop and phone sizes. Check usable video size, readable labels, reachable click targets and no overlapping controls. Preserve the enlarged key-frame viewer and PDF export.

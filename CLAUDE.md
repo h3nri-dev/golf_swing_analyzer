@@ -1,4 +1,4 @@
-# Golf Swing Analyzer / Swing Studio
+# FreeGolfSwingAnalyzer.com
 
 Repository: `h3nri-dev/golf_swing_analyzer`. Existing production host: Cloudflare Pages project `freegolfswinganalyzer`, serving `deploy/` at `freegolfswinganalyzer.com`.
 
@@ -42,14 +42,14 @@ Use readable ES modules and browser APIs; there is no build step. Keep uploaded 
 
 ### Visual key moments
 - Preserve the visible seven-frame gallery after analysis. It is a core result, not an optional tab or PDF-only feature. Cards appear as soon as a video loads, support one-click marking and frame jumps, and show automatic previews after Analyze. Desktop portrait videos use a tall player plus a four-column, two-row gallery. All seven cards, including Finish, have equal width; never stretch the last card across a row. Landscape/comparison use a filmstrip; phones keep it after the player controls.
-- `keyframes.js` proposes ordered pose-based frames but never labels sampled fallback frames as detected golf phases. Keep Estimate / Your mark / Range preview provenance clear. Manual marks override all suggestions, and reanalysis/cancellation must preserve edits.
+- `keyframes.js` proposes ordered pose-based frames but never labels sampled fallback frames as detected golf phases. Keep Estimate / Your mark / Range preview provenance clear. Manual marks override suggestions until a new analysis completes. Completion replaces all prior markers for that video with the new estimates or labeled range previews. Cancellation and failure preserve previous edits/results; the other video’s markers remain untouched.
 - `keyframe-views.js` uses independent local decoders and bounded canvas caches. Preparing previews must never seek the main players, change synchronization or trigger common controls. Frame editing respects File FPS/Shot FPS and file-time storage.
 - Preserve the enlarged single/A-B inspection view, direct frame jumps, play/draw actions, full-frame aspect ratio and overlay/drawing alignment. Avoid per-playback-frame canvas redraws for unchanged previews. PDF export includes the visual moments with provenance labels. Never mutate live suggestions when constructing reports.
 
 ### Automatic detection and marker proximity
 - Preserve automatic key-moment detection as a core Analyze result. Use local swing sequences, tolerate brief pose gaps and one occluded wrist, and respect real-time FPS calibration. Idle or untracked footage elsewhere in the selected range must not discard a visible complete swing. Never silently replace detection with manual-only marking.
 - Keep one coherent set of seven colored moment cards. Each card owns its full frame preview, jump target, time and Set A/Set B action. Keep Edit A/B and enlargement in the gallery header. Do not add a second marker rail that steals video height, bury phases in a dropdown or move marking across the screen.
-- Use the same phase colors, names and numbers throughout cards, editor and reports. Keep Auto estimate, Your mark and Range preview distinct; sampled previews never count toward tempo. Manual corrections override auto estimates and can be reset to the estimate.
+- Use the same phase colors, names and numbers throughout cards, editor and reports. Keep Auto estimate, Your mark and Range preview distinct; sampled previews never count toward tempo. Manual corrections override auto estimates until the next completed analysis, and can be reset to the estimate individually. A new completed analysis clears previous edits.
 - Apply proximity to every change: identify the object and controls used together; place them together; inspect loaded/analysed single and comparison states at laptop, large desktop and phone sizes. Check actual video height, pointer reachability and independent controller state, not just element existence.
 
 ### Mode-aware wording

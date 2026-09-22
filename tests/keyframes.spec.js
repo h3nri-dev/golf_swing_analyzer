@@ -3,12 +3,12 @@ import {focusVideos,discardIfAsked} from './ui.js';
 const fixture=file=>new URL(`./fixtures/${file}`,import.meta.url).pathname;
 const card=(page,i)=>page.locator(`[data-slot="${i}"]`);
 async function setup(page,{compare=false,empty=false}={}) {
- await page.route('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs',route=>route.fulfill({contentType:'text/javascript',body:`export const FilesetResolver={forVisionTasks:async()=>({})};export const PoseLandmarker={createFromOptions:async()=>({close(){},detectForVideo(canvas,t){${empty?'return {landmarks:[]};':`const nodes=[[0,.72],[300,.72],[1300,.2],[1700,.74],[3400,.2],[4000,.2]];let i=1;while(i<nodes.length-1&&nodes[i][0]<t)i++;const a=nodes[i-1],b=nodes[i],y=a[1]+(b[1]-a[1])*(t-a[0])/(b[0]-a[0]);const p=Array.from({length:33},()=>({x:.5,y:.5,visibility:1}));p[11].y=p[12].y=.35;p[23].y=p[24].y=.65;p[15].y=p[16].y=y;return {landmarks:[p]};`}}})};`}));
+ await page.route('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs',route=>route.fulfill({contentType:'text/javascript',body:`export const FilesetResolver={forVisionTasks:async()=>({})};export const PoseLandmarker={createFromOptions:async()=>({close(){},detectForVideo(canvas,t){if(window.failNextAnalysis)throw new Error('Test detector failure');${empty?'return {landmarks:[]};':`const nodes=[[0,.72],[300,.72],[1300,.2],[1700,.74],[3400,.2],[4000,.2]];let i=1;while(i<nodes.length-1&&nodes[i][0]<t)i++;const a=nodes[i-1],b=nodes[i],y=a[1]+(b[1]-a[1])*(t-a[0])/(b[0]-a[0]);const p=Array.from({length:33},()=>({x:.5,y:.5,visibility:1}));p[11].y=p[12].y=.35;p[23].y=p[24].y=.65;p[15].y=p[16].y=y;return {landmarks:[p]};`}}})};`}));
  await page.goto('/');if(compare)await page.locator('#compareMode').click();
  for(const i of compare?[0,1]:[0]){await card(page,i).locator('input[type=file]').setInputFiles(fixture(i?'timing-slow.mp4':'portrait.mp4'));await expect(card(page,i).locator('video')).toBeVisible();}
 }
 async function analyze(page,index=0){const target=page.locator(`[data-select="${index}"]`);if(await target.isVisible())await target.click();await page.locator('#analyze').click();await expect(page.locator('#status')).toContainText(/Analysis ready|No clear pose/,{timeout:20000});await expect(page.locator(`.key-frame[data-preview-slot="${index}"] canvas`).first()).toBeVisible();}
-test('analysis restores seven visible images, local jumps, enlarged frame edits and preserved reanalysis',async({page})=>{
+test('analysis replaces edited markers with seven new estimates and cancellation preserves later edits',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await setup(page);
  await page.locator('.zoom-slider').first().fill('2');await page.locator('#timeline').fill('0.7');await analyze(page);
  await expect(page.locator('#keyMomentStrip')).toBeVisible();await expect(page.locator('.key-card')).toHaveCount(7);
@@ -19,8 +19,13 @@ test('analysis restores seven visible images, local jumps, enlarged frame edits 
  const field=page.getByRole('spinbutton',{name:'Key moment frame',exact:true});await field.fill('54');await field.press('Tab');
  await expect(page.locator('[data-review-slot="0"] .key-source')).toHaveText('Your mark');await expect(page.locator('[data-review-slot="0"] .key-detail-time')).toContainText('1.800 s · F54');
  await page.locator('[data-review-slot="0"] .key-frame-next').click();await expect(field).toHaveValue('55');
- await expect(page.locator('[data-review-slot="0"] canvas')).toBeVisible();await page.screenshot({path:'/tmp/keyframes-large.png'});await page.keyboard.press('Escape');await analyze(page);
- const model=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(model.marks.impact).toBe(55/30);
+ await expect(page.locator('[data-review-slot="0"] canvas')).toBeVisible();await page.screenshot({path:'/tmp/keyframes-large.png'});await page.keyboard.press('Escape');
+ const edited=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(edited.marks.impact).toBe(55/30);
+ await analyze(page);
+ const model=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(model.marks).toEqual({});
+ expect(model.keyMoments.every(e=>e.source==='estimated')).toBe(true);expect(model.phaseTimes.impact).not.toBe(55/30);
+ await expect(page.locator('.key-card[data-key=impact] .key-slot-badge').first()).toHaveText('Auto estimate');
+ await page.locator('#timeline').fill('1.834');await page.getByRole('button',{name:'Set Impact here',exact:true}).click();
  await page.locator('#analyze').click();await page.locator('#cancel').click();await expect(page.locator('#status')).toContainText('cancelled');
  await expect(page.locator('.key-card')).toHaveCount(7);expect((await page.evaluate(async()=>(await import('/app.js')).reportData())).marks.impact).toBe(55/30);
  await focusVideos(page);await page.screenshot({path:'/tmp/keyframes-single.png'});const download=page.waitForEvent('download');await page.locator('#export').click();const pdf=await download;await pdf.saveAs('/tmp/swing-key-moments-report.pdf');await expect(page.locator('#reportDialog')).toBeHidden();expect((await page.evaluate(async()=>(await import('/app.js')).reportData())).keyMoments.every(e=>!e.image)).toBe(true);expect(errors).toEqual([]);
@@ -81,4 +86,48 @@ test('automatic detection fills the editor and tempo; a correction resets to its
  await page.keyboard.press('Escape');
  const after=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(after.phaseTimes).toEqual(before.phaseTimes);expect(after.marks).toEqual({});
  await expect(page.locator('.key-card[data-key=impact] .key-slot-badge').first()).toContainText('Auto estimate');
+});
+
+
+test('new analysis replaces every marker only on the analyzed video',async({page})=>{
+ await setup(page,{compare:true});await page.locator('#independent').click();
+ await card(page,0).locator('.clip-timeline').fill('3.5');
+ for(const mark of await page.locator('.moment-cell[data-moment-slot="0"] .moment-mark').all())await mark.click();
+ await card(page,1).locator('.clip-timeline').fill('1');
+ await page.getByRole('button',{name:'Set Impact here in swing B',exact:true}).click();
+ const before=await page.evaluate(async()=>{const app=await import('/app.js');return [app.reportData(0),app.reportData(1)];});
+ expect(Object.keys(before[0].marks)).toHaveLength(7);expect(before[1].marks.impact).toBe(1);
+ await analyze(page,0);
+ const after=await page.evaluate(async()=>{const app=await import('/app.js');return [app.reportData(0),app.reportData(1)];});
+ expect(after[0].marks).toEqual({});expect(after[0].keyMoments.every(e=>e.source==='estimated')).toBe(true);
+ expect(after[1].marks).toEqual(before[1].marks);expect(after[1].keyMoments).toEqual(before[1].keyMoments);
+ await expect(page.locator('.key-card[data-key=impact] [data-preview-slot="0"] .key-slot-badge')).toHaveText('A · Auto');
+ await expect(page.locator('.key-card[data-key=impact] [data-preview-slot="1"] .key-slot-badge')).toHaveText('B · Marked');
+ await expect(page.locator('#tempoNote')).toContainText('auto estimates');
+ await page.locator('[data-edit-slot="0"]').click();
+ await expect(page.getByRole('spinbutton',{name:'Impact frame in swing A',exact:true})).toHaveValue(String(Math.round(after[0].phaseTimes.impact*30)));
+ await expect(page.locator('.moment-reset-all')).toBeDisabled();await page.keyboard.press('Escape');
+ await page.screenshot({path:'/tmp/reanalysis-markers-compare.png'});
+});
+
+test('completed analysis without a detectable pose replaces old marks with honest range previews',async({page})=>{
+ await setup(page,{empty:true});await page.locator('#timeline').fill('3.5');
+ await page.getByRole('button',{name:'Set Impact here',exact:true}).click();
+ await page.locator('#rangeStart').fill('0.2');await page.locator('#rangeEnd').fill('1.2');await analyze(page);
+ const report=await page.evaluate(async()=>(await import('/app.js')).reportData());
+ expect(report.marks).toEqual({});expect(report.keyMoments.every(e=>e.source==='sampled'&&e.time>=.2&&e.time<=1.2)).toBe(true);
+ expect(report.phaseTimes).toEqual({});expect(report.tempo).toBeNull();
+ await expect(page.locator('#commonPlayer .timeline-moments button')).toHaveCount(0);
+ await expect(page.locator('.key-card-title').first()).toHaveText('Preview 1 ↗');
+});
+
+test('failed reanalysis keeps the previous estimates and manual markers',async({page})=>{
+ await setup(page);await analyze(page);await page.locator('#timeline').fill('1.8');
+ await page.getByRole('button',{name:'Set Impact here',exact:true}).click();
+ const before=await page.evaluate(async()=>(await import('/app.js')).reportData());
+ await page.evaluate(()=>{window.failNextAnalysis=true;});await page.locator('#analyze').click();
+ await expect(page.locator('#status')).toContainText('Analysis unavailable');await expect(page.locator('#analyze')).toBeEnabled();
+ const after=await page.evaluate(async()=>(await import('/app.js')).reportData());
+ for(const key of ['marks','keyMoments','phaseTimes','measurements','analyzedRange'])expect(after[key]).toEqual(before[key]);
+ await expect(page.locator('.key-card[data-key=impact] .key-slot-badge').first()).toHaveText('Your mark');
 });

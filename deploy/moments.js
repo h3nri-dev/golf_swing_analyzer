@@ -6,7 +6,7 @@ export function createMoments({slots, state, controlClip, pause, seek, changed})
   const dialog = document.createElement('dialog');
   dialog.id = 'momentDialog'; dialog.className = 'moment-dialog';
   dialog.setAttribute('aria-labelledby','momentDialogTitle');
-  dialog.innerHTML = '<header><h2 id="momentDialogTitle">Swing moments</h2><button class="moment-close" aria-label="Close moment editor">×</button></header><p>Jump, edit the frame number, or use <strong>Set here</strong>. Your edits override estimates; ↺ restores them. Frames start at 0.</p><div class="moment-rows"></div><p class="moment-error" role="alert" hidden></p>';
+  dialog.innerHTML = '<header><h2 id="momentDialogTitle">Swing moments</h2><button class="moment-close" aria-label="Close moment editor">×</button></header><p>Jump, edit the frame number, or use <strong>Set here</strong>. ↺ restores an estimate. A completed new analysis resets this video’s markers. Frames start at 0.</p><div class="moment-rows"></div><p class="moment-error" role="alert" hidden></p>';
   document.body.append(dialog);
   let editing = 0,resetBackup=null;
   const reset=document.createElement('button');reset.className='moment-reset-all';reset.textContent='Reset all edits';dialog.querySelector('header').insertBefore(reset,dialog.querySelector('.moment-close'));

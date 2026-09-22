@@ -20,10 +20,10 @@ test('restored measurement, overlay and crop controls preserve per-video work',a
  const canvas=slot(page,0).locator('.pose-canvas'),before=await canvas.evaluate(c=>c.toDataURL());await page.locator('#ghostOverlay').check();await expect.poll(()=>canvas.evaluate(c=>c.toDataURL())).not.toBe(before);
  await page.locator('[data-select="0"]').click();await line(page);await page.locator('[data-moment=impact][data-moment-slot="0"] .moment-mark').click();
  const saved=await data(page);await page.locator('[data-settings-slot="0"] .video-crop').selectOption('left');
- expect((await data(page)).measurements).toHaveLength(0);await analyze(page);expect((await data(page)).currentMeasurements.elbow).toBeCloseTo(90,4);
+ expect((await data(page)).measurements).toHaveLength(0);expect((await data(page)).marks).toEqual(saved.marks);await analyze(page);expect((await data(page)).currentMeasurements.elbow).toBeCloseTo(90,4);
  expect(await page.evaluate(()=>window.modelFrames[0].w)).toBe(64);
  await page.locator('[data-settings-slot="0"] .video-crop').selectOption('full');const restored=await data(page);
- expect(restored.marks).toEqual(saved.marks);expect(restored.drawings).toEqual(saved.drawings);expect(restored.measurements).toEqual(saved.measurements);
+ expect(restored.marks).toEqual({});expect(restored.drawings).toEqual(saved.drawings);expect(restored.measurements).toEqual(saved.measurements);
  await page.screenshot({path:'/tmp/restoration-compare.png'});const download=page.waitForEvent('download');await page.locator('#export').click();await (await download).saveAs('/tmp/restoration-compare-report.pdf');await expect(page.locator('#reportDialog')).toBeHidden();await expect(page.locator('#ghostOverlay')).toBeChecked();expect((await data(page)).drawings).toEqual(saved.drawings);
 });
 

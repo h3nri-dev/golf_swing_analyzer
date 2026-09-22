@@ -164,7 +164,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
       const fallback=data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>e.source==='sampled'));
       const detected=data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>e.source==='estimated'));
       strip.classList.toggle('has-previews',data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>Number.isFinite(e.time))));
-      strip.querySelector('.key-strip-note').textContent=fallback?'Swing phases are uncertain · Set each moment from the player.':detected?'Auto estimates · Your edits take priority. Verify impact.':'Analyze to find all seven moments automatically, or pause and use Set here.';
+      strip.querySelector('.key-strip-note').textContent=fallback?'Swing phases are uncertain · Set each moment from the player.':detected?'Auto estimates · Verify impact. New analysis resets markers.':'Analyze to find all seven moments automatically, or pause and use Set here.';
       cards.forEach(({card,title},p)=>{
         const entries=data.map(a=>a[p]).filter((e,i)=>i===0||mode==='compare');
         const allSampled=entries.some(e=>Number.isFinite(e.time)) && entries.filter(e=>Number.isFinite(e.time)).every(e=>e.source==='sampled');
