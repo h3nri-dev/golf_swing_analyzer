@@ -1,6 +1,7 @@
 import { trackUsage } from './consent.js';
 import { clamp, visible, measurements, frameTime, tempo, nearestSample, smoothSamples } from './analysis.js';
 import { mediaRate, synchronization, realTime, fileTime, frameStamp, frameNumber, seconds } from './timing.js';
+import { detectFileFrameRate } from './file-fps.js';
 import { createMoments } from './moments.js';
 import { PRIMARY_MOMENTS, suggestKeyMoments, keyMomentEntries, phaseTimes } from './keyframes.js';
 import { createKeyframeViews } from './keyframe-views.js';
@@ -56,7 +57,15 @@ const slots = names.map((name, index) => {
   get('.clip-restart').onclick = () => controlClip(index, () => seekActive(0));
   get('.clip-speed').onchange = e => { const speed = Number(e.target.value); controlClip(index, () => setSpeed(speed)); };
   get('.mirror').onclick = () => { const on = slot.stage.classList.toggle('mirrored'); get('.mirror').setAttribute('aria-pressed', on); render(); };
-  get('.fps').onchange = e => configureTiming(index, Number(e.target.value), slot.shotFps);
+  const fpsStatus = document.createElement('span');
+  fpsStatus.id = `file-fps-status-${index}`; fpsStatus.className = 'fps-status'; fpsStatus.hidden = true;
+  fpsStatus.setAttribute('role', 'status'); get('.clip-timing').append(fpsStatus);
+  get('.fps').setAttribute('aria-describedby', fpsStatus.id);
+  get('.fps').onchange = e => {
+    if (job || !slot.ready) return;
+    slot.fpsSource = 'manual'; updateFpsStatus(slot);
+    configureTiming(index, Number(e.target.value), slot.shotFps);
+  };
   get('.shot-fps').onchange = e => configureTiming(index, slot.fps, e.target.value === 'same' ? null : Number(e.target.value));
   card.addEventListener('click', e => { if (!e.target.closest('button,input,select')) selectSlot(index); });
   slot.video.addEventListener('timeupdate', () => { if (!job) render(); });
@@ -72,6 +81,23 @@ function timingRate(s) { return mediaRate(s.fps, s.shotFps ?? s.fps); }
 function syncModel() { return synchronization(timingClips(), offset); }
 function syncOffset() { return (slots[1].anchor ?? 0) / timingRate(slots[1]) - (slots[0].anchor ?? 0) / timingRate(slots[0]); }
 function applySpeed(s) { s.video.playbackRate = s.speed * timingRate(s); }
+function updateFpsStatus(s) {
+  const status = s.get('.fps-status');
+  const labels = { detecting: 'Detecting FPS…', auto: 'Auto-detected', variable: 'Variable FPS', average: 'Average FPS', manual: 'Manual FPS', fallback: 'Choose File FPS' };
+  const descriptions = {
+    detecting: 'Reading the frame rate locally from your video file.',
+    auto: 'File FPS was detected automatically. You can change it if needed.',
+    variable: 'Variable frame rate: File FPS shows the average. Frame stepping is approximate. You can change it if needed.',
+    average: 'File FPS was estimated from frame count and duration. Frame stepping is approximate. You can change it if needed.',
+    manual: 'Using your chosen File FPS. Shot FPS controls slow-motion timing separately.',
+    fallback: 'Could not detect File FPS. Using 30 temporarily; choose the file’s frame rate here.',
+  };
+  status.hidden = !labels[s.fpsSource];
+  status.textContent = labels[s.fpsSource] || '';
+  status.title = descriptions[s.fpsSource] || '';
+  status.dataset.source = s.fpsSource || '';
+  s.get('.fps').title = status.title;
+}
 function configureTiming(index, fps, shotFps) {
   if (job) return;
   const s = slots[index], previousRate = timingRate(s);
@@ -151,6 +177,9 @@ function cropChanged(index,crop) {
 function resetSlot(index) {
   if (job) return;
   pauseControlled(index); const s = slots[index]; s.version++; s.ready = false; s.video.onerror = null;
+  s.fpsController?.abort(); s.fpsController = null; s.fpsSource = null;
+  for (const option of s.get('.fps').querySelectorAll('[data-detected]')) option.remove();
+  updateFpsStatus(s);
   s.video.removeAttribute('src'); s.video.load();
   if (s.url) URL.revokeObjectURL(s.url);
   Object.assign(s, { url: null, samples: [], keyMoments: [], analyzedRange: null, analysisAttempted: false, marks: {}, anchor: null, start: 0, end: 0, windowCenter: 0, windowSpan: 0, status: 'Add a video to get started.' });
@@ -170,19 +199,38 @@ async function loadFile(index, file) {
   if (!await confirmDiscard(s, 'Replace', hasSavedWork(s, index), mode)) { s.input.value = ''; return; }
   if (job) return;
   resetSlot(index); const version = s.version;
-  s.status = 'Opening your video…'; s.get('.file-name').textContent = file.name;
-  s.url = URL.createObjectURL(file); s.video.src = s.url;
+  s.status = 'Opening video and detecting File FPS…'; s.get('.file-name').textContent = file.name;
+  const controller = new AbortController(); s.fpsController = controller;
+  s.fpsSource = 'detecting'; updateFpsStatus(s);
+  const detection = detectFileFrameRate(file, { signal: controller.signal });
+  s.url = URL.createObjectURL(file);
   selectSlot(index);
   try {
-    await new Promise((resolve, reject) => {
-      const cleanup = () => { clearTimeout(timer); s.video.removeEventListener('loadeddata', loaded); s.video.removeEventListener('error', error); };
+    const decoded = new Promise((resolve, reject) => {
+      const cleanup = () => { clearTimeout(timer); s.video.removeEventListener('loadeddata', loaded); s.video.removeEventListener('error', error); controller.signal.removeEventListener('abort', aborted); };
       const loaded = () => { cleanup(); resolve(); };
+      const aborted = () => { cleanup(); resolve(); };
       const error = () => { cleanup(); reject(new Error('This video could not be decoded. Try an H.264 MP4 or WebM file.')); };
       const timer = setTimeout(error, 20000);
       s.video.addEventListener('loadeddata', loaded); s.video.addEventListener('error', error);
+      controller.signal.addEventListener('abort', aborted, { once: true });
+      s.video.src = s.url;
     });
+    const [, detected] = await Promise.all([decoded, detection]);
     if (s.version !== version) return;
     if (!Number.isFinite(s.video.duration) || s.video.duration <= 0 || !s.video.videoWidth) throw new Error('This video has no readable duration. Try exporting it as an MP4.');
+    s.fpsController = null;
+    if (detected) {
+      s.fps = detected.fps;
+      if (![...s.get('.fps').options].some(option => Number(option.value) === s.fps)) {
+        const option = new Option(String(s.fps), String(s.fps)); option.dataset.detected = '';
+        s.get('.fps').append(option);
+      }
+      s.get('.fps').value = String(s.fps);
+      for (const option of s.get('.shot-fps').options) option.disabled = option.value !== 'same' && Number(option.value) < s.fps;
+    }
+    s.fpsSource = !detected ? 'fallback' : detected.variable ? 'variable' : detected.average ? 'average' : 'auto';
+    updateFpsStatus(s);
     s.ready = true; s.video.hidden = false; s.drop.hidden = true; trackUsage('video_loaded',mode);
     if (isLinked()) { s.speed = slots[1 - index].speed; applySpeed(s); }
     if (isIndependent()) Object.assign(commonTransport, playerState(active), { following: false });

@@ -16,7 +16,7 @@ async function align(page, a, b) {
 
 test('30/60 FPS files use equal elapsed time and shared steps ignore selected-video changes', async ({page}) => {
   await setup(page);
-  await card(page,1).locator('.fps').selectOption('60');
+  await expect(card(page,1).locator('.fps')).toHaveValue('60');
   for (const i of [0,1]) for (const cls of ['.fps','.shot-fps']) await expect(card(page,i).locator(cls)).toBeVisible();
   await align(page,.3,.5);
   for (const selected of [0,1,0,1]) {

@@ -35,7 +35,11 @@ The [original feature audit](ORIGINAL_FEATURE_AUDIT.md) documents recovered capa
 
 ## Frame rates and slow-motion comparison
 
-Set **File FPS** to each file's encoded frame rate. It defaults to 30; it is not automatically detected. Leave **Shot FPS** at **Same** for ordinary videos. For a constant-rate slow-motion export, choose the original camera recording rate in Shot FPS. For example:
+**File FPS is detected automatically** when you open or replace each video. Its status appears directly below the FPS controls. Detection reads the video stream locally in a background worker; it does not play or upload the file. MP4, MOV and WebM are supported, including fractional and high frame rates. You can always correct the File FPS selector manually, including choosing a detected rate outside the standard presets.
+
+Variable-rate files show **Variable FPS**, using their average rate for approximate stepping. If metadata is missing, unsupported, or cannot be read promptly, **Choose File FPS** appears; 30 is a temporary fallback until you choose the correct rate. Detection finishes before playback controls become available, so a late result cannot override your edits or change timing during playback/analysis. Replacing/removing a clip cancels its old detection.
+
+Leave **Shot FPS** at **Same** for ordinary videos. File metadata does not reliably identify the camera’s original recording rate: for a constant-rate slow-motion export, choose that rate in Shot FPS. For example:
 
 | Footage | File FPS | Shot FPS | Playback at 1× real time |
 | --- | --- | --- | --- |
@@ -101,6 +105,7 @@ References: [MediaPipe web guide](https://ai.google.dev/edge/mediapipe/solutions
 - `deploy/app.js` — file lifecycle, playback, synchronized seeking, overlays, lazy inference and exports.
 - `deploy/analysis.js` — pure geometry, confidence filtering, smoothing, timing helpers.
 - `deploy/timing.js` — recording/file FPS conversion, clocks, frame numbering, stepping and overlapping playback limits.
+- `deploy/file-fps.js`, `file-fps-worker.js`, `vendor/mediainfo/` — automatic local file-rate detection using pinned MediaInfo.js 0.3.8, limited to 10 seconds and 32 MiB of chunk reads. No full-file buffer or backend. See [MediaInfo.js usage](https://mediainfo.js.org/docs/getting-started/usage/) and [MediaInfo’s stream fields](https://mediaarea.net/en/MediaInfo/Support/Fields).
 - `deploy/moments.js` — local marker actions and exact frame editor.
 - `deploy/report.js`, `deploy/vendor/` — local PDF report layout and pinned jsPDF browser library.
 - `deploy/range.js` — following analysis windows and validation.

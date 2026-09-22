@@ -8,6 +8,8 @@
 .clip-timing { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; padding: 4px 8px; color: #e4eddf; border-top: 1px solid #ffffff18; }
 .clip-timing label { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
 .clip-timing select { min-width: 0; width: 78px; min-height: 32px; padding: 3px; font-size: 16px; color: #e4eddf; background: #1b2e25; border: 1px solid #ffffff30; }
+.clip-timing .fps-status { grid-column:1 / -1; font-size:14px; line-height:1.2; color:#bfe6bc; white-space:normal; }
+.clip-timing .fps-status[data-source="fallback"], .clip-timing .fps-status[data-source="variable"], .clip-timing .fps-status[data-source="average"] { color:#f6daa1; }
 .moment-dialog { position: fixed; inset: auto; margin: 0; width: min(420px,calc(100vw - 16px)); max-height: calc(100dvh - 16px); padding: 16px; border: 1px solid #aebfa3; border-radius: 12px; box-shadow: 0 12px 48px #13221840; }
 .moment-dialog::backdrop, .report-dialog::backdrop { background: #15271c44; }
 .moment-dialog header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

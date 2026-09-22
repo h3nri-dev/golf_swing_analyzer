@@ -60,7 +60,7 @@ export function createStudioScreen({ slots, state, changed }) {
   panels.pose.append(pieces.hand, resultsEmpty, pieces.overlays, pieces.metrics, pieces.note);
   panels.moments.append(pieces.tempo, pieces.tempoNote, pieces.export);
   panels.moments.querySelector('h2').textContent='Tempo & report';
-  const videoNote=document.createElement('p');videoNote.className='screen-panel-help';videoNote.textContent='Slow-motion export? Set Shot FPS to the camera’s recording rate. Otherwise leave Same.';panels.video.append(videoNote);
+  const videoNote=document.createElement('p');videoNote.className='screen-panel-help';videoNote.textContent='File FPS is detected automatically. Slow-motion export? Set Shot FPS to the recording rate. Otherwise leave Same.';panels.video.append(videoNote);
   slots.forEach((s,i)=>{
     const group=document.createElement('div');group.dataset.settingsSlot=i;group.className='screen-video-settings';
     const title=document.createElement('h3');title.textContent=`Swing ${i?'B':'A'}`;group.append(title);
