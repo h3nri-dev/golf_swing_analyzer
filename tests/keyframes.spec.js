@@ -8,10 +8,10 @@ async function setup(page,{compare=false,empty=false}={}) {
  for(const i of compare?[0,1]:[0]){await card(page,i).locator('input[type=file]').setInputFiles(fixture(i?'timing-slow.mp4':'portrait.mp4'));await expect(card(page,i).locator('video')).toBeVisible();}
 }
 async function analyze(page,index=0){const target=page.locator(`[data-select="${index}"]`);if(await target.isVisible())await target.click();await page.locator('#analyze').click();await expect(page.locator('#status')).toContainText(/Analysis ready|No clear pose/,{timeout:20000});await expect(page.locator(`.key-frame[data-preview-slot="${index}"] canvas`).first()).toBeVisible();}
-test('analysis restores six visible images, local jumps, enlarged frame edits and preserved reanalysis',async({page})=>{
+test('analysis restores seven visible images, local jumps, enlarged frame edits and preserved reanalysis',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await setup(page);
  await page.locator('.zoom-slider').first().fill('2');await page.locator('#timeline').fill('0.7');await analyze(page);
- await expect(page.locator('#keyMomentStrip')).toBeVisible();await expect(page.locator('.key-card')).toHaveCount(6);
+ await expect(page.locator('#keyMomentStrip')).toBeVisible();await expect(page.locator('.key-card')).toHaveCount(7);
  for(const canvas of await page.locator('.key-frame[data-preview-slot="0"] canvas').all())await expect(canvas).toBeVisible();
  expect(await card(page,0).locator('video').evaluate(v=>v.currentTime)).toBeCloseTo(.7,3);await expect(page.locator('.zoom-value').first()).toHaveText('2.00×');
  await page.locator('.key-card[data-key="top"] .key-frame').first().click();expect(await card(page,0).locator('video').evaluate(v=>v.currentTime)).toBeCloseTo(1.3,1);await expect(card(page,0).locator('.clip-time')).toContainText('F38');
@@ -22,7 +22,7 @@ test('analysis restores six visible images, local jumps, enlarged frame edits an
  await expect(page.locator('[data-review-slot="0"] canvas')).toBeVisible();await page.screenshot({path:'/tmp/keyframes-large.png'});await page.keyboard.press('Escape');await analyze(page);
  const model=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(model.marks.impact).toBe(55/30);
  await page.locator('#analyze').click();await page.locator('#cancel').click();await expect(page.locator('#status')).toContainText('cancelled');
- await expect(page.locator('.key-card')).toHaveCount(6);expect((await page.evaluate(async()=>(await import('/app.js')).reportData())).marks.impact).toBe(55/30);
+ await expect(page.locator('.key-card')).toHaveCount(7);expect((await page.evaluate(async()=>(await import('/app.js')).reportData())).marks.impact).toBe(55/30);
  await focusVideos(page);await page.screenshot({path:'/tmp/keyframes-single.png'});const download=page.waitForEvent('download');await page.locator('#export').click();const pdf=await download;await pdf.saveAs('/tmp/swing-key-moments-report.pdf');await expect(page.locator('#reportDialog')).toBeHidden();expect((await page.evaluate(async()=>(await import('/app.js')).reportData())).keyMoments.every(e=>!e.image)).toBe(true);expect(errors).toEqual([]);
 });
 test('paired previews and slow-motion edits leave independent playback and common controller alone',async({page})=>{

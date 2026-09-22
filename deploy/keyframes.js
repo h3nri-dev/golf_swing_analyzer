@@ -2,14 +2,14 @@ import { visible } from './analysis.js';
 import { frameNumber, lastFrame } from './timing.js';
 
 export const KEY_MOMENTS = [
-  ['address','Address'],['top','Top of backswing'],['downswing','Downswing'],
+  ['address','Address'],['backswing','Backswing'],['top','Top of backswing'],['downswing','Downswing'],
   ['impact','Impact'],['follow','Follow-through'],['finish','Finish']
 ];
-export const PRIMARY_MOMENTS = KEY_MOMENTS.filter(([key])=>!['downswing','follow'].includes(key));
+export const PRIMARY_MOMENTS = KEY_MOMENTS.filter(([key])=>['address','top','impact','finish'].includes(key));
 // Shared by player markers, frame previews, editing and PDF reports. Labels and
 // numbers accompany these accents so color is never the only identifier.
-export const MOMENT_COLORS = {address:'#287749',top:'#7952ad',downswing:'#ad6415',impact:'#c43e46',follow:'#137e91',finish:'#af397b'};
-export const MOMENT_NAMES = {address:'Address',top:'Top',downswing:'Downswing',impact:'Impact',follow:'Follow-through',finish:'Finish'};
+export const MOMENT_COLORS = {address:'#287749',backswing:'#287dc0',top:'#7952ad',downswing:'#ad6415',impact:'#c43e46',follow:'#137e91',finish:'#af397b'};
+export const MOMENT_NAMES = {address:'Address',backswing:'Backswing',top:'Top',downswing:'Downswing',impact:'Impact',follow:'Follow-through',finish:'Finish'};
 export const momentSource = source => ({marked:'Your mark',estimated:'Auto estimate',sampled:'Range preview',empty:'Not set'})[source];
 
 // Recover the original hand-path phase sequence, but evaluate each continuous
@@ -17,7 +17,7 @@ export const momentSource = source => ({marked:'Your mark',estimated:'Auto estim
 // Times remain file coordinates; timing limits use real seconds for slow-mo.
 export function suggestKeyMoments(samples, start, end, fps, {anchor=(start+end)/2, rate=1}={}) {
   const snap=time=>Math.max(start,Math.min(lastFrame(end,fps)/fps,frameNumber(time,fps)/fps));
-  const fallback=()=>KEY_MOMENTS.map(([key],i)=>({key,time:snap(start+(end-start)*i/5),source:'sampled',label:`Range frame ${i+1}`}));
+  const fallback=()=>KEY_MOMENTS.map(([key],i)=>({key,time:snap(start+(end-start)*i/(KEY_MOMENTS.length-1)),source:'sampled',label:`Range frame ${i+1}`}));
   if(samples.length<12)return fallback();
   rate=Number.isFinite(rate)&&rate>0?rate:1;
   const tracked=samples.map(sample=>{
@@ -93,7 +93,7 @@ export function suggestKeyMoments(samples, start, end, fps, {anchor=(start+end)/
     return candidates.reduce((a,b)=>(min?points[b].y<points[a].y:points[b].y>points[a].y)?b:a,index);
   };
   const apex=extremum(top,true),contact=extremum(impact,false),endSwing=extremum(finish,true);
-  const indices=[address,apex,Math.round((apex+contact)/2),contact,Math.round((contact+endSwing)/2),endSwing];
+  const indices=[address,Math.round((address+apex)/2),apex,Math.round((apex+contact)/2),contact,Math.round((contact+endSwing)/2),endSwing];
   const times=indices.map(i=>snap(points[i].time));
   if(times.some((t,i)=>i&&t<=times[i-1]))return fallback();
   return KEY_MOMENTS.map(([key,label],i)=>({key,label,time:times[i],source:'estimated'}));

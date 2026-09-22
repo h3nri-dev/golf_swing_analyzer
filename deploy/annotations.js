@@ -1,4 +1,4 @@
-import { DrawingHistory, clone, isDrawingVisible, toVideoPoint, hitShape, movePoints, paintShape, angleDegrees } from './drawing.js';
+import { DrawingHistory, clone, isDrawingVisible, toVideoPoint, hitShape, movePoints, paintShape, angleDegrees, scaleShape } from './drawing.js';
 import { frameStamp } from './timing.js';
 
 const tools = [
@@ -8,6 +8,8 @@ const tools = [
   ['line','Line','<path d="m4 20 16-16"/><circle cx="4" cy="20" r="1"/><circle cx="20" cy="4" r="1"/>'],
   ['arrow','Arrow','<path d="m4 20 16-16M9 4h11v11"/>'],
   ['circle','Circle','<ellipse cx="12" cy="12" rx="9" ry="7"/>'],
+  ['rect','Box','<rect x="3" y="5" width="18" height="14" rx="1"/>'],
+  ['label','Label','<path d="M4 5h16M12 5v15M8 20h8"/>'],
   ['angle','Angle','<path d="M5 3v17h16M5 14a6 6 0 0 1 6 6M5 11l13-8"/>'],
 ];
 const palette = [['#dcf59c','Lime'],['#ffca62','Gold'],['#ff7995','Pink'],['#7edbff','Blue'],['#ffffff','White']];
@@ -22,7 +24,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     <div class="drawing-history"><button id="drawingUndo" title="Undo (⌘/Ctrl Z)"><span aria-hidden="true">↶</span> Undo</button><button id="drawingRedo" title="Redo (⌘/Ctrl Shift Z)"><span aria-hidden="true">↷</span> Redo</button></div>`;
   $('drawingSettings').innerHTML = `
     <div class="drawing-context"><div class="drawing-target" aria-label="Drawing target"><span>Editing</span><button data-drawing-slot="0" aria-pressed="true">Swing A</button><button data-drawing-slot="1" aria-pressed="false" hidden>Swing B</button></div>
-    <div class="drawing-settings"><div class="drawing-colors" role="group" aria-label="Drawing color">${palette.map(([hex,name])=>`<button data-color="${hex}" aria-label="${name} drawing color" aria-pressed="${hex===color}" style="--swatch:${hex}"><span></span></button>`).join('')}</div><label>Stroke <select id="drawingWidth"><option value="2">Thin</option><option value="3" selected>Medium</option><option value="5">Bold</option></select></label><label>Show on <select id="drawingScope"><option value="clip">Entire clip</option><option value="frame">This frame</option></select></label></div></div>
+    <div class="drawing-settings"><div class="drawing-colors" role="group" aria-label="Drawing color">${palette.map(([hex,name])=>`<button data-color="${hex}" aria-label="${name} drawing color" aria-pressed="${hex===color}" style="--swatch:${hex}"><span></span></button>`).join('')}</div><label>Stroke <select id="drawingWidth"><option value="1">1 px</option><option value="2">Thin</option><option value="3" selected>Medium</option><option value="4">4 px</option><option value="5">Bold</option><option value="6">6 px</option><option value="7">7 px</option><option value="8">8 px</option></select></label><label>Show on <select id="drawingScope"><option value="clip">Entire clip</option><option value="frame">This frame</option></select></label></div></div>
     <p id="drawingHint" class="drawing-instruction" role="status"></p>`;
   $('drawingActions').innerHTML = `
     <div class="drawing-actions"><div><button id="drawingVisibility" aria-pressed="true">Hide drawings</button><button id="drawingDelete">Delete selected</button><button id="drawingClear">Clear clip</button></div><div><button id="drawingCopy" hidden>Copy to B</button><button id="drawingSnapshot" class="snapshot-button">↓ Save image</button></div></div>
@@ -47,7 +49,15 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     if(selection && (selection.slot!==state().active || !displayed(selection.slot).some(s=>s.id===selection.id))) selection=null;
   }
   function selectedShape() { return selection && histories[selection.slot].items.find(s=>s.id===selection.id); }
-  function commit(i,items) { histories[i].commit(items); changed(); render(); }
+  let pendingLabelCopy=null;
+  function copyNew(i,items){histories[1-i].commit([...histories[1-i].items,...items.map(s=>({...clone(s),id:crypto.randomUUID(),time:slots[1-i].video.currentTime,frameDuration:1/slots[1-i].fps}))]);}
+  function commit(i,items,copy=true) {
+    if(copy&&$('drawingLink').checked&&state().mode==='compare'&&slots[1-i].ready){
+      const added=items.filter(item=>item.tool!=='label'&&!histories[i].items.some(old=>old.id===item.id));
+      if(added.length)copyNew(i,added);
+    }
+    histories[i].commit(items); changed(); render();
+  }
   function cancelDraft() { draft=null; gesture=null; render(); }
   function setTool(next) {
     draft=null; gesture=null; tool=next;
@@ -64,6 +74,9 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     if(draft && draft.slot!==i) draft=null;
     pauseControlled(i); selectSlot(i); invalidateSelection();
     const p=point(e,i), canvas=slots[i].annotationCanvas, rect=canvas.getBoundingClientRect();
+    if(tool==='label') {
+      const shape={...newShape(i,[p]),label:'Note'};commit(i,[...histories[i].items,shape]);selection={slot:i,id:shape.id};pendingLabelCopy=$('drawingLink').checked&&state().mode==='compare'&&slots[1-i].ready?{slot:i,id:shape.id}:null;setTool('select');openEditor();return;
+    }
     if(tool==='angle') {
       if(!draft) draft={slot:i,shape:newShape(i,[p])};
       else {
@@ -76,8 +89,8 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     }
     if(tool==='select') {
       const selected=selection?.slot===i ? selectedShape() : null;
-      const handle=selected && selected.tool!=='pen' ? selected.points.findIndex(q=>Math.hypot((p.x-q.x)*rect.width,(p.y-q.y)*rect.height)<14) : -1;
-      const shape=handle>=0 ? selected : [...displayed(i)].reverse().find(s=>hitShape(s,p,rect.width,rect.height,e.pointerType==='touch'?20:12));
+      const handle=selected && !selected.rotation && !['pen','label'].includes(selected.tool) ? selected.points.findIndex(q=>Math.hypot((p.x-q.x)*rect.width,(p.y-q.y)*rect.height)<14) : -1;
+      const shape=handle>=0 ? selected : [...displayed(i)].reverse().find(s=>hitShape(s,p,rect.width,rect.height,e.pointerType==='touch'?20:12,mirrored(i)));
       selection=shape ? {slot:i,id:shape.id} : null;
       if(shape) gesture={slot:i,original:clone(shape),shape:clone(shape),start:p,handle,pointer:e.pointerId};
     } else { draft={slot:i,shape:newShape(i,[p,p])}; gesture={slot:i,start:p,pointer:e.pointerId}; }
@@ -132,21 +145,42 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     const from=state().active,to=1-from,shape=selectedShape(),items=shape?[shape]:displayed(from);
     if(!items.length || !slots[to].ready) return;
     const copied=items.map(s=>({...clone(s),id:crypto.randomUUID(),time:slots[to].video.currentTime,frameDuration:1/slots[to].fps}));
-    commit(to,[...histories[to].items,...copied]);
+    commit(to,[...histories[to].items,...copied],false);
     toast(`Copied ${items.length===1?'drawing':'visible drawings'} to swing ${to?'B':'A'}. Use Select to adjust for its camera view.`);
   };
   $('drawingSnapshot').onclick=saveImage;
+  const custom=document.createElement('input');custom.type='color';custom.id='drawingCustomColor';custom.value=color;custom.setAttribute('aria-label','Custom drawing color');custom.title='Custom color';custom.oninput=e=>setStyle('color',e.target.value);toolbar.querySelector('.drawing-colors').append(custom);
+  const link=document.createElement('label');link.className='drawing-link';link.innerHTML='<input id="drawingLink" type="checkbox">Copy new drawings to other video';$('drawingActions').querySelector('.drawing-actions').append(link);
+  const editButtons=slots.map((slot)=>{const b=document.createElement('button');b.className='drawing-edit-float';b.textContent='Edit drawing';b.hidden=true;b.onclick=openEditor;slot.stage.append(b);return b;});
+  const editor=document.createElement('dialog');editor.id='drawingEditor';editor.className='drawing-editor';editor.setAttribute('aria-labelledby','drawingEditorTitle');editor.innerHTML='<form method="dialog"><header><h2 id="drawingEditorTitle">Edit drawing</h2><button aria-label="Close drawing editor">×</button></header><label class="drawing-label-field">Label <input id="drawingLabel" maxlength="48" autocomplete="off"></label><div class="drawing-transform"><button type="button" data-rotate="-15">↶ 15°</button><button type="button" data-rotate="15">↷ 15°</button><button type="button" data-scale="0.85">Smaller</button><button type="button" data-scale="1.15">Larger</button></div><p>Rotate or resize this drawing. Undo remains available beside the video.</p><button>Done</button></form>';document.body.append(editor);
+  editor.addEventListener('close',()=>{if(pendingLabelCopy){const {slot,id}=pendingLabelCopy,shape=histories[slot].items.find(s=>s.id===id);pendingLabelCopy=null;if(shape&&slots[1-slot].ready){copyNew(slot,[shape]);changed();render();}}});
+  function openEditor(){
+    const shape=selectedShape();if(!shape)return;
+    editor.querySelector('.drawing-label-field').hidden=shape.tool!=='label';$('drawingLabel').value=shape.label||'';
+    editor.showModal();const b=editButtons[selection.slot].getBoundingClientRect();editor.style.left=`${Math.max(8,Math.min(b.left,innerWidth-editor.offsetWidth-8))}px`;editor.style.top=`${Math.max(8,Math.min(b.bottom+5,innerHeight-editor.offsetHeight-8))}px`;
+    if(shape.tool==='label'){$('drawingLabel').focus();$('drawingLabel').select();}
+  }
+  function editSelected(transform){const shape=selectedShape();if(shape)commit(selection.slot,histories[selection.slot].items.map(s=>s.id===shape.id?transform(s):s));}
+  $('drawingLabel').oninput=e=>{const value=e.target.value;editSelected(s=>({...s,label:value||'Note'}));};
+  editor.querySelectorAll('[data-rotate]').forEach(b=>b.onclick=()=>editSelected(s=>({...s,rotation:((s.rotation||0)+Number(b.dataset.rotate))%360})));
+  editor.querySelectorAll('[data-scale]').forEach(b=>b.onclick=()=>editSelected(s=>scaleShape(s,Number(b.dataset.scale))));
   document.addEventListener('keydown',e=>{
     if(state().busy || document.querySelector('dialog[open]') || e.target.closest('input,select,textarea,[contenteditable]')) return;
     if(e.key==='Escape') { if(draft || gesture) cancelDraft(); else setTool('view'); }
     if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='z') { e.preventDefault(); historyAction(e.shiftKey?'redo':'undo'); }
     if((e.key==='Delete' || e.key==='Backspace') && selection) { e.preventDefault(); $('drawingDelete').click(); }
+    if(!e.ctrlKey&&!e.metaKey&&!e.altKey){const shortcut={v:'select',m:'label',f:'pen',l:'line',a:'arrow',c:'circle',r:'rect',d:tool==='view'?'pen':'view'}[e.key.toLowerCase()];if(shortcut){e.preventDefault();setTool(shortcut);}}
   });
   function render() {
     const {active,mode,busy}=state(); invalidateSelection();
     toolbar.dataset.activeTool = tool;
     if(busy && (draft || gesture)) {draft=null;gesture=null;}
     const s=slots[active], history=current(), selected=selectedShape();
+    link.hidden=mode!=='compare';$('drawingLink').disabled=busy||!slots.every(s=>s.ready);custom.disabled=busy||!s.ready;custom.value=selected?.color||color;
+    editButtons.forEach((button,i)=>{button.hidden=!selected||selection.slot!==i||tool!=='select'||busy;
+      if(!button.hidden){const box=slots[i].annotationCanvas.getBoundingClientRect(),stage=slots[i].stage.getBoundingClientRect(),point=selected.points[0];
+        button.style.left=`${Math.max(4,Math.min(box.left-stage.left+(mirrored(i)?1-point.x:point.x)*box.width,stage.width-110))}px`;button.style.top=`${Math.max(4,Math.min(box.top-stage.top+point.y*box.height+12,stage.height-36))}px`;}
+    });
     slots.forEach((slot,i)=>{
       slot.viewport.apply();
       const canvas=slot.annotationCanvas; canvas.hidden=!slot.ready;
@@ -154,8 +188,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
       canvas.classList.toggle('drawing-active',!busy && visible && tool!=='view');
       canvas.classList.toggle('select-tool',tool==='select');
       if(!slot.ready || (mode==='single' && i===1)) return;
-      const scale=Math.min(slot.stage.clientWidth/slot.video.videoWidth,slot.stage.clientHeight/slot.video.videoHeight);
-      const w=Math.round(slot.video.videoWidth*scale),h=Math.round(slot.video.videoHeight*scale),dpr=window.devicePixelRatio||1;
+      const {width:w,height:h}=slot.viewport.geometry().image,dpr=window.devicePixelRatio||1;
       canvas.style.width=`${w}px`; canvas.style.height=`${h}px`;
       if(canvas.width!==Math.round(w*dpr) || canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
       const ctx=canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
@@ -175,8 +208,9 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
     $('drawingCopy').disabled=busy||!slots[1-active].ready||!displayed(active).length;
     $('drawingSnapshot').textContent=mode==='compare'?'↓ Save comparison':'↓ Save image';
     $('drawingCount').textContent=`${history.items.length} drawing${history.items.length===1?'':'s'}${mode==='compare'?` on ${active?'B':'A'}`:''}`;
-    const hints={view:'Choose a tool to draw. Zoom stays while playing.',select:'Drag a drawing or its white handles to edit it.',pen:'Drag to trace a path.',line:'Drag to draw a reference line.',arrow:'Drag from the tail to the arrow tip.',circle:'Drag around the area to highlight.',angle:draft?'Tap '+(draft.shape.points.length===1?'the joint, then the other endpoint.':'the last endpoint to finish.'):'Angle: tap the first endpoint, joint, then other endpoint.'};
+    const hints={view:'Choose a tool to draw. Zoom stays while playing.',select:'Drag to move. Edit drawing changes text, rotation and size.',pen:'Drag to trace a path.',line:'Drag to draw a reference line.',arrow:'Drag from the tail to the arrow tip.',circle:'Drag around the area to highlight.',rect:'Drag a box around the area to highlight.',label:'Tap the video to add a label.',angle:draft?'Tap '+(draft.shape.points.length===1?'the joint, then the other endpoint.':'the last endpoint to finish.'):'Angle: tap the first endpoint, joint, then other endpoint.'};
     const hint=!s.ready?'Add a video, then choose a drawing tool. No analysis needed.':busy?'Drawing is paused while analysis runs.':!visible?'Drawings are hidden. Show them again to edit.':hints[tool];
+    $('drawingHint').title=hint;
     if($('drawingHint').textContent!==hint) $('drawingHint').textContent=hint;
     const times=[...new Set(history.items.filter(s=>s.scope==='frame').map(s=>s.time))].sort((a,b)=>a-b);
     const frames=$('drawingFrames'), signature=`${active}:${busy}:${s.fps}:${s.shotFps}:${times.join(',')}`;
@@ -220,6 +254,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
         ctx.save();ctx.beginPath();ctx.rect(x,y,sw,sh);ctx.clip();
         ctx.translate(x+sw/2+view.offset.x*scale,y+sh/2+view.offset.y*scale);
         ctx.scale(scale*view.zoom,scale*view.zoom);ctx.translate(-w/2,-h/2);
+        ctx.beginPath();ctx.rect(view.crop.x*w,0,view.crop.width*w,h);ctx.clip();
         ctx.save();if(mirrored(i)){ctx.translate(w,0);ctx.scale(-1,1);}
         ctx.drawImage(s.video,0,0,w,h);ctx.drawImage(s.canvas,0,0,w,h);ctx.restore();
         for(const shape of displayed(i)) paintShape(ctx,shape,w,h,mirrored(i));
@@ -234,8 +269,8 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
   }
   return {
     render,
-    paintFrame(ctx,i,time,w,h,mirror) {
-      if(visible)for(const shape of histories[i].items.filter(shape=>isDrawingVisible(shape,time)))paintShape(ctx,shape,w,h,mirror);
+    paintFrame(ctx,i,time,w,h,mirror,region={x:0,width:1}) {
+      if(visible)for(const shape of histories[i].items.filter(shape=>isDrawingVisible(shape,time)))paintShape(ctx,{...shape,points:shape.points.map(p=>({...p,x:(p.x-region.x)/region.width}))},w,h,mirror);
     },
     capture(i,width=960,height=720) {
       const s=slots[i],view=s.viewport.geometry(),w=view.image.width,h=view.image.height;
@@ -246,6 +281,7 @@ export function createAnnotations({ slots, state, selectSlot, pauseAll, pauseCon
       ctx.save();ctx.beginPath();ctx.rect(x,y,sw,sh);ctx.clip();
       ctx.translate(x+sw/2+view.offset.x*scale,y+sh/2+view.offset.y*scale);
       ctx.scale(scale*view.zoom,scale*view.zoom);ctx.translate(-w/2,-h/2);
+      ctx.beginPath();ctx.rect(view.crop.x*w,0,view.crop.width*w,h);ctx.clip();
       ctx.save();if(mirrored(i)){ctx.translate(w,0);ctx.scale(-1,1);}
       ctx.drawImage(s.video,0,0,w,h);ctx.drawImage(s.canvas,0,0,w,h);ctx.restore();
       for(const shape of displayed(i)) paintShape(ctx,shape,w,h,mirrored(i));

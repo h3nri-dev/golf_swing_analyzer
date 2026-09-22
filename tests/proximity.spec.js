@@ -54,7 +54,7 @@ test('the nearby range target preserves per-clip ranges, independent playback an
   await page.locator('[data-range-slot="1"]').click();
   await expect(page.locator('#rangeStart')).toHaveValue('1.000'); await expect(page.locator('#rangeEnd')).toHaveValue('1.500');
   await page.locator('#analyze').click(); await expect(page.locator('#status')).toContainText('No clear pose');
-  await expect(page.locator('.key-card')).toHaveCount(6);
+  await expect(page.locator('.key-card')).toHaveCount(7);
   for(const [width,height,minStage] of [[1440,900,200],[1280,720,100],[2560,1440,500]]) {
     await page.setViewportSize({width,height}); await page.locator('#studio').evaluate(e=>e.scrollIntoView({block:'start'}));
     await page.screenshot({path:`/tmp/range-reviewed-${width}.png`});

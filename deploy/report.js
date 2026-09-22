@@ -1,5 +1,6 @@
 import { PRIMARY_MOMENTS as MOMENTS, MOMENT_COLORS, momentSource } from './keyframes.js';
 import { seconds, frameNumber } from './timing.js';
+import { MEASUREMENTS } from './analysis.js';
 
 let library;
 function pdfLibrary() {
@@ -72,7 +73,7 @@ export async function createPdfReport(report) {
     text(`Tempo: ${clip.tempo===null?'Set address, top and impact':`${clip.tempo.toFixed(2)} : 1${autoTempo?' (estimated)':''}`}`,x,253,9,green,true);
   });
   rect(16,261,178,18,pale);
-  wrap('All times are real elapsed seconds, calibrated with File FPS and Shot FPS. Frame numbers start at 0. Frames include the visible drawings, pose overlays, zoom and mirror settings.',20,268,170,9,muted,2);
+  wrap('Times use File FPS / Shot FPS; frames start at 0. Current views include visible reference overlays. Moment frames show the individual pose and drawings.',20,268,170,9,muted,2);
   for(const clip of report.clips) {
     doc.addPage();header(report.clips.length===2?`Swing ${clip.name} / Key moments`:'Your swing / Key moments','Frames, timing and measurements');filename(clip.file,16,47,178);
     text(`${clip.hand==='left'?'Left':'Right'}-handed  |  File ${clip.frameRate} FPS  |  Shot ${clip.recordingFrameRate} FPS`,16,61,10);
@@ -101,15 +102,32 @@ export async function createPdfReport(report) {
     doc.addPage();header(report.clips.length===2?`Swing ${clip.name} / Visual moments`:'Your swing / Visual moments','A closer look, frame by frame');filename(clip.file,16,47,178);
     text('Your marks take priority. Estimates use hand motion; verify impact in the video.',16,61,9,muted);
     text('Range previews are sampled frames when swing phases could not be identified.',16,67,9,muted);
+    const columns=clip.visualMoments.length>6?3:2,cellWidth=columns===3?166/3:85,imageHeight=columns===3?46:50;
     clip.visualMoments.forEach((entry,i)=>{
-      const x=16+(i%2)*93,y=76+Math.floor(i/2)*66;
-      image(entry.image,x,y,85,50);
-      rect(x,y,85,1.5,entry.source==='sampled'?muted:MOMENT_COLORS[entry.key]);
-      text(entry.label,x,y+56,10,green,true);
-      const source=momentSource(entry.source);
-      text(`${stamp(entry.time,clip)}  /  ${source}`,x,y+62,8,muted);
+      const x=16+(i%columns)*(cellWidth+(columns===3?6:8)),y=76+Math.floor(i/columns)*66;
+      image(entry.image,x,y,cellWidth,imageHeight);
+      rect(x,y,cellWidth,1.5,entry.source==='sampled'?muted:MOMENT_COLORS[entry.key]);
+      text(entry.label,x,y+imageHeight+6,10,green,true);
+      if(columns===3){text(stamp(entry.time,clip),x,y+imageHeight+11,8,muted);text(momentSource(entry.source),x,y+imageHeight+16,8,muted);}
+      else text(`${stamp(entry.time,clip)}  /  ${momentSource(entry.source)}`,x,y+imageHeight+12,8,muted);
     });
     rect(16,274,178,6,pale);text('Open Key moments on the site to enlarge, edit, play or draw on these frames.',19,278,8,muted);
+  }
+  for(const clip of report.clips){
+    if(!clip.analyzedRange)continue;
+    doc.addPage();header(report.clips.length===2?`Swing ${clip.name} / Observations`:'Your swing / Observations','Measurements you can check against the video');filename(clip.file,16,47,178);
+    text(`Current frame: ${stamp(clip.currentTime,clip)}`,16,64,10,green,true);
+    text(`Video area: ${clip.crop==='full'?'Full frame':clip.crop==='left'?'Left half':'Right half'}  /  ${clip.quality==='detailed'?'Detailed':'Fast'} analysis`,16,73,10,muted);
+    const cols=[18,82,106,132,156,180];rect(16,83,178,10,green);
+    ['Image angle','Now','Address','Top','Impact','Finish'].forEach((label,i)=>text(label,cols[i],89.5,i?8:10,'#FFFFFF',true));
+    MEASUREMENTS.forEach(([key,label],i)=>{
+      const y=93+i*12;rect(16,y,178,12,i%2?'#FFFFFF':pale);text(label,18,y+8,10);
+      const values=[clip.currentMeasurements,...['address','top','impact','finish'].map(k=>clip.momentMeasurements[k])];
+      values.forEach((value,j)=>text(angle(value?.[key]),cols[j+1],y+8,9));
+    });
+    text('What to review',16,205,14,green,true);
+    (clip.observations||[]).forEach((note,i)=>wrap(note,16,216+i*17,178,10,muted,2));
+    wrap('Shoulder and hip line angles describe slopes in the image, not 3D body rotation. These camera-dependent observations do not determine clubface angle, ball flight or a swing score.',16,258,178,9,muted,3);
   }
   const count=doc.getNumberOfPages();
   for(let page=1;page<=count;page++) {

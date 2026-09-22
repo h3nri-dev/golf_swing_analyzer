@@ -131,7 +131,7 @@ export function createStudioScreen({ slots, state, changed }) {
     studio.classList.toggle('independent-playback',mode==='compare'&&!linked);
     studio.classList.toggle('is-compare',mode==='compare');studio.classList.toggle('is-analyzing',busy);
     panels.video.querySelectorAll('[data-settings-slot]').forEach(el=>el.hidden=Number(el.dataset.settingsSlot)!==active);
-    const s = slots[active], hasResults = !!s.analyzedRange;
+    const s = slots[active], hasResults = mode==='compare'?slots.some(s=>!!s.analyzedRange):!!s.analyzedRange;
     rangeTargets.hidden=mode!=='compare';
     target.hidden=mode!=='compare';
     slots.forEach(slot=>slot.get('.slot-badge').hidden=mode!=='compare');
@@ -141,7 +141,8 @@ export function createStudioScreen({ slots, state, changed }) {
       if(resetBesideSummary)resetParent.append(reset);else resetParent.insertBefore(reset,commands);
     }
     rangeTargets.querySelectorAll('button').forEach((button,i)=>{button.disabled=busy;button.setAttribute('aria-pressed',i===active);});
-    $('resultsEmpty').hidden = hasResults;
+    $('resultsEmpty').hidden = !!s.analyzedRange;
+    $('resultsEmpty').textContent=mode==='compare'&&hasResults?`Analyze swing ${active?'B':'A'} to fill its measurements. The other video’s results remain shown.`:'Pause at your swing, then Analyze. You can play and draw without analysis.';
     panels.video.querySelectorAll('[data-settings-slot] h3').forEach((title,i)=>{title.textContent=slots[i].get('.file-name').textContent;});
     pieces.metrics.hidden = !hasResults; pieces.note.hidden = !hasResults;
     $('viewResults').hidden = !hasResults || busy;

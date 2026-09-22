@@ -1,4 +1,5 @@
 import { clamp } from './analysis.js';
+import { cropRegion } from './review.js';
 
 export function fitVideo(videoWidth, videoHeight, stageWidth, stageHeight) {
   const scale = Math.min(stageWidth / videoWidth, stageHeight / videoHeight);
@@ -37,17 +38,24 @@ export function createViewport(slot, index, { busy, viewing, enterView, changed 
   let view = { zoom: 1, x: 0.5, y: 0.5 }, panEnabled = true, gesture = null;
   const pointers = new Map();
   const stageSize = () => ({ width: slot.stage.clientWidth, height: slot.stage.clientHeight });
-  const imageSize = () => fitVideo(slot.video.videoWidth || 1, slot.video.videoHeight || 1, slot.stage.clientWidth || 1, slot.stage.clientHeight || 1);
+  const region = () => {const r=cropRegion(slot.crop);return slot.stage.classList.contains('mirrored')?{...r,x:1-r.x-r.width}:r;};
+  const imageSize = () => {
+    const crop=cropRegion(slot.crop),size=fitVideo((slot.video.videoWidth||1)*crop.width,slot.video.videoHeight||1,slot.stage.clientWidth||1,slot.stage.clientHeight||1);
+    return {width:Math.round(size.width/crop.width),height:size.height};
+  };
+  const croppedSize = () => {const image=imageSize();return {...image,width:image.width*region().width};};
   const canPan = () => slot.ready && !busy() && panEnabled && viewing() && view.zoom > 1;
   function apply() {
     const disabled = !slot.ready || busy();
     plane.hidden = !slot.ready;
     if (slot.ready && slot.stage.clientWidth && slot.stage.clientHeight) {
       const image = imageSize(), stage = stageSize();
-      view = constrainView(view, image, stage);
-      const offset = viewOffset(view, image);
+      const crop=region();view = constrainView(view, croppedSize(), stage);
+      const offset = viewOffset(view, croppedSize());
       plane.style.width = `${image.width}px`; plane.style.height = `${image.height}px`;
-      plane.style.left = `${(stage.width - image.width) / 2}px`; plane.style.top = `${(stage.height - image.height) / 2}px`;
+      plane.style.left = `${(stage.width-image.width*crop.width)/2-crop.x*image.width}px`; plane.style.top = `${(stage.height - image.height) / 2}px`;
+      plane.style.clipPath=`inset(0 ${(1-crop.x-crop.width)*100}% 0 ${crop.x*100}%)`;
+      plane.style.transformOrigin=`${(crop.x+crop.width/2)*100}% 50%`;
       plane.style.transform = `translate(${offset.x}px, ${offset.y}px) scale(${view.zoom})`;
     }
     get('.zoom-slider').value = view.zoom;
@@ -68,7 +76,7 @@ export function createViewport(slot, index, { busy, viewing, enterView, changed 
   function setZoom(zoom, anchor) {
     if (!slot.ready || busy()) return;
     const stage = stageSize();
-    view = zoomAt(view, zoom, anchor || { x: stage.width / 2, y: stage.height / 2 }, imageSize(), stage);
+    view = zoomAt(view, zoom, anchor || { x: stage.width / 2, y: stage.height / 2 }, croppedSize(), stage);
     panEnabled = true; changed(); apply();
   }
   get('.zoom-in').onclick = () => setZoom(view.zoom + 0.25);
@@ -108,7 +116,7 @@ export function createViewport(slot, index, { busy, viewing, enterView, changed 
   slot.stage.addEventListener('pointermove', e => {
     if (!pointers.has(e.pointerId) || !gesture) return;
     e.preventDefault(); e.stopPropagation(); pointers.set(e.pointerId, local(e));
-    const points = [...pointers.values()], image = imageSize(), stage = stageSize();
+    const points = [...pointers.values()], image = croppedSize(), stage = stageSize();
     const midpoint = points.length === 1 ? points[0] : { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
     const distance = points.length > 1 ? Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y) : 0;
     const zoom = gesture.distance > 0 ? clamp(gesture.view.zoom * distance / gesture.distance, 1, 4) : gesture.view.zoom;
@@ -130,6 +138,10 @@ export function createViewport(slot, index, { busy, viewing, enterView, changed 
     reset() { endGesture(); view = { zoom: 1, x: 0.5, y: 0.5 }; panEnabled = true; apply(); },
     cancelGesture: endGesture,
     state: () => ({ ...view }),
-    geometry: () => ({ image: imageSize(), stage: stageSize(), ...view, offset: viewOffset(view, imageSize()) }),
+    geometry: () => {
+      const image=imageSize(),crop=region(),offset=viewOffset(view,croppedSize());
+      offset.x+=(.5-crop.x-crop.width/2)*image.width*view.zoom;
+      return {image,stage:stageSize(),...view,offset,crop};
+    },
   };
 }

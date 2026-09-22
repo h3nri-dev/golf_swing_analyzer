@@ -6,16 +6,18 @@ export function createMoments({slots, state, controlClip, pause, seek, changed})
   const dialog = document.createElement('dialog');
   dialog.id = 'momentDialog'; dialog.className = 'moment-dialog';
   dialog.setAttribute('aria-labelledby','momentDialogTitle');
-  dialog.innerHTML = '<header><h2 id="momentDialogTitle">Swing moments</h2><button class="moment-close" aria-label="Close moment editor">×</button></header><p>Jump to a moment, edit its frame, or use <strong>Set here</strong>. Automatic estimates are filled in. Your edits take priority; ↺ restores an estimate. Frames start at 0.</p><div class="moment-rows"></div><p class="moment-error" role="alert" hidden></p>';
+  dialog.innerHTML = '<header><h2 id="momentDialogTitle">Swing moments</h2><button class="moment-close" aria-label="Close moment editor">×</button></header><p>Jump, edit the frame number, or use <strong>Set here</strong>. Your edits override estimates; ↺ restores them. Frames start at 0.</p><div class="moment-rows"></div><p class="moment-error" role="alert" hidden></p>';
   document.body.append(dialog);
-  let editing = 0;
+  let editing = 0,resetBackup=null;
+  const reset=document.createElement('button');reset.className='moment-reset-all';reset.textContent='Reset all edits';dialog.querySelector('header').insertBefore(reset,dialog.querySelector('.moment-close'));
+  reset.onclick=()=>{const s=slots[editing];if(resetBackup){s.marks=resetBackup;resetBackup=null;}else{resetBackup={...s.marks};s.marks={};}changed();renderEditor();};
   const rows = MOMENTS.map(([key,label]) => {
     const row = document.createElement('div'); row.className = 'moment-edit-row'; row.style.setProperty('--moment-color',MOMENT_COLORS[key]);
     row.innerHTML = `<button class="moment-jump"><strong>${label}</strong><span></span></button><label>Frame<input type="number" min="0" step="1"></label><button class="moment-set">Set here</button><button class="moment-delete" aria-label="Reset ${label} moment" title="Remove your edit and restore the automatic estimate, if available">×</button>`;
     dialog.querySelector('.moment-rows').append(row);
     const input = row.querySelector('input');
     function save(time) {
-      slots[editing].marks[key] = time; dialog.querySelector('.moment-error').hidden = true;
+      resetBackup=null; slots[editing].marks[key] = time; dialog.querySelector('.moment-error').hidden = true;
       changed(); renderEditor();
     }
     input.onchange = () => {
@@ -27,12 +29,13 @@ export function createMoments({slots, state, controlClip, pause, seek, changed})
       save(frame / s.fps);
     };
     row.querySelector('.moment-set').onclick = () => save(markedFrame(slots[editing].video.currentTime,slots[editing]));
-    row.querySelector('.moment-delete').onclick = () => { delete slots[editing].marks[key]; dialog.querySelector('.moment-error').hidden = true; changed(); renderEditor(); };
+    row.querySelector('.moment-delete').onclick = () => { resetBackup=null; delete slots[editing].marks[key]; dialog.querySelector('.moment-error').hidden = true; changed(); renderEditor(); };
     row.querySelector('.moment-jump').onclick = () => { const time = keyMomentEntries(slots[editing]).find(e=>e.key===key).time; dialog.close(); controlClip(editing,()=>seek(time)); };
     return {key,label,row,input};
   });
   function renderEditor() {
     const s = slots[editing];
+    reset.textContent=resetBackup?'Undo reset':'Reset all edits';reset.disabled=!resetBackup&&!Object.keys(s.marks).length;
     const suffix = state().mode==='compare' ? ` in swing ${editing?'B':'A'}` : '';
     dialog.querySelector('h2').textContent = state().mode==='compare' ? `Swing ${editing?'B':'A'} moments` : 'Swing moments';
     rows.forEach(({key,label,row,input}) => {
@@ -47,7 +50,7 @@ export function createMoments({slots, state, controlClip, pause, seek, changed})
     });
   }
   function open(index,key) {
-    controlClip(index, pause); editing = index; renderEditor();
+    controlClip(index, pause); editing = index;resetBackup=null; renderEditor();
     dialog.querySelector('.moment-error').hidden = true;
     dialog.showModal();
     const anchor = document.getElementById('keyMomentStrip').getBoundingClientRect();

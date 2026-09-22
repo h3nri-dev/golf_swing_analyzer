@@ -104,3 +104,14 @@ This applies [NN/g recognition over recall](https://www.nngroup.com/articles/rec
 Project instructions now explicitly preserve these requirements (`AGENTS.md` and `CLAUDE.md`). Regression coverage includes automatic detection with occluded lead-in/tails, one hidden wrist, brief pose gaps, multiple swings, slow motion, manual override/reset, source labels, local marking/jumps, common-controller isolation, keyboard access, target geometry and video height. Deterministic trajectories and a separate real-inference smoke test do not establish golf-phase accuracy on a labeled real-world dataset; no user-study result is claimed.
 
 Final validation: 38 unit tests and 98 Chrome browser tests passed, including actual MediaPipe inference. Single/paired PDFs were rendered and all six test-report pages visually checked. Screenshots cover 1280×720, 1440×900, 2560×1440 and phone layouts; zoom controls are bounded as a group so buttons cannot drift apart on wide screens.
+
+
+## Original-feature parity review (September 2026)
+
+The complete source comparison is in [ORIGINAL_FEATURE_AUDIT.md](ORIGINAL_FEATURE_AUDIT.md). It supersedes the earlier six-phase inventory: the original had seven phase markers but only six preview cards. The missing backswing now has a seventh card and all equivalent editing/export/navigation actions.
+
+Restoration covers measurements, observations, paths/overlays, reference pose, crop, detailed scanning, phase alignment, range looping and drawing capabilities. The right column uses two short measurement tables and expanded task groups; at laptop desktop widths it extends beside the playback dock so tools fit without reducing text to force a fit. Drawing transformations open beside the selected drawing. Neither range nor global synchronization moves away from playback. Overlay/Notes controls sit with the preview images they affect.
+
+This is a source audit and browser task review, not a claim of a new golfer usability study. Random grading and unobserved ball flight are explicitly replaced, with evidence in the audit. Future redesigns must retain an inventory of capabilities and regression coverage before changing their layout.
+
+Verification for this restoration: 45 unit tests passed; browser checks covered both actual Lite and Heavy pose inference, analyzed single/compare layouts, independent controls, overlay/crop persistence, consent, drawing transforms and exports. The final targeted PDF/crop/loop rerun passed all seven tests. Desktop and phone screenshots were inspected, along with all 14 rendered pages from three PDF examples and a cropped/mirrored PNG. At ordinary 1440×900 and larger desktop sizes the expanded sidebar fits; short/narrow screens allow internal sidebar scrolling while keeping the workspace and playback dock together.

@@ -12,7 +12,7 @@ async function setup(page) {
 }
 test('each player has adjacent moments with frame editing, jump, deletion and independent playback',async({page})=>{
   await setup(page);
-  for(const i of [0,1]) await expect(page.locator(`.moment-cell[data-moment-slot="${i}"]`)).toHaveCount(6);
+  for(const i of [0,1]) await expect(page.locator(`.moment-cell[data-moment-slot="${i}"]`)).toHaveCount(7);
   await card(page,0).locator('.clip-speed').selectOption('0.25');await card(page,0).locator('.clip-play').click();
   await card(page,1).locator('.clip-timeline').fill('0.5');
   const common=await page.locator('#time').textContent();
@@ -57,7 +57,7 @@ test('frame-aware clocks, range inputs and retiming use real seconds without mov
 test('single-video direct moments preserve marks when switching to compare',async({page})=>{
   await page.goto('/');await page.locator('input[type=file]').first().setInputFiles(new URL('./fixtures/portrait.mp4',import.meta.url).pathname);
   await expect(page.locator('#keyMomentStrip')).toBeVisible();
-  await expect(page.locator('.moment-cell[data-moment-slot="0"]')).toHaveCount(6);
+  await expect(page.locator('.moment-cell[data-moment-slot="0"]')).toHaveCount(7);
   await moment(page,0,'address').locator('.moment-mark').click();
   await expect(page.locator('#momentDialog')).toBeHidden();
   await page.locator('#compareMode').click();
@@ -80,15 +80,15 @@ for(const [width,height] of [[320,568],[844,390]]) {
   });
 }
 
-for(const [width,height] of [[1440,900],[2560,1440]])test(`all six direct marker actions stay with their previews at ${width}`,async({page})=>{
+for(const [width,height] of [[1440,900],[2560,1440]])test(`all seven direct marker actions stay with their previews at ${width}`,async({page})=>{
  await page.setViewportSize({width,height});await setup(page);
  await expect(page.locator('#analysisPanel .moment-mark')).toHaveCount(0);
  await expect(page.getByRole('combobox',{name:/Moments for swing/})).toHaveCount(0);
- for(const key of ['address','top','downswing','impact','follow','finish'])for(const i of [0,1]){
+ for(const key of ['address','backswing','top','downswing','impact','follow','finish'])for(const i of [0,1]){
   const cell=moment(page,i,key),button=cell.locator('.moment-mark');await expect(button).toBeInViewport();
   const box=await button.boundingBox(),preview=await cell.locator('.key-frame').boundingBox();
   expect(box.width).toBeGreaterThanOrEqual(28);expect(box.height).toBeGreaterThanOrEqual(28);
   expect(box.y-preview.y-preview.height).toBeLessThanOrEqual(2);
  }
- const colors=await page.locator('.key-card').evaluateAll(cards=>cards.map(c=>getComputedStyle(c).borderTopColor));expect(new Set(colors).size).toBe(6);
+ const colors=await page.locator('.key-card').evaluateAll(cards=>cards.map(c=>getComputedStyle(c).borderTopColor));expect(new Set(colors).size).toBe(7);
 });

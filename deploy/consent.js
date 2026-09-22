@@ -126,3 +126,10 @@ window.addEventListener('storage', event => {
   applyChoice();
 });
 applyChoice();
+
+// Restore feature-usage counts without sending footage, names or measurements.
+// Do not queue actions performed before consent or while the tag is loading.
+export function trackUsage(event,mode) {
+  if(choice!==true||!configured||window[DISABLE_KEY]||!['video_loaded','analysis_complete'].includes(event))return;
+  gtag('event',event,{send_to:MEASUREMENT_ID,mode:mode==='compare'?'compare':'single'});
+}

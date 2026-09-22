@@ -1,21 +1,24 @@
 import { KEY_MOMENTS, keyMomentEntries, MOMENT_COLORS, momentSource, MOMENT_NAMES } from './keyframes.js';
 import { frameNumber, frameStamp, lastFrame } from './timing.js';
-import { visible, nearestSample, measurements } from './analysis.js';
+import { drawReview, cropRegion, postureNotes, currentMoment } from './review.js';
+import { nearestSample, measurements } from './analysis.js';
 
-const connections=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
 const sourceLabel=momentSource;
 const name=i=>i?'B':'A';
 
-export function createKeyframeViews({slots,state,controlClip,seek,play,changed,paintDrawings,focusVideo,markMoment,editMoments}) {
+export function createKeyframeViews({slots,state,controlClip,seek,play,changed,paintDrawings,focusVideo,markMoment,editMoments,alignMoment}) {
   const strip=document.createElement('section');strip.id='keyMomentStrip';strip.className='key-moment-strip';strip.hidden=true;
   strip.setAttribute('aria-labelledby','keyMomentTitle');
-  strip.innerHTML='<header><h2 id="keyMomentTitle">Key moments</h2><span>Click a frame to jump · Set replaces its moment</span><button class="moments-edit" data-edit-slot="0">Edit A</button><button class="moments-edit" data-edit-slot="1">Edit B</button><button class="key-enlarge">Enlarge & edit ↗</button></header><div class="key-filmstrip"></div><p class="key-strip-note"></p>';
+  strip.innerHTML='<header><h2 id="keyMomentTitle">Key moments</h2><span>Click a frame to jump · Set replaces its moment</span><button class="moments-edit" data-edit-slot="0">Edit A</button><button class="moments-edit" data-edit-slot="1">Edit B</button><button class="key-overlay" aria-pressed="true">Overlay</button><button class="key-notes" aria-pressed="false">Notes</button><button class="key-enlarge">Enlarge & edit ↗</button></header><div class="key-filmstrip"></div><p class="key-strip-note"></p>';
   document.querySelector('.video-editor').append(strip);
   strip.querySelectorAll('[data-edit-slot]').forEach(b=>b.onclick=()=>editMoments(Number(b.dataset.editSlot)));
   const dialog=document.createElement('dialog');dialog.id='keyMomentDialog';dialog.className='key-review-dialog';dialog.setAttribute('aria-labelledby','keyReviewTitle');
   dialog.innerHTML='<header><div><span class="key-eyebrow">VISUAL SWING REVIEW</span><h2 id="keyReviewTitle">Key moment</h2></div><button class="key-review-close" aria-label="Close key moment view">×</button></header><nav aria-label="Key moments"></nav><p class="key-review-note">Estimates use hand movement, not ball contact. Check the frame and edit it below.</p><div class="key-review-panels"></div><p class="key-review-error" role="alert" hidden></p>';
   document.body.append(dialog);
-  let selected=0,signature='',drawingSignature='',paintVersion=0,lastVisual='';
+  let previewsOverlay=true,notesVisible=false;
+  strip.querySelector('.key-overlay').onclick=()=>{previewsOverlay=!previewsOverlay;strip.querySelector('.key-overlay').setAttribute('aria-pressed',previewsOverlay);lastVisual='';render(lastDrawings);};
+  strip.querySelector('.key-notes').onclick=()=>{notesVisible=!notesVisible;strip.querySelector('.key-notes').setAttribute('aria-pressed',notesVisible);lastVisual='';signature='';render(lastDrawings);};
+  let selected=0,signature='',drawingSignature='',lastDrawings='',paintVersion=0,lastVisual='';
   const caches=slots.map(()=>new Map()), workers=slots.map(()=>null), failed=slots.map(()=>new Set());
   const cellViews=[];
   const cards=KEY_MOMENTS.map(([key,label],position)=>{
@@ -28,15 +31,16 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
       button.innerHTML='<span class="key-frame-image"><canvas></canvas><span class="key-frame-placeholder"></span><span class="key-slot-badge"></span></span><span class="key-frame-time"></span>';
       button.onclick=()=>jump(i,position,false);
       const mark=document.createElement('button');mark.className='moment-mark';mark.textContent=`Set ${name(i)}`;mark.setAttribute('aria-label',`Set ${label} here in swing ${name(i)}`);mark.title=`Replace ${label} with the frame currently displayed in swing ${name(i)}`;mark.onclick=()=>markMoment(i,key);
-      cell.append(button,mark);cells.append(cell);cellViews.push({button,canvas:button.querySelector('canvas'),position,index:i});
+      const note=document.createElement('p');note.className='key-frame-note';cell.append(button,mark,note);cells.append(cell);cellViews.push({button,canvas:button.querySelector('canvas'),position,index:i});
     });
+    const sync=document.createElement('button');sync.className='key-sync';sync.textContent='Sync';sync.setAttribute('aria-label',`Sync here at ${label}`);sync.title=`Synchronize both videos at ${label}`;sync.onclick=()=>alignMoment(key);cells.append(sync);
     strip.querySelector('.key-filmstrip').append(card);
     const nav=document.createElement('button');nav.textContent=`${position+1} ${label}`;nav.style.setProperty('--moment-color',MOMENT_COLORS[key]);nav.onclick=()=>{selected=position;renderDialog();};dialog.querySelector('nav').append(nav);
     return {card,title};
   });
   const panels=slots.map((s,index)=>{
     const panel=document.createElement('section');panel.className='key-review-panel';panel.dataset.reviewSlot=index;
-    panel.innerHTML='<h3><span class="key-swing-label"></span> <span class="key-source"></span></h3><div class="key-large-frame"><canvas></canvas><p></p></div><div class="key-detail-line"><strong class="key-detail-time"></strong><span class="key-detail-metrics"></span></div><div class="key-edit-controls"><button class="key-frame-back">−1</button><label>Frame <input type="number" min="0" step="1"></label><button class="key-frame-next">+1</button><button class="key-set-current">Set from player</button></div><div class="key-review-actions"><button class="key-play-from">▶ Play from here</button><button class="key-draw-frame">Draw on frame ↗</button></div>';
+    panel.innerHTML='<h3><span class="key-swing-label"></span> <span class="key-source"></span></h3><div class="key-large-frame"><canvas></canvas><p></p></div><div class="key-detail-line"><strong class="key-detail-time"></strong><span class="key-detail-metrics"></span></div><p class="key-posture-notes"></p><div class="key-edit-controls"><button class="key-frame-back">−1</button><label>Frame <input type="number" min="0" step="1"></label><button class="key-frame-next">+1</button><button class="key-set-current">Set from player</button></div><div class="key-review-actions"><button class="key-play-from">▶ Play from here</button><button class="key-draw-frame">Draw on frame ↗</button></div>';
     dialog.querySelector('.key-review-panels').append(panel);
     const input=panel.querySelector('input');
     const save=frame=>{
@@ -62,7 +66,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
   dialog.querySelector('.key-review-close').onclick=()=>dialog.close();
   dialog.addEventListener('keydown',e=>{
     if(e.target.closest('input') || !['ArrowLeft','ArrowRight'].includes(e.key))return;
-    e.preventDefault();selected=(selected+(e.key==='ArrowRight'?1:5))%6;renderDialog();
+    e.preventDefault();selected=(selected+(e.key==='ArrowRight'?1:KEY_MOMENTS.length-1))%KEY_MOMENTS.length;renderDialog();
   });
   const cacheKey=(s,time)=>`${s.url}:${time}`;
   const imageFor=(index,time)=>caches[index].get(cacheKey(slots[index],time));
@@ -91,7 +95,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
         canvas.width=Math.round(decoder.videoWidth*scale);canvas.height=Math.round(decoder.videoHeight*scale);
         canvas.getContext('2d').drawImage(decoder,0,0,canvas.width,canvas.height);
         caches[index].set(cacheKey(s,current.time),canvas);
-        if(caches[index].size>18)caches[index].delete(caches[index].keys().next().value);
+        if(caches[index].size>21)caches[index].delete(caches[index].keys().next().value);
         paintVersion++;paintAll();
       }
     } catch {
@@ -102,17 +106,13 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
   function paint(canvas,index,entry) {
     const raw=imageFor(index,entry.time);canvas.hidden=!raw;if(!raw)return false;
     const s=slots[index],mirrored=s.stage.classList.contains('mirrored');
-    const stamp=JSON.stringify([entry.time,s.url,s.analysisVersion,paintVersion,mirrored,document.getElementById('skeleton').checked,drawingSignature]);
+    const stamp=JSON.stringify([entry.time,s.url,s.analysisVersion,paintVersion,mirrored,previewsOverlay,s.review,s.crop,drawingSignature]);
     if(canvas.dataset.paint===stamp)return true;
-    canvas.width=raw.width;canvas.height=raw.height;const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;
-    ctx.save();if(mirrored){ctx.translate(w,0);ctx.scale(-1,1);}ctx.drawImage(raw,0,0);
-    const points=nearestSample(s.samples,entry.time,s.tolerance)?.points;
-    if(points && document.getElementById('skeleton').checked){
-      ctx.strokeStyle=index?'#9ecdf2':'#dcf59c';ctx.fillStyle=ctx.strokeStyle;ctx.lineWidth=Math.max(2,w/320);
-      for(const [a,b] of connections){if(!visible(points[a]) || !visible(points[b]))continue;ctx.beginPath();ctx.moveTo(points[a].x*w,points[a].y*h);ctx.lineTo(points[b].x*w,points[b].y*h);ctx.stroke();}
-      for(const p of points.filter(visible)){ctx.beginPath();ctx.arc(p.x*w,p.y*h,Math.max(2,w/220),0,Math.PI*2);ctx.fill();}
-    }
-    ctx.restore();paintDrawings(ctx,index,entry.time,w,h,mirrored);canvas.dataset.paint=stamp;return true;
+    const region=cropRegion(s.crop),w=Math.round(raw.width*region.width),h=raw.height;
+    canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');
+    ctx.save();if(mirrored){ctx.translate(w,0);ctx.scale(-1,1);}ctx.translate(-region.x*raw.width,0);ctx.drawImage(raw,0,0);
+    if(previewsOverlay)drawReview(ctx,s,entry.time,raw.width,h,{color:index?'#9ecdf2':'#dcf59c',mirrorText:mirrored});
+    ctx.restore();paintDrawings(ctx,index,entry.time,w,h,mirrored,region);canvas.dataset.paint=stamp;return true;
   }
   function paintAll() {
     for(const {button,canvas,position,index} of cellViews){
@@ -144,32 +144,34 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
       panel.querySelector('.key-large-frame p').textContent=success?'':has?(failed[index].has(cacheKey(s,entry.time))?'Preview unavailable. Open this frame in the player.':'Loading frame…'):`Analyze${suffix} or set this moment from the player.`;
       panel.querySelector('.key-detail-time').textContent=has?`${entry.label} · ${frameStamp(entry.time,s)}`:'Choose a frame';
       const values=has?measurements(nearestSample(s.samples,entry.time,s.tolerance)?.points,s.video.videoWidth,s.video.videoHeight,s.hand):{};
+      panel.querySelector('.key-posture-notes').textContent=postureNotes(s,entry.time).join(' ');
       panel.querySelector('.key-detail-metrics').textContent=[['elbow','Elbow'],['knee','Knee'],['lean','Torso']].map(([k,l])=>`${l} ${Number.isFinite(values[k])?`${Math.round(values[k])}°`:'—'}`).join(' · ');
       const input=panel.querySelector('input');if(document.activeElement!==input)input.value=has?frameNumber(entry.time,s.fps):'';input.max=lastFrame(s.video.duration,s.fps);input.disabled=!s.ready||busy;
       panel.querySelectorAll('button').forEach(b=>b.disabled=!s.ready||busy||(!has&&!b.classList.contains('key-set-current')));
     });
   }
   function render(drawings='') {
-    drawingSignature=drawings+document.getElementById('drawingVisibility').getAttribute('aria-pressed');const {mode,busy}=state();
+    lastDrawings=drawings;drawingSignature=drawings+document.getElementById('drawingVisibility').getAttribute('aria-pressed');const {mode,busy}=state();
     const data=slots.map(s=>keyMomentEntries(s)),available=slots.some((s,i)=>(i===0||mode==='compare')&&s.ready);
     strip.hidden=!available;document.getElementById('studio').classList.toggle('has-key-moments',available);document.getElementById('studio').classList.toggle('key-portrait',slots[0].video.videoHeight>slots[0].video.videoWidth);
     const mobile=matchMedia('(max-width: 900px)').matches;
     const parent=mobile?document.getElementById('studio'):document.querySelector('.video-editor');
     if(strip.parentElement!==parent)parent.append(strip);
-    const next=JSON.stringify([mode,busy,slots.map((s,i)=>[s.ready,s.url,s.fps,s.shotFps,s.card.classList.contains('selected'),data[i]])]);
+    const next=JSON.stringify([mode,busy,slots.map((s,i)=>[s.ready,s.url,s.fps,s.shotFps,s.crop,s.analysisVersion,s.card.classList.contains('selected'),data[i]])]);
     if(signature!==next){
       signature=next;strip.querySelector('.key-enlarge').disabled=busy;
       strip.querySelectorAll('[data-edit-slot]').forEach((b,i)=>{b.hidden=i===1&&mode!=='compare';b.disabled=busy||!slots[i].ready;b.textContent=mode==='compare'?`Edit ${name(i)}`:'Edit frames';});
       const fallback=data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>e.source==='sampled'));
       const detected=data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>e.source==='estimated'));
       strip.classList.toggle('has-previews',data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>Number.isFinite(e.time))));
-      strip.querySelector('.key-strip-note').textContent=fallback?'Range previews shown where phases are uncertain. Set the correct moments from the player.':detected?'Auto estimates · Your marks override detection. Check impact against the video.':'Analyze to find the six moments automatically, or pause and use Set here.';
+      strip.querySelector('.key-strip-note').textContent=fallback?'Swing phases are uncertain · Set each moment from the player.':detected?'Auto estimates · Your edits take priority. Verify impact.':'Analyze to find all seven moments automatically, or pause and use Set here.';
       cards.forEach(({card,title},p)=>{
         const entries=data.map(a=>a[p]).filter((e,i)=>i===0||mode==='compare');
         const allSampled=entries.some(e=>Number.isFinite(e.time)) && entries.filter(e=>Number.isFinite(e.time)).every(e=>e.source==='sampled');
         card.style.setProperty('--moment-color',allSampled?'#667466':MOMENT_COLORS[KEY_MOMENTS[p][0]]);
         title.textContent=allSampled?`Preview ${p+1} ↗`:`${p+1} ${KEY_MOMENTS[p][0]==='follow'?'Follow':MOMENT_NAMES[KEY_MOMENTS[p][0]]} ↗`;title.disabled=busy;
         card.classList.toggle('paired',mode==='compare');
+        const sync=card.querySelector('.key-sync');sync.hidden=mode!=='compare';sync.disabled=busy||entries.length<2||entries.some(e=>!Number.isFinite(e.time)||e.source==='sampled');
       });
       cellViews.forEach(({button,position,index})=>{
         const entry=data[index][position],has=Number.isFinite(entry.time);
@@ -178,7 +180,9 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
         const mark=cell.querySelector('.moment-mark'),markLabel=mode==='compare'?`Set ${name(index)}`:'Set here';mark.textContent=markLabel;
         mark.setAttribute('aria-label',`Set ${KEY_MOMENTS[position][1]} here${suffix}`);
         mark.title=`Replace ${KEY_MOMENTS[position][1]} with the frame currently displayed${suffix}`;
-        if(entry.source==='sampled')mark.innerHTML=`${markLabel}<span class="moment-assignment">${entry.key==='follow'?'Follow':MOMENT_NAMES[entry.key]}</span>`;
+        if(entry.source==='sampled'&&mode==='single')mark.textContent=`Set ${entry.key==='follow'?'Follow':MOMENT_NAMES[entry.key]}`;
+        if(entry.source==='sampled'&&mode==='compare')mark.innerHTML=`${markLabel}<span class="moment-assignment">${entry.key==='follow'?'Follow':MOMENT_NAMES[entry.key]}</span>`;
+        const note=cell.querySelector('.key-frame-note');note.hidden=!notesVisible||!has||entry.source==='sampled';note.textContent=has?postureNotes(slots[index],entry.time)[0]:'';
         button.hidden=false;button.disabled=!has||busy;
         button.querySelector('.key-slot-badge').textContent=mode==='compare'?`${name(index)} · ${{marked:'Marked',estimated:'Auto',sampled:'Preview',empty:'Unset'}[entry.source]}`:sourceLabel(entry.source);
         button.title=has?`${entry.label} · ${sourceLabel(entry.source)} · ${frameStamp(entry.time,slots[index])}`:`Pause at ${KEY_MOMENTS[position][1]} and set it from the player`;
@@ -189,7 +193,9 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
       });
       slots.forEach((s,i)=>{if(!s.ready){caches[i].clear();failed[i].clear();}});
     }
-    const visual=JSON.stringify([next,drawingSignature,slots.map(s=>[s.analysisVersion,s.hand,s.stage.classList.contains('mirrored')]),document.getElementById('skeleton').checked,mobile]);
+    const current=slots.map(s=>currentMoment(s)?.key);
+    cellViews.forEach(({button,position,index})=>button.setAttribute('aria-current',current[index]===KEY_MOMENTS[position][0]));
+    const visual=JSON.stringify([next,drawingSignature,slots.map(s=>[s.analysisVersion,s.hand,s.crop,s.review,s.stage.classList.contains('mirrored')]),previewsOverlay,notesVisible,mobile]);
     if(visual===lastVisual)return;lastVisual=visual;
     if(available){paintAll();slots.forEach((s,i)=>{if(i===0||mode==='compare')void fillCache(i);});}
   }

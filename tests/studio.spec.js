@@ -85,3 +85,10 @@ test('independent videos can both play and replacement clears only its own marks
   expect(await clip(page,0).locator('video').evaluate(v=>v.paused)).toBe(false);
   await focusSection(page,'range');await page.locator('#rangeStart').fill('3'); await focusSection(page,'range');await page.locator('#rangeEnd').fill('1'); await expect(page.locator('#rangeError')).toContainText('End must be after start'); await expect(page.locator('#analyze')).toBeDisabled(); await expect((await transport(page,'play'))).toBeEnabled();
 });
+
+test('real Detailed model produces visible image measurements locally',async({page})=>{
+ test.skip(!process.env.POSE_FIXTURE,'Set POSE_FIXTURE for actual Heavy-model inference.');test.setTimeout(120000);
+ const requests=[];page.on('request',r=>requests.push(r.method()));await page.goto('/');await clip(page,0).locator('input[type=file]').setInputFiles(process.env.POSE_FIXTURE);await expect(page.locator('#analyze')).toBeEnabled();
+ await page.locator('#rangeStart').fill('0.1');await page.locator('#rangeEnd').fill('0.3');await page.locator('.analysis-quality').first().selectOption('detailed');await page.locator('#analyze').click();
+ await expect(page.locator('#status')).toContainText('Analysis ready',{timeout:100000});const report=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(report.quality).toBe('detailed');expect(report.coverage).toBeGreaterThan(0);expect(report.measurements.some(s=>Number.isFinite(s.trailElbow))).toBe(true);expect(requests.every(m=>m==='GET')).toBe(true);
+});

@@ -180,3 +180,16 @@ for (const path of ['privacy.html', 'terms.html']) {
     });
   }
 }
+
+test('restored usage events are consent-gated and omit private video information',async({page})=>{
+ await stubAnalytics(page);await page.goto('/');
+ await page.evaluate(async()=>{const {trackUsage}=await import('/consent.js');trackUsage('video_loaded','single');trackUsage('analysis_complete','single');});
+ expect((await commands(page)).filter(c=>c[0]==='event')).toEqual([]);
+ await page.getByRole('button',{name:'Allow analytics',exact:true}).click();await expect.poll(async()=>(await commands(page)).some(c=>c[0]==='config')).toBe(true);
+ await page.locator('input[type=file]').first().setInputFiles(fixture);await expect(page.locator('video').first()).toBeVisible();
+ const event=(await commands(page)).find(c=>c[1]==='video_loaded');expect(event).toEqual(['event','video_loaded',{send_to:id,mode:'single'}]);
+ await page.evaluate(async()=>{const {trackUsage}=await import('/consent.js');trackUsage('analysis_complete','compare');trackUsage('private_filename.mp4','single');});
+ expect((await commands(page)).filter(c=>c[1]==='analysis_complete')).toEqual([['event','analysis_complete',{send_to:id,mode:'compare'}]]);
+ await settingsFromStudio(page);await page.locator('#cookieDialog [data-analytics-choice="false"]').click();const before=(await commands(page)).filter(c=>c[0]==='event');
+ await page.evaluate(async()=>(await import('/consent.js')).trackUsage('analysis_complete','single'));expect((await commands(page)).filter(c=>c[0]==='event')).toEqual(before);
+});

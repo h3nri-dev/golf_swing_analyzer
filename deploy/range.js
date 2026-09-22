@@ -74,8 +74,9 @@ export function createRangeSelector({ slots, state, seek, pause, changed }) {
   };
   function render(preserveInputs = false) {
     const s = current(), { active, mode, busy } = state(), duration = s.ready ? s.video.duration : 0;
-    slots.forEach(followCurrent);
+    slots.forEach(s=>{if(s.rangeAuto!==false)s.loop=null;followCurrent(s);});
     const error = s.ready ? analysisRangeError(s.start, s.end, duration, clipRate(s)) : '';
+    if(error)s.loop=null;
     const show = time => format(realTime(time, s));
     const name = mode==='compare' ? `Swing ${active ? 'B' : 'A'}` : 'Your swing';
     panel.querySelectorAll('input,button').forEach(el => el.disabled = !s.ready || busy);

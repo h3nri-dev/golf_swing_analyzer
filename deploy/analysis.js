@@ -9,8 +9,9 @@ export function angle(a, b, c, width, height) {
   const norm = Math.hypot(...u) * Math.hypot(...v);
   return norm < 1e-8 ? null : Math.acos(clamp((u[0] * v[0] + u[1] * v[1]) / norm, -1, 1)) * 180 / Math.PI;
 }
+export const MEASUREMENTS = [['elbow','Lead elbow'],['trailElbow','Trail elbow'],['knee','Lead knee'],['trailKnee','Trail knee'],['lean','Torso lean'],['wrist','Lead wrist'],['shoulderLine','Shoulder line'],['hipLine','Hip line']];
 export function measurements(points, width, height, hand = 'right') {
-  if (!points) return { elbow: null, knee: null, lean: null };
+  if (!points) return Object.fromEntries(MEASUREMENTS.map(([key])=>[key,null]));
   const side = hand === 'right' ? 0 : 1;
   const elbow = angle(points[11 + side], points[13 + side], points[15 + side], width, height);
   const knee = angle(points[23 + side], points[25 + side], points[27 + side], width, height);
@@ -20,7 +21,16 @@ export function measurements(points, width, height, hand = 'right') {
     const dy = ((points[23].y + points[24].y) - (points[11].y + points[12].y)) * height / 2;
     if (Math.hypot(dx, dy) > 1e-8) lean = Math.atan2(Math.abs(dx), dy) * 180 / Math.PI;
   }
-  return { elbow, knee, lean };
+  const line = (a,b) => {
+    if (![points[a],points[b]].every(visible)) return null;
+    const dx=(points[b].x-points[a].x)*width,dy=(points[b].y-points[a].y)*height;
+    return Math.hypot(dx,dy)<1e-8?null:Math.atan2(Math.abs(dy),Math.abs(dx))*180/Math.PI;
+  };
+  return { elbow, knee, lean,
+    trailElbow:angle(points[12-side],points[14-side],points[16-side],width,height),
+    trailKnee:angle(points[24-side],points[26-side],points[28-side],width,height),
+    wrist:angle(points[13+side],points[15+side],points[19+side],width,height),
+    shoulderLine:line(11,12),hipLine:line(23,24) };
 }
 export function syncBounds(durationA, durationB, offset) {
   const start = Math.max(0, -offset);

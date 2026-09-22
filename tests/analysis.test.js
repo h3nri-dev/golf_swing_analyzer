@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { angle, measurements, syncBounds, frameTime, tempo, nearestSample, smoothSamples } from '../deploy/analysis.js';
+import { angle, MEASUREMENTS, measurements, syncBounds, frameTime, tempo, nearestSample, smoothSamples } from '../deploy/analysis.js';
 const p = (x,y,visibility=1) => ({x,y,visibility});
 test('angles account for video aspect ratio', () => {
   // Pixel vectors (-100, 100) and (100, 100) form 90 degrees.
@@ -10,7 +10,7 @@ test('angles account for video aspect ratio', () => {
 test('occluded and degenerate joints yield no measurement', () => {
   assert.equal(angle(p(0,0,.2),p(0,1),p(1,1),100,100),null);
   assert.equal(angle(p(0,0),p(0,0),p(1,1),100,100),null);
-  assert.deepEqual(measurements(null,100,100),{elbow:null,knee:null,lean:null});
+  assert.deepEqual(measurements(null,100,100),Object.fromEntries(MEASUREMENTS.map(([key])=>[key,null])));
 });
 test('positive and negative offsets constrain both videos to their overlap', () => {
   assert.deepEqual(syncBounds(10,8,2),{start:0,end:6});

@@ -28,9 +28,15 @@ function segmentDistance(p, a, b) {
   const t = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1), 0, 1);
   return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
 }
-export function hitShape(shape, point, width, height, tolerance = 12) {
-  const p = project(point, width, height, false);
+export function hitShape(shape, point, width, height, tolerance = 12, mirrored = false) {
+  let p = project(point, width, height, false);
   const pts = shape.points.map(q => project(q, width, height, false));
+  if(shape.rotation){const center=shapeCenter(pts),r=-shape.rotation*Math.PI/180,x=p.x-center.x,y=p.y-center.y;p={x:center.x+x*Math.cos(r)-y*Math.sin(r),y:center.y+x*Math.sin(r)+y*Math.cos(r)};}
+  if(shape.tool==='label'){const a=pts[0],scale=shape.labelScale||1,span=Math.max(30,(shape.label||'Note').length*9)*scale;return p.x>=a.x-(mirrored?span:0)-tolerance&&p.x<=a.x+(mirrored?0:span)+tolerance&&Math.abs(p.y-a.y)<24*scale+tolerance;}
+  if(shape.tool==='rect'){
+    const [a,b]=pts,c={x:a.x,y:b.y},d={x:b.x,y:a.y};
+    return [[a,d],[d,b],[b,c],[c,a]].some(([a,b])=>segmentDistance(p,a,b)<=tolerance);
+  }
   if (shape.tool === 'circle') {
     const [a, b] = pts, rx = Math.abs(b.x - a.x) / 2, ry = Math.abs(b.y - a.y) / 2;
     if (rx < 1 || ry < 1) return false;
@@ -38,6 +44,14 @@ export function hitShape(shape, point, width, height, tolerance = 12) {
     return Math.abs(norm - 1) * Math.min(rx, ry) <= tolerance;
   }
   return pts.some((q, i) => i > 0 && segmentDistance(p, pts[i - 1], q) <= tolerance);
+}
+const shapeCenter=points=>({x:(Math.min(...points.map(p=>p.x))+Math.max(...points.map(p=>p.x)))/2,y:(Math.min(...points.map(p=>p.y))+Math.max(...points.map(p=>p.y)))/2});
+export function scaleShape(shape,factor) {
+  if(shape.tool==='label')return {...shape,labelScale:clamp((shape.labelScale||1)*factor,.75,3)};
+  const center=shapeCenter(shape.points);
+  const limits=shape.points.flatMap(p=>[['x',p.x],['y',p.y]].map(([axis,value])=>{const d=value-center[axis];return d>0?(1-center[axis])/d:d<0?-center[axis]/d:Infinity;}));
+  const scale=Math.min(factor,...limits);
+  return {...shape,points:shape.points.map(p=>({x:center.x+(p.x-center.x)*scale,y:center.y+(p.y-center.y)*scale}))};
 }
 export class DrawingHistory {
   constructor() { this.items = []; this.past = []; this.future = []; }
@@ -54,11 +68,16 @@ export function paintShape(ctx, shape, width, height, mirrored = false, selected
   if (!shape.points.length) return;
   const pts = shape.points.map(p => project(p, width, height, mirrored));
   ctx.save();
+  if(shape.rotation){const center=shapeCenter(pts);ctx.translate(center.x,center.y);ctx.rotate(shape.rotation*Math.PI/180*(mirrored?-1:1));ctx.translate(-center.x,-center.y);}
   ctx.lineWidth = shape.width; ctx.strokeStyle = shape.color; ctx.fillStyle = shape.color;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.shadowColor = '#0008'; ctx.shadowBlur = 2;
   ctx.beginPath();
-  if (shape.tool === 'circle' && pts.length > 1) {
+  if(shape.tool==='label'){
+    const p=pts[0],label=shape.label||'Note',scale=shape.labelScale||1;ctx.font=`600 ${16*scale}px "DM Sans", sans-serif`;const tw=ctx.measureText(label).width;
+    ctx.fillStyle='#17251fed';ctx.fillRect(p.x-5,p.y-22*scale,tw+12,30*scale);ctx.fillStyle=shape.color;ctx.fillText(label,p.x,p.y);ctx.beginPath();ctx.arc(p.x,p.y+8,4,0,Math.PI*2);ctx.fill();
+  } else if(shape.tool==='rect'&&pts.length>1){const [a,b]=pts;ctx.rect(a.x,a.y,b.x-a.x,b.y-a.y);
+  } else if (shape.tool === 'circle' && pts.length > 1) {
     const [a, b] = pts;
     ctx.ellipse((a.x + b.x)/2, (a.y + b.y)/2, Math.abs(a.x-b.x)/2, Math.abs(a.y-b.y)/2, 0, 0, Math.PI*2);
   } else { pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); }

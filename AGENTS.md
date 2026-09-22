@@ -4,7 +4,7 @@ Read `CLAUDE.md` for the static app architecture, deployment and regression chec
 
 The user's standing UX requirement is **proximity**: controls used together belong together, beside the video or object they affect. Apply it proactively to every change; do not wait for the user to repeat it.
 
-- Preserve automatic key-frame detection and the six visible visual moment cards. Never replace Analyze results with a manual-only workflow.
+- Preserve automatic key-frame detection and the seven visible visual moment cards. Never replace Analyze results with a manual-only workflow.
 - Put one-click Set A / Set B and jump actions on those cards. Keep phase colors, names and numbers consistent. Do not hide phases in a dropdown, add duplicate marker rails or move marking to the far-right settings sidebar.
 - Keep automatic estimates, user edits and uncertain range previews distinct. Manual edits survive reanalysis and can be reset. Only real phase estimates/marks contribute to tempo.
 - Keep each video's full playback controls and the common controller visible. Local actions leave the common display and the other independently playing video alone.
@@ -13,3 +13,9 @@ The user's standing UX requirement is **proximity**: controls used together belo
 - Keep the app static and local-only, consent-gated analytics, legal links and golf branding intact. Run applicable unit/browser checks and inspect screenshots before committing/deploying.
 
 - Use neutral labels in Single video mode: Play, Pause, Your swing, Set here and Edit frames. Reserve A/B identifiers and target selectors for Compare mode, including dialogs, accessibility labels and exports.
+
+### Feature preservation
+- Read `ORIGINAL_FEATURE_AUDIT.md` before changing analysis or review workflows. The original source baseline is `8cc316e`; distinguish working controls from dormant code and ungrounded scores.
+- Preserve the restored eight 2D measurements, per-video overlays and head/both-hand trails, reference overlay, source-area crop, Detailed analysis, phase alignment, explicit range looping, labels/boxes/transforms/copying and keyboard navigation. Keep source-coordinate annotations and cached crop results intact.
+- An interface redesign must inventory the existing features and provide a tested equivalent for each useful capability. Do not silently delete features, hide core tasks behind tabs, shrink text to force a fit, or substitute random scores for observations.
+- Render-check analyzed single and compare layouts, including the current sidebar contents, not only the empty page.
