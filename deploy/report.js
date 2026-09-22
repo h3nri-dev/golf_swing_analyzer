@@ -1,4 +1,4 @@
-import { PRIMARY_MOMENTS as MOMENTS } from './keyframes.js';
+import { PRIMARY_MOMENTS as MOMENTS, MOMENT_COLORS, momentSource } from './keyframes.js';
 import { seconds, frameNumber } from './timing.js';
 
 let library;
@@ -68,7 +68,8 @@ export async function createPdfReport(report) {
     metrics(clip.currentMeasurements,x,218,w);
     text(`Selected: ${interval(clip.selectedRange,clip)}`,x,239,9,muted);
     text(`Analyzed: ${interval(clip.analyzedRange,clip)}`,x,245,9,muted);
-    text(`Tempo: ${clip.tempo===null?'Mark address, top and impact':`${clip.tempo.toFixed(2)} : 1`}`,x,253,9,green,true);
+    const autoTempo=['address','top','impact'].some(k=>!Number.isFinite(clip.marks[k]));
+    text(`Tempo: ${clip.tempo===null?'Set address, top and impact':`${clip.tempo.toFixed(2)} : 1${autoTempo?' (estimated)':''}`}`,x,253,9,green,true);
   });
   rect(16,261,178,18,pale);
   wrap('All times are real elapsed seconds, calibrated with File FPS and Shot FPS. Frame numbers start at 0. Frames include the visible drawings, pose overlays, zoom and mirror settings.',20,268,170,9,muted,2);
@@ -78,21 +79,22 @@ export async function createPdfReport(report) {
     const analysis = clip.analyzedRange ? `${clip.measurements.length} samples  /  ${clip.coverage}% pose coverage  /  ${interval(clip.analyzedRange,clip)}` : 'Not analyzed. Review and mark moments without running analysis.';
     text(analysis,16,68,9,muted);
     MOMENTS.forEach(([key,label],i)=>{
-      const x=16+(i%2)*93,y=76+Math.floor(i/2)*73,time=clip.marks[key],exists=Number.isFinite(time);
+      const x=16+(i%2)*93,y=76+Math.floor(i/2)*73,time=clip.phaseTimes[key],exists=Number.isFinite(time);
       if(exists) image(clip.momentImages[key],x,y,85,55);
       else {rect(x,y,85,55,pale);text('Not marked',x+28,y+29,11,muted);}
-      text(label,x,y+61,10,green,true);
+      rect(x,y,85,1.5,MOMENT_COLORS[key]);
+      text(`${label}${Number.isFinite(clip.marks[key])?' / Your mark':exists?' / Auto estimate':''}`,x,y+61,10,green,true);
       text(exists?stamp(time,clip):'Add this moment beside the Play button.',x,y+67,8.5,muted);
     });
-    text('Measurements at your marked frames',16,226,12,green,true);
+    text('Measurements at your key frames',16,226,12,green,true);
     rect(16,230,178,8,green);
     const columns=[18,70,97,130,163];
     ['Moment','Real seconds','Elbow','Knee','Torso lean'].forEach((label,i)=>text(label,columns[i],235.5,9,'#FFFFFF',true));
     MOMENTS.forEach(([key,label],i)=>{
       const y=238+i*8,values=clip.momentMeasurements[key];rect(16,y,178,8,i%2?pale:'#FFFFFF');
-      [label,Number.isFinite(clip.marks[key])?seconds(real(clip.marks[key],clip)):'-',angle(values?.elbow),angle(values?.knee),angle(values?.lean)].forEach((value,j)=>text(value,columns[j],y+5.5,9));
+      [label,Number.isFinite(clip.phaseTimes[key])?seconds(real(clip.phaseTimes[key],clip)):'-',angle(values?.elbow),angle(values?.knee),angle(values?.lean)].forEach((value,j)=>text(value,columns[j],y+5.5,9));
     });
-    text(clip.tempo===null?'Tempo requires ordered address, top and impact marks.':`Tempo ${clip.tempo.toFixed(2)} : 1  |  Backswing ${seconds(real(clip.marks.top-clip.marks.address,clip))} s  /  Downswing ${seconds(real(clip.marks.impact-clip.marks.top,clip))} s`,16,278,9,green,true);
+    text(clip.tempo===null?'Tempo requires ordered address, top and impact marks.':`Tempo ${clip.tempo.toFixed(2)} : 1  |  Backswing ${seconds(real(clip.phaseTimes.top-clip.phaseTimes.address,clip))} s  /  Downswing ${seconds(real(clip.phaseTimes.impact-clip.phaseTimes.top,clip))} s`,16,278,9,green,true);
   }
   for(const clip of report.clips) {
     if(!clip.visualMoments?.length)continue;
@@ -102,8 +104,9 @@ export async function createPdfReport(report) {
     clip.visualMoments.forEach((entry,i)=>{
       const x=16+(i%2)*93,y=76+Math.floor(i/2)*66;
       image(entry.image,x,y,85,50);
+      rect(x,y,85,1.5,entry.source==='sampled'?muted:MOMENT_COLORS[entry.key]);
       text(entry.label,x,y+56,10,green,true);
-      const source={marked:'Your mark',estimated:'Estimate',sampled:'Range preview'}[entry.source];
+      const source=momentSource(entry.source);
       text(`${stamp(entry.time,clip)}  /  ${source}`,x,y+62,8,muted);
     });
     rect(16,274,178,6,pale);text('Open Key moments on the site to enlarge, edit, play or draw on these frames.',19,278,8,muted);

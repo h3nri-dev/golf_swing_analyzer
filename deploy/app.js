@@ -1,7 +1,7 @@
 import { clamp, visible, measurements, frameTime, tempo, nearestSample, smoothSamples } from './analysis.js';
-import { mediaRate, synchronization, realTime, fileTime, frameStamp, frameNumber, seconds, markedFrame } from './timing.js';
+import { mediaRate, synchronization, realTime, fileTime, frameStamp, frameNumber, seconds } from './timing.js';
 import { createMoments } from './moments.js';
-import { PRIMARY_MOMENTS, suggestKeyMoments, keyMomentEntries } from './keyframes.js';
+import { PRIMARY_MOMENTS, suggestKeyMoments, keyMomentEntries, phaseTimes } from './keyframes.js';
 import { createKeyframeViews } from './keyframe-views.js';
 import { createAnnotations } from './annotations.js';
 import { createViewport } from './viewport.js';
@@ -61,13 +61,6 @@ const slots = names.map((name, index) => {
   slot.video.addEventListener('pause', updatePlayback);
   return slot;
 });
-for (const [index, [key, name]] of phases.entries()) {
-  const row = document.createElement('div'); row.className = 'phase-row';
-  row.innerHTML = `<span class="phase-number">0${index + 1}</span><span>${name}</span><button class="phase-time" id="phase-${key}" aria-label="Go to ${name}" disabled>—</button><button id="mark-${key}" aria-label="Mark ${name}" disabled>+ Mark</button>`;
-  $('phases').append(row);
-  $(`mark-${key}`).onclick = () => { pauseControlled(); slots[active].marks[key] = markedFrame(slots[active].video.currentTime,slots[active]); updatePhases(); };
-  $(`phase-${key}`).onclick = () => seekActive(slots[active].marks[key]);
-}
 function toast(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toast.timer); toast.timer = setTimeout(() => $('toast').hidden = true, 4500); }
 function timingClips() { return slots.map(s => ({duration:s.video.duration, fps:s.fps, shotFps:s.shotFps ?? s.fps})); }
 function timingRate(s) { return mediaRate(s.fps, s.shotFps ?? s.fps); }
@@ -236,7 +229,6 @@ function update() {
   });
   const commonReady = mode === 'compare' ? slots.every(slot => slot.ready) : s.ready;
   for (const id of ['play','previous','next','restart','timeline','speed']) $(id).disabled = !commonReady || busy;
-  $('clearMarks').disabled = !s.ready || busy;
   $('export').disabled = busy || !s.ready;
   $('align').disabled = busy || !slots.every(x => x.ready);
   $('cancel').hidden = !busy; $('progress').hidden = !busy;
@@ -253,14 +245,10 @@ function update() {
 }
 function updatePhases() {
   const s = slots[active];
-  for (const [key] of phases) {
-    const time = s.marks[key]; $(`phase-${key}`).textContent = time === undefined ? '—' : `${seconds(realTime(time,s))} s`;
-    $(`phase-${key}`).title = time === undefined ? 'Not marked' : frameStamp(time,s);
-    $(`phase-${key}`).disabled = time === undefined || !!job; $(`mark-${key}`).disabled = !s.ready || !!job;
-    $(`mark-${key}`).textContent = time === undefined ? '+ Mark' : 'Update';
-  }
-  const ratio = tempo(s.marks); $('tempo').textContent = ratio === null ? '—' : `${ratio.toFixed(2)} : 1`;
-  $('tempoNote').textContent = ratio !== null ? `${seconds(realTime(s.marks.top - s.marks.address,s))} s backswing / ${seconds(realTime(s.marks.impact - s.marks.top,s))} s downswing. Real time from your marks.` : ['address','top','impact'].every(k => k in s.marks) ? 'Marks must follow this order: address → top → impact.' : 'Mark address, top and impact to measure your tempo.';
+  const times=phaseTimes(s), ratio=tempo(times);
+  const automatic=['address','top','impact'].some(key=>!Number.isFinite(s.marks[key]));
+  $('tempo').textContent = ratio === null ? '—' : `${ratio.toFixed(2)} : 1`;
+  $('tempoNote').textContent = ratio !== null ? `${seconds(realTime(times.top-times.address,s))} s backswing / ${seconds(realTime(times.impact-times.top,s))} s downswing. ${automatic?'From auto estimates; adjust moments below the player.':'Real time from your marks.'}` : ['address','top','impact'].every(k=>k in times) ? 'Moments must follow this order: address → top → impact.' : 'Analyze to find moments, or set address, top and impact below the player.';
   $('export').disabled = !!job || !s.ready;
   moments?.render();
   keyframeViews?.render(JSON.stringify(slots.map((s,i)=>annotations?.data(i))));
@@ -482,9 +470,12 @@ async function analyze() {
     if (!token.cancelled) {
       s.samples = smoothSamples(samples); s.tolerance = interval * 0.6;
       s.analyzedRange = [start, s.end];
-      s.keyMoments = suggestKeyMoments(s.samples,start,s.end,s.fps); s.analysisVersion++;
+      s.keyMoments = suggestKeyMoments(s.samples,start,s.end,s.fps,{anchor:originalTime,rate:timingRate(s)}); s.analysisVersion++;
       const valid = samples.filter(x => x.points && [11,12,23,24].every(i => visible(x.points[i]))).length;
-      s.status = valid === 0 ? 'No clear pose found. Try a well-lit clip with your whole body visible.' : `Analysis ready · ${samples.length} samples. ${valid / samples.length < 0.5 ? 'Low pose coverage: try better lighting or a clearer view.' : 'Your key-moment previews are beside the player. Click a frame to review it.'}`;
+      const detected=s.keyMoments.some(e=>e.source==='estimated');
+      s.status = detected ? 'Analysis ready · 6 key moments estimated automatically. Click a frame to review; Set A / Set B corrects it.'
+        : valid === 0 ? 'No clear pose found. Try a well-lit clip with your whole body visible.'
+        : 'Analysis ready · Swing phases unclear. Range previews are available; set moments below the player.';
     }
   } catch (error) {
     if (!token.cancelled) console.error('Pose analysis failed:', error);
@@ -515,7 +506,6 @@ $('previous').onclick = () => stepBoth(-1); $('next').onclick = () => stepBoth(1
 $('speed').onchange = e => setSpeed(Number(e.target.value), true);
 $('hand').onchange = e => { slots[active].hand = e.target.value; render(); };
 for (const id of ['skeleton','trail','guideLines']) $(id).onchange = render;
-$('clearMarks').onclick = () => { slots[active].marks = {}; updatePhases(); };
 $('analyze').onclick = $('analyzeSelection').onclick = analyze; $('cancel').onclick = $('cancelSelection').onclick = () => { if (job) { job.cancelled = true; job.controller.abort(); $('status').textContent = $('rangeStatus').textContent = 'Cancelling… finishing the current model operation.'; } };
 // Shared report model: timestamps remain in media seconds internally so
 // drawings and analyzed samples stay attached to their original frames.
@@ -528,8 +518,8 @@ export function reportData(index = active) {
     viewport:s.viewport.state(), mirrored:s.stage.classList.contains('mirrored'), drawings:annotations.data(index),
     currentTime:s.video.currentTime, duration:s.video.duration, currentMeasurements:values(s.video.currentTime),
     range:s.analyzedRange || [s.start,s.end], selectedRange:[s.start,s.end], analyzedRange:s.analyzedRange ?? null,
-    marks:{...s.marks}, keyMoments:keyMomentEntries(s), tempo:tempo(s.marks), coverage:s.samples.length ? Math.round(valid/s.samples.length*100) : 0,
-    momentMeasurements:Object.fromEntries(phases.map(([key])=>[key,values(s.marks[key])])),
+    marks:{...s.marks}, keyMoments:keyMomentEntries(s), phaseTimes:phaseTimes(s), tempo:tempo(phaseTimes(s)), coverage:s.samples.length ? Math.round(valid/s.samples.length*100) : 0,
+    momentMeasurements:Object.fromEntries(phases.map(([key])=>[key,values(phaseTimes(s)[key])])),
     measurements:s.samples.map(sample=>({time:sample.time,realSeconds:realTime(sample.time,s),frame:frameNumber(sample.time,s.fps),...values(sample.time)})),
   };
 }
@@ -556,9 +546,9 @@ $('export').onclick = async () => {
       clip.momentImages={};
       for(const [key,label] of phases) {
         if(token.cancelled)return;
-        if(!Number.isFinite(s.marks[key]))continue;
+        if(!Number.isFinite(clip.phaseTimes[key]))continue;
         reportDialog.querySelector('p').textContent=`Preparing swing ${names[index]}: ${label.toLowerCase()}…`;
-        await seekDecoded(s.video,s.marks[key]);render();
+        await seekDecoded(s.video,clip.phaseTimes[key]);render();
         clip.momentImages[key]=annotations.capture(index,1020,660).toDataURL('image/jpeg',.92);
       }
       clip.visualMoments = (s.keyMoments.length || Number.isFinite(s.marks.downswing) || Number.isFinite(s.marks.follow)) ? clip.keyMoments.filter(entry=>Number.isFinite(entry.time)) : [];
@@ -596,6 +586,6 @@ annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!j
 rangeSelector = createRangeSelector({ slots, state: () => ({ active, busy: !!job }), seek: seekRangeBoundary, pause: pauseControlled, changed: updateAnalysisControls });
 studioScreen = createStudioScreen({ slots, state: () => ({ active, mode, linked, busy: !!job }), changed: () => { annotations?.interrupt(); slots.forEach(s => s.viewport?.cancelGesture()); render(); } });
 moments = createMoments({slots, state:()=>({mode,busy:!!job}), controlClip, pause:pauseControlled, seek:seekActive, changed:updatePhases});
-keyframeViews = createKeyframeViews({slots, state:()=>({mode,busy:!!job}), controlClip, seek:seekActive, play:togglePlay, changed:updatePhases, paintDrawings:annotations.paintFrame, focusVideo:()=>studioScreen.focus()});
+keyframeViews = createKeyframeViews({slots, state:()=>({mode,busy:!!job}), controlClip, seek:seekActive, play:togglePlay, changed:updatePhases, paintDrawings:annotations.paintFrame, focusVideo:()=>studioScreen.focus(),markMoment:(i,key)=>moments.set(i,key),editMoments:i=>moments.open(i)});
 createTaskHelp({screen: studioScreen, compare: () => setMode('compare')});
 setMode('single'); requestAnimationFrame(playbackLoop);

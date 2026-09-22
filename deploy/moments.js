@@ -1,17 +1,17 @@
 import { frameNumber, frameStamp, lastFrame, markedFrame } from './timing.js';
 
-import { KEY_MOMENTS as MOMENTS, keyMomentEntries } from './keyframes.js';
+import { KEY_MOMENTS as MOMENTS, keyMomentEntries, MOMENT_COLORS } from './keyframes.js';
 
 export function createMoments({slots, state, controlClip, pause, seek, changed}) {
   const dialog = document.createElement('dialog');
   dialog.id = 'momentDialog'; dialog.className = 'moment-dialog';
   dialog.setAttribute('aria-labelledby','momentDialogTitle');
-  dialog.innerHTML = '<header><h2 id="momentDialogTitle">Swing moments</h2><button class="moment-close" aria-label="Close moment editor">×</button></header><p>Jump to a moment, edit its frame, or use <strong>Set here</strong>. Times use your FPS settings; the first frame is 0.</p><div class="moment-rows"></div><p class="moment-error" role="alert" hidden></p>';
+  dialog.innerHTML = '<header><h2 id="momentDialogTitle">Swing moments</h2><button class="moment-close" aria-label="Close moment editor">×</button></header><p>Jump to a moment, edit its frame, or use <strong>Set here</strong>. Automatic estimates are filled in. Your edits take priority; ↺ restores an estimate. Frames start at 0.</p><div class="moment-rows"></div><p class="moment-error" role="alert" hidden></p>';
   document.body.append(dialog);
   let editing = 0;
   const rows = MOMENTS.map(([key,label]) => {
-    const row = document.createElement('div'); row.className = 'moment-edit-row';
-    row.innerHTML = `<button class="moment-jump"><strong>${label}</strong><span></span></button><label>Frame<input type="number" min="0" step="1"></label><button class="moment-set">Set here</button><button class="moment-delete" aria-label="Delete ${label} moment">×</button>`;
+    const row = document.createElement('div'); row.className = 'moment-edit-row'; row.style.setProperty('--moment-color',MOMENT_COLORS[key]);
+    row.innerHTML = `<button class="moment-jump"><strong>${label}</strong><span></span></button><label>Frame<input type="number" min="0" step="1"></label><button class="moment-set">Set here</button><button class="moment-delete" aria-label="Reset ${label} moment" title="Remove your edit and restore the automatic estimate, if available">×</button>`;
     dialog.querySelector('.moment-rows').append(row);
     const input = row.querySelector('input');
     function save(time) {
@@ -28,61 +28,37 @@ export function createMoments({slots, state, controlClip, pause, seek, changed})
     };
     row.querySelector('.moment-set').onclick = () => save(markedFrame(slots[editing].video.currentTime,slots[editing]));
     row.querySelector('.moment-delete').onclick = () => { delete slots[editing].marks[key]; dialog.querySelector('.moment-error').hidden = true; changed(); renderEditor(); };
-    row.querySelector('.moment-jump').onclick = () => { const time = slots[editing].marks[key]; dialog.close(); controlClip(editing,()=>seek(time)); };
+    row.querySelector('.moment-jump').onclick = () => { const time = keyMomentEntries(slots[editing]).find(e=>e.key===key).time; dialog.close(); controlClip(editing,()=>seek(time)); };
     return {key,label,row,input};
   });
   function renderEditor() {
     const s = slots[editing];
     dialog.querySelector('h2').textContent = `Swing ${editing?'B':'A'} moments`;
     rows.forEach(({key,label,row,input}) => {
-      const time = s.marks[key], exists = Number.isFinite(time);
+      const entry = keyMomentEntries(s).find(e=>e.key===key), time = entry.time, exists = Number.isFinite(time) && entry.source !== 'sampled';
       row.querySelector('.moment-jump').disabled = !exists;
       row.querySelector('.moment-jump').setAttribute('aria-label',`Jump to ${label} in swing ${editing?'B':'A'}`);
       row.querySelector('span').textContent = exists ? frameStamp(time,s) : 'Not marked';
       input.value = exists ? frameNumber(time,s.fps) : '';
       input.max = lastFrame(s.video.duration,s.fps); input.removeAttribute('aria-invalid');
       input.setAttribute('aria-label',`${label} frame in swing ${editing?'B':'A'}`);
-      row.querySelector('.moment-delete').disabled = !exists;
+      const reset=row.querySelector('.moment-delete');reset.disabled = !Number.isFinite(s.marks[key]);reset.textContent=s.keyMoments?.some(e=>e.key===key&&e.source==='estimated')?'↺':'×';
     });
   }
   function open(index,key) {
     controlClip(index, pause); editing = index; renderEditor();
     dialog.querySelector('.moment-error').hidden = true;
     dialog.showModal();
-    const anchor = slots[index].get('.clip-moments').getBoundingClientRect();
+    const anchor = document.getElementById('keyMomentStrip').getBoundingClientRect();
     dialog.style.left = `${Math.max(8, Math.min(anchor.left,innerWidth-dialog.offsetWidth-8))}px`;
     dialog.style.top = `${Math.max(8, Math.min(anchor.bottom+8,innerHeight-dialog.offsetHeight-8))}px`;
     (key ? rows.find(r=>r.key===key).input : dialog.querySelector('.moment-close')).focus();
   }
   dialog.querySelector('.moment-close').onclick = () => dialog.close();
-  slots.forEach((s,index) => {
-    const select = document.createElement('select'); select.className = 'clip-moments';
-    select.setAttribute('aria-label',`Moments for swing ${index?'B':'A'}`);
-    select.title = 'Jump to a saved moment or add and edit markers';
-    s.get('.clip-play').after(select); s.get('.clip-moments');
-    select.onchange = () => {
-      const key = select.value; select.value = '';
-      const entry=keyMomentEntries(s).find(e=>e.key===key);
-      if (key === 'edit' || !Number.isFinite(entry?.time)) open(index,key === 'edit' ? null : key);
-      else controlClip(index,()=>seek(entry.time));
-    };
-  });
-  function render() {
-    const {mode,busy} = state();
-    slots.forEach((s,index) => {
-      const select = s.get('.clip-moments'); select.disabled = !s.ready || busy;
-      const after = mode === 'single' && index === 0 ? document.getElementById('play') : s.get('.clip-play');
-      if (after.nextElementSibling !== select) after.after(select);
-      const entries=keyMomentEntries(s),count=entries.filter(e=>Number.isFinite(e.time)).length;
-      const options = [['',`Moments${count ? ` (${count})` : ''}`],
-        ...entries.map(({key,label,time,source}) => [key,Number.isFinite(time) ? `${label}${source==='estimated'?' (estimate)':''} · ${frameStamp(time,s)}` : `+ Mark ${label}`]),['edit','Add / edit moments…']];
-      const signature = JSON.stringify(options);
-      if (select.dataset.options !== signature) {
-        select.replaceChildren(...options.map(([value,label]) => new Option(label,value)));
-        select.dataset.options = signature;
-      }
-      select.value = '';
-    });
+  function set(index,key) {
+    if(state().busy||!slots[index].ready)return;
+    controlClip(index,()=>{pause();slots[index].marks[key]=markedFrame(slots[index].video.currentTime,slots[index]);changed();});
   }
-  return {render};
+  function render() {if(dialog.open)renderEditor();}
+  return {render,open,set};
 }

@@ -56,14 +56,17 @@ test('120 FPS footage saved at 30 FPS stays aligned through playback, seek, step
 
 test('retiming retains aligned file frames and moment marks, corrects tempo durations and exports timing', async ({page}) => {
   await setup(page,'timing-slow.mp4');
-  await card(page,1).locator('.clip-timeline').fill('0');await page.locator('#mark-address').click();
-  await card(page,1).locator('.clip-timeline').fill('1.5');await page.locator('#mark-top').click();
+  await card(page,1).locator('.clip-timeline').fill('0');await page.locator('.moment-cell.is-active[data-moment=address] .moment-mark').click();
+  await card(page,1).locator('.clip-timeline').fill('1.5');await page.locator('.moment-cell.is-active[data-moment=top] .moment-mark').click();
   await align(page,.5,2);
-  await page.locator('#mark-impact').click();
+  await page.locator('.moment-cell.is-active[data-moment=impact] .moment-mark').click();
+  // Local marking releases sync; explicitly restore it before shared stepping.
+  await expect(page.locator('#independent')).toHaveAttribute('aria-pressed','true');
+  await page.locator('#linked').click();
   await card(page,1).locator('.shot-fps').selectOption('120');
   await page.locator('#next').click();
   let s=await state(page);expect(s[0].time).toBeCloseTo(.5+1/30,4);expect(s[1].time).toBeCloseTo(2+4/30,4);
-  await expect(page.locator('#phase-impact')).toHaveText('0.500 s');
+  await expect(page.locator('.moment-cell.is-active[data-moment=impact] .key-frame-time')).toContainText('0.500 s');
   await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
   await expect(page.locator('#tempoNote')).toHaveText('0.375 s backswing / 0.125 s downswing. Real time from your marks.');
   const data=await page.evaluate(async()=> (await import('/app.js')).reportData());

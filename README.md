@@ -29,7 +29,7 @@ See [UX_REVIEW.md](UX_REVIEW.md) for the task review, research sources, observed
 - **Sync on/off:** turning sync off preserves current playback and zoom. Turning it on pauses and aligns both at the selected clip’s position within the shared range, preserves the alignment offset, and uses the selected clip’s speed; press Play both to resume. With sync off, marking, replacing or reaching the end of one clip leaves the other playing.
 - Select a clip using its A/B badge or its card. The selection chooses the drawing, analysis and moment-marker target; the bottom playback controller still acts on both videos.
 - Each player has **File FPS** and **Shot FPS** beside its playback controls. Use **Video** for mirror, Pan or Fit. Speed lives beside the appropriate playback controls. Arrow keys step and Space toggles playback when focus is outside interactive controls.
-- **Moments beside Play A / Play B:** choose a saved moment to jump straight to its frame, choose an unmarked phase to add it, or choose **Add / edit moments**. The nearby editor lets you enter an exact frame number, use **Set here**, or delete a mark. The first frame is 0. On narrow phones the menu uses a flag icon. Single mode puts the same menu beside its Play button. Individual marker actions affect their own clip and release sync. The expanded sidebar still offers address, top, impact and finish shortcuts. Ordered marks produce the backswing-to-downswing tempo ratio.
+- **Visible moment cards:** Address, Top of backswing, Downswing, Impact, Follow-through and Finish stay beside/below the players. Analyze finds them automatically; click a preview to jump, or use its adjacent **Set A / Set B** button to mark the displayed player frame in one click. **Edit A / Edit B** opens exact frame editing and reset. Matching phase colors and numbers connect all views. Individual marking/jumping affects its own clip and releases sync; the other clip keeps playing independently. Automatic and manual phases both contribute to tempo; range previews do not. Manual edits always win.
 - Video decoding depends on the browser and codec. H.264 MP4 and WebM are recommended. A MOV extension alone does not guarantee support.
 
 ## Frame rates and slow-motion comparison
@@ -74,7 +74,7 @@ Each run uses a fresh CPU model, scans at up to 30 samples per file second with 
 
 Measurements require landmark visibility of at least 0.65. Pixel-space geometry corrects for aspect ratio. A three-sample median suppresses isolated jitter without inventing landmarks in missing frames. The overlay chooses only nearby samples and does not bridge missing hand-path observations. Pose coverage is the fraction of sampled frames with visible shoulders and hips, not a quality score.
 
-Elbow and knee angles and torso lean are **2D estimates**, influenced by viewpoint, clothing, occlusion and motion blur. They are not 3D rotation measurements, ball-flight predictions or professional coaching. Swing phases are user-marked; tempo is not an inferred skill rating. The legacy minified heuristic club/ball detection and numerical swing ratings have been removed in favor of these inspectable measurements.
+Elbow and knee angles and torso lean are **2D estimates**, influenced by viewpoint, clothing, occlusion and motion blur. They are not 3D rotation measurements, ball-flight predictions or professional coaching. Swing phases are automatically estimated from hand movement and remain editable; tempo is not an inferred skill rating. The legacy minified heuristic club/ball detection and numerical swing ratings have been removed in favor of these inspectable measurements.
 
 References: [MediaPipe web guide](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/web_js), [PoseLandmarker API](https://ai.google.dev/edge/api/mediapipe/js/tasks-vision.poselandmarker).
 
@@ -90,7 +90,7 @@ References: [MediaPipe web guide](https://ai.google.dev/edge/mediapipe/solutions
 - `deploy/app.js` — file lifecycle, playback, synchronized seeking, overlays, lazy inference and exports.
 - `deploy/analysis.js` — pure geometry, confidence filtering, smoothing, timing helpers.
 - `deploy/timing.js` — recording/file FPS conversion, clocks, frame numbering, stepping and overlapping playback limits.
-- `deploy/moments.js` — per-player moment menus and frame editor.
+- `deploy/moments.js` — local marker actions and exact frame editor.
 - `deploy/report.js`, `deploy/vendor/` — local PDF report layout and pinned jsPDF browser library.
 - `deploy/range.js` — range selection, boundary previews and validation.
 - `deploy/fonts/` — locally hosted DM Sans and Manrope, with their OFL licenses.
@@ -100,10 +100,10 @@ Cloudflare Pages deploys the static directory to `freegolfswinganalyzer`, branch
 
 ## Saving a PDF report
 
-Choose **Save PDF report** in the expanded Moments section. Single mode creates a two-page report; comparison creates a three-page report containing both loaded clips. No analysis or marker is required to export.
+Choose **Save PDF report** in the expanded Tempo & report section. Single mode creates a two-page report; comparison creates a three-page report containing both loaded clips. No analysis or marker is required to export.
 
 - The overview includes the current annotated frame(s), filenames, File FPS / Shot FPS, real elapsed time, frame numbers, zoom, mirroring, current pose measurements, selected/analyzed ranges and tempo.
-- Each swing gets a page with address, top, impact and finish images, a table of measurements at those marked frames, pose coverage and calibrated backswing/downswing durations. Missing marks or low-confidence measurements are clearly shown as unavailable.
+- Each swing gets a page with address, top, impact and finish images, a table of measurements at those key frames, pose coverage and calibrated backswing/downswing durations. Missing marks or low-confidence measurements are clearly shown as unavailable.
 - The report includes the visible drawing and pose settings. Export pauses playback, captures decoded frames, then restores the original playheads and views. You can cancel; a failed export leaves the studio usable and can be retried.
 - PDF generation uses the locally hosted, pinned jsPDF 4.2.1 browser build. No video, frame, filename or report content is uploaded. The app downloads a PDF directly, with searchable report text and browser-rendered filenames for non-Latin characters. It does not require a print dialog or a backend.
 
@@ -150,10 +150,13 @@ Removing or replacing a clip with drawings, moments or analysis asks before clea
 
 After **Analyze**, six visual previews appear alongside the player: Address, Top of backswing, Downswing, Impact, Follow-through and Finish. Portrait videos use a tall player beside a two-column gallery on wide desktops. Landscape videos use a filmstrip below the player; comparison pairs A/B images for each moment. Phones place the gallery after playback controls, followed by the expanded sidebar sections.
 
-Click an image to jump that player to its frame. **Enlarge & edit** (or a card heading) opens a large single/paired view with frame numbers, real-time timestamps, available angles, previous/next frame, Set from player, Play from here and Draw on frame. Editing a frame saves a manual mark. The Moments menus beside Play also jump to the previews. The six-moment editor includes Downswing and Follow-through; the sidebar retains the four primary marks used for tempo. User marks override suggestions and survive reanalysis and FPS changes.
+Click an image to jump that player to its frame. **Enlarge & edit** (or a card heading) opens a large single/paired view with frame numbers, real-time timestamps, available angles, previous/next frame, Set from player, Play from here and Draw on frame. Editing a frame saves a manual mark. Each preview has a neighboring Set A / Set B button. All six moments are visible without a phase dropdown; Edit A / Edit B opens exact frame editing. The sidebar shows tempo and PDF export. User marks override suggestions and survive reanalysis and FPS changes.
 
 Phase suggestions use a confidence-gated, torso-relative rise/drop/rise of the hands, with bounded gaps and ordered frames. These are explicitly labeled **Estimate**, not verified ball contact or a trained golf-event detector. Short, static, occluded or incomplete swings get six labeled **Range previews** instead. Analysis does not automatically set tempo from uncertain suggestions. Tightening the analysis range around one complete swing improves the chance of useful estimates.
 
 `deploy/keyframes.js` contains pure selection/merge logic. `deploy/keyframe-views.js` decodes only the needed thumbnails using separate local video elements, so thumbnail preparation never seeks the main players or changes synchronization. Canvas caches are bounded and released on replacement. Views show the full frame with the current mirror, pose visibility and applicable drawings; the main player's zoom is preserved separately. PDF reports include an additional visual-moments page with source labels and annotated frames. No video or image leaves the device.
 
 Related controls stay close: Fit is beside each compact zoom slider, Undo/Redo follow the vertical drawing tools, and Sync on/off and Sync Videos precede common playback. On very short phones the range/playback group follows a minimum-height video area, so footage remains usable and every control is reachable by scrolling.
+
+
+Automatic phase selection uses the original hand-path sequence (address, apex, descending hands, impact region, follow-through, finish), with local sequence validation. A visible wrist and torso can suffice; short tracking gaps are bridged only for phase selection. Long occlusions split the range into separate runs. Each complete swing is consumed before selecting another, and the swing nearest the analysis playhead is preferred. Timing limits use real seconds, preserving slow-motion calibration. Overlay measurements still require observed landmarks. These are estimates of swing phases, not ball-contact detection; static, partial or unclear footage receives clearly labeled range previews. Deterministic trajectories cover these cases; real pose inference is tested separately, and detection accuracy has not been benchmarked against a labeled golf dataset.

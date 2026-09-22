@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="sidebar.css">
   <link rel="stylesheet" href="keyframes.css">
   <link rel="stylesheet" href="review-layout.css">
+  <link rel="stylesheet" href="moments.css">
   <link rel="stylesheet" href="consent.css">
   <script type="module" src="consent.js"></script>
   <script type="module" src="app.js"></script>
@@ -65,7 +66,6 @@
         <div class="overlay-options"><label><input id="skeleton" type="checkbox" checked> Pose overlay</label><label><input id="trail" type="checkbox" checked> Hand path</label><label><input id="guideLines" type="checkbox"> Alignment grid</label></div>
         <div class="metrics" id="metrics"><div><span>Lead elbow</span><strong id="elbow">—<small>°</small></strong></div><div><span>Lead knee</span><strong id="knee">—<small>°</small></strong></div><div><span>Torso lean</span><strong id="lean">—<small>°</small></strong></div><div><span>Pose coverage</span><strong id="coverage">—<small>%</small></strong></div></div>
         <p class="metric-note">Angles are 2D estimates at the playhead. Camera position and visibility affect the reading; these are not a swing score.</p>
-        <div class="phase-heading"><h3>Your swing moments</h3><button id="clearMarks" class="text-button" disabled>Clear</button></div><p class="panel-copy compact">Pause at each moment and mark it. Click its time to revisit.</p><div id="phases" class="phases"></div>
         <div class="tempo"><span>Backswing / downswing tempo</span><strong id="tempo">—</strong></div><p class="metric-note" id="tempoNote">Mark address, top and impact to measure your tempo.</p>
         <button id="export" class="export-button" disabled>↓ Save PDF report</button>
       </aside>

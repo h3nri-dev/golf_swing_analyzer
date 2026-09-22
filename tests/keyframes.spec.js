@@ -43,7 +43,7 @@ test('paired previews and slow-motion edits leave independent playback and commo
 });
 for(const [width,height] of [[1440,900],[2560,1440],[320,568],[844,390]])test(`range thumbnails and enlarged view fit ${width}x${height}`,async({page})=>{
  await page.setViewportSize({width,height});await setup(page,{empty:true});await analyze(page);
- await expect(page.locator('.key-strip-note')).toContainText('phases are uncertain');await expect(page.locator('.key-card-title').first()).toHaveText('Range frame 1 ↗');
+ await expect(page.locator('.key-strip-note')).toContainText('phases are uncertain');await expect(page.locator('.key-card-title').first()).toHaveText('Preview 1 ↗');
  await focusVideos(page);await page.screenshot({path:`/tmp/keyframes-${width}.png`});const overflow=await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth && e.getBoundingClientRect().width).map(e=>[e.tagName,e.className,e.getBoundingClientRect().right]));expect(await page.evaluate(()=>document.documentElement.scrollWidth),JSON.stringify(overflow)).toBeLessThanOrEqual(width);
  if(width>900){const studio=await page.locator('#studio').boundingBox(),strip=await page.locator('#keyMomentStrip').boundingBox();expect(strip.y+strip.height).toBeLessThan(studio.y+studio.height);expect((await card(page,0).locator('.stage').boundingBox()).height).toBeGreaterThan(200);}
  await page.screenshot({path:`/tmp/keyframes-${width}.png`});await page.locator('.key-enlarge').click();
@@ -64,4 +64,21 @@ test('thumbnail drawings update immediately and unchanged previews do not repain
  await page.locator('#drawingVisibility').click();await expect.poll(()=>thumb.evaluate(c=>c.toDataURL())).toBe(raw);
  await page.locator('#drawingVisibility').click();await expect.poll(()=>thumb.evaluate(c=>c.toDataURL())).toBe(drawn);
  await page.locator('#play').click();const stamp=await thumb.getAttribute('data-paint');await page.waitForTimeout(200);await expect(thumb).toHaveAttribute('data-paint',stamp);
+});
+
+test('automatic detection fills the editor and tempo; a correction resets to its estimate',async({page})=>{
+ await setup(page);await analyze(page);
+ const before=await page.evaluate(async()=>(await import('/app.js')).reportData());
+ expect(before.keyMoments.every(e=>e.source==='estimated')).toBe(true);expect(before.marks).toEqual({});expect(before.tempo).toBeGreaterThan(0);
+ await expect(page.locator('#tempo')).not.toHaveText('—');await expect(page.locator('#tempoNote')).toContainText('auto estimates');
+ await page.locator('[data-edit-slot="0"]').click();
+ const row=page.locator('.moment-edit-row').filter({hasText:'Impact'});
+ await expect(row.locator('input')).toHaveValue(String(Math.round(before.phaseTimes.impact*30)));
+ await row.locator('input').fill('60');await row.locator('input').press('Tab');
+ await expect(row.getByRole('button',{name:'Reset Impact moment'})).toBeEnabled();
+ await row.getByRole('button',{name:'Reset Impact moment'}).click();
+ await expect(row.locator('input')).toHaveValue(String(Math.round(before.phaseTimes.impact*30)));
+ await page.keyboard.press('Escape');
+ const after=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(after.phaseTimes).toEqual(before.phaseTimes);expect(after.marks).toEqual({});
+ await expect(page.locator('.key-card[data-key=impact] .key-slot-badge').first()).toContainText('Auto estimate');
 });

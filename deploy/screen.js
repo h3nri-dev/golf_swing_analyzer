@@ -9,8 +9,7 @@ export function createStudioScreen({ slots, state, changed }) {
   const pieces = {
     hand: original('.setting-row'), summary: original('.analysis-range-summary'),
     overlays: original('.overlay-options'), metrics: $('metrics'), note: original('.metric-note'),
-    momentsHeading: original('.phase-heading'), momentsCopy: original('.panel-copy.compact'),
-    clearMarks: $('clearMarks'), phases: $('phases'), tempo: original('.tempo'), tempoNote: $('tempoNote'), export: $('export'),
+    tempo: original('.tempo'), tempoNote: $('tempoNote'), export: $('export'),
   };
   const heading = studio.querySelector('.studio-heading');
   heading.append($('analysisTarget'));
@@ -59,7 +58,8 @@ export function createStudioScreen({ slots, state, changed }) {
   const resultsEmpty = document.createElement('p'); resultsEmpty.id = 'resultsEmpty'; resultsEmpty.className = 'screen-panel-help';
   resultsEmpty.textContent = 'Pause at your swing, then Analyze. You can play and draw without analysis.';
   panels.pose.append(pieces.hand, resultsEmpty, pieces.overlays, pieces.metrics, pieces.note);
-  panels.moments.append(pieces.momentsHeading, pieces.momentsCopy, pieces.phases, pieces.tempo, pieces.tempoNote, pieces.export);
+  panels.moments.append(pieces.tempo, pieces.tempoNote, pieces.export);
+  panels.moments.querySelector('h2').textContent='Tempo & report';
   const videoNote=document.createElement('p');videoNote.className='screen-panel-help';videoNote.textContent='Slow-motion export? Set Shot FPS to the camera’s recording rate. Otherwise leave Same.';panels.video.append(videoNote);
   slots.forEach((s,i)=>{
     const group=document.createElement('div');group.dataset.settingsSlot=i;group.className='screen-video-settings';
@@ -81,6 +81,8 @@ export function createStudioScreen({ slots, state, changed }) {
     s.get('.zoom-controls').append(s.get('.zoom-fit'));
     s.get('.zoom-fit').setAttribute('aria-label',`Fit swing ${i?'B':'A'} to view`);
     panels.video.append(group);
+    const viewSettings=document.createElement('div');viewSettings.className='clip-view-settings';
+    s.get('.clip-transport').before(viewSettings);viewSettings.append(s.get('.clip-timing'),s.get('.zoom-controls'));
     s.get('.clip-transport').setAttribute('aria-label', `Swing ${i?'B':'A'} playback controls`);
     s.get('.clip-frame-controls').insertBefore(s.get('.clip-play'),s.get('.clip-next'));
   });
@@ -88,8 +90,6 @@ export function createStudioScreen({ slots, state, changed }) {
   inspectorHeader.innerHTML='<h2>Tools & analysis</h2>';
   const target=panels.draw.querySelector('.drawing-target');
   inspectorHeader.append(target);
-  pieces.clearMarks.setAttribute('aria-label', 'Clear swing moments');
-  panels.moments.querySelector('.section-heading').append(pieces.clearMarks);
   const sections=document.createElement('div');sections.className='sidebar-sections';sections.append(...Object.entries(panels).filter(([id])=>id!=='range').map(([,panel])=>panel));
   inspector.replaceChildren(inspectorHeader,sections);
   inspector.hidden=false;studio.append(inspector);

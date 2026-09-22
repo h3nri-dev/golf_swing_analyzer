@@ -13,7 +13,7 @@ test('PDF comparison includes annotated frames and all moments, preserves views,
   await expect(card(page,1).locator('video')).toBeVisible();await page.locator('#independent').click();
   for(const i of [0,1]) {
     for(const [key,time] of [['address',.2],['top',1.1],['impact',1.4],['finish',2]]) {
-      await card(page,i).locator('.clip-timeline').fill(String(time));await page.locator(`#mark-${key}`).click();
+      await card(page,i).locator('.clip-timeline').fill(String(time));await page.locator(`.moment-cell.is-active[data-moment=${key}] .moment-mark`).click();
     }
     await card(page,i).locator('.zoom-slider').fill('1.5');
     await page.locator('[data-tool=line]').click();
@@ -27,7 +27,7 @@ test('PDF comparison includes annotated frames and all moments, preserves views,
   const bytes=await fs.readFile(await result.path()),pdf=bytes.toString('latin1');
   expect(pdf.startsWith('%PDF-')).toBe(true);expect(pdf).toContain('(Swing review)');
   expect(pdf.match(/\/Type \/Page\b/g)).toHaveLength(3);
-  expect(pdf).toContain('Measurements at your marked frames');expect(pdf).toContain('Real seconds');
+  expect(pdf.includes('Measurements at your key frames')).toBe(true);expect(pdf).toContain('Real seconds');
   expect(pdf.match(/\/Subtype \/Image\b/g).length).toBeGreaterThanOrEqual(10);
   await expect(page.locator('#reportDialog')).toBeHidden();await expect(page.locator('#export')).toBeEnabled();
   expect(await page.locator('video').evaluateAll(vs=>vs.map(v=>v.currentTime))).toEqual(before);
@@ -46,7 +46,7 @@ test('a PDF can be saved before analysis or marking, and a failed library load c
 });
 test('canceling PDF export restores the playhead and controls',async({page})=>{
   await page.route('**/vendor/jspdf.umd.min.js',async r=>{await new Promise(resolve=>setTimeout(resolve,500));await r.continue();});
-  await page.goto('/');await load(page,0);await page.locator('#timeline').fill('1.5');await page.locator('#mark-impact').click();
+  await page.goto('/');await load(page,0);await page.locator('#timeline').fill('1.5');await page.locator('.moment-cell.is-active[data-moment=impact] .moment-mark').click();
   await page.locator('#timeline').fill('0.5');
   let downloads=0;page.on('download',()=>downloads++);
   await page.locator('#export').click();await expect(page.locator('#reportDialog')).toBeVisible();

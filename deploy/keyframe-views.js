@@ -1,16 +1,17 @@
-import { KEY_MOMENTS, keyMomentEntries } from './keyframes.js';
+import { KEY_MOMENTS, keyMomentEntries, MOMENT_COLORS, momentSource, MOMENT_NAMES } from './keyframes.js';
 import { frameNumber, frameStamp, lastFrame } from './timing.js';
 import { visible, nearestSample, measurements } from './analysis.js';
 
 const connections=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
-const sourceLabel=source=>({marked:'Your mark',estimated:'Estimate',sampled:'Range preview',empty:'Not marked'})[source];
+const sourceLabel=momentSource;
 const name=i=>i?'B':'A';
 
-export function createKeyframeViews({slots,state,controlClip,seek,play,changed,paintDrawings,focusVideo}) {
+export function createKeyframeViews({slots,state,controlClip,seek,play,changed,paintDrawings,focusVideo,markMoment,editMoments}) {
   const strip=document.createElement('section');strip.id='keyMomentStrip';strip.className='key-moment-strip';strip.hidden=true;
   strip.setAttribute('aria-labelledby','keyMomentTitle');
-  strip.innerHTML='<header><h2 id="keyMomentTitle">Key moments</h2><span>Click a frame to jump</span><button class="key-enlarge">Enlarge & edit ↗</button></header><div class="key-filmstrip"></div><p class="key-strip-note"></p>';
+  strip.innerHTML='<header><h2 id="keyMomentTitle">Key moments</h2><span>Click a frame to jump · Set replaces its moment</span><button class="moments-edit" data-edit-slot="0">Edit A</button><button class="moments-edit" data-edit-slot="1">Edit B</button><button class="key-enlarge">Enlarge & edit ↗</button></header><div class="key-filmstrip"></div><p class="key-strip-note"></p>';
   document.querySelector('.video-editor').append(strip);
+  strip.querySelectorAll('[data-edit-slot]').forEach(b=>b.onclick=()=>editMoments(Number(b.dataset.editSlot)));
   const dialog=document.createElement('dialog');dialog.id='keyMomentDialog';dialog.className='key-review-dialog';dialog.setAttribute('aria-labelledby','keyReviewTitle');
   dialog.innerHTML='<header><div><span class="key-eyebrow">VISUAL SWING REVIEW</span><h2 id="keyReviewTitle">Key moment</h2></div><button class="key-review-close" aria-label="Close key moment view">×</button></header><nav aria-label="Key moments"></nav><p class="key-review-note">Estimates use hand movement, not ball contact. Check the frame and edit it below.</p><div class="key-review-panels"></div><p class="key-review-error" role="alert" hidden></p>';
   document.body.append(dialog);
@@ -22,13 +23,15 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
     const title=document.createElement('button');title.className='key-card-title';title.title='Enlarge and edit this moment';title.onclick=()=>open(position);
     const cells=document.createElement('div');cells.className='key-card-frames';card.append(title,cells);
     slots.forEach((s,i)=>{
+      const cell=document.createElement('div');cell.className='moment-cell';cell.dataset.momentSlot=i;cell.dataset.moment=key;
       const button=document.createElement('button');button.className='key-frame';button.dataset.previewSlot=i;button.dataset.key=key;
       button.innerHTML='<span class="key-frame-image"><canvas></canvas><span class="key-frame-placeholder"></span><span class="key-slot-badge"></span></span><span class="key-frame-time"></span>';
       button.onclick=()=>jump(i,position,false);
-      cells.append(button);cellViews.push({button,canvas:button.querySelector('canvas'),position,index:i});
+      const mark=document.createElement('button');mark.className='moment-mark';mark.textContent=`Set ${name(i)}`;mark.setAttribute('aria-label',`Set ${label} here in swing ${name(i)}`);mark.title=`Replace ${label} with the frame currently displayed in swing ${name(i)}`;mark.onclick=()=>markMoment(i,key);
+      cell.append(button,mark);cells.append(cell);cellViews.push({button,canvas:button.querySelector('canvas'),position,index:i});
     });
     strip.querySelector('.key-filmstrip').append(card);
-    const nav=document.createElement('button');nav.textContent=label;nav.onclick=()=>{selected=position;renderDialog();};dialog.querySelector('nav').append(nav);
+    const nav=document.createElement('button');nav.textContent=`${position+1} ${label}`;nav.style.setProperty('--moment-color',MOMENT_COLORS[key]);nav.onclick=()=>{selected=position;renderDialog();};dialog.querySelector('nav').append(nav);
     return {card,title};
   });
   const panels=slots.map((s,index)=>{
@@ -129,6 +132,7 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
     dialog.querySelectorAll('nav button').forEach((b,i)=>b.setAttribute('aria-current',i===selected?'true':'false'));
     panels.forEach((panel,index)=>{
       panel.hidden=index===1 && mode!=='compare';const s=slots[index],entry=keyMomentEntries(s)[selected],has=Number.isFinite(entry.time);
+      panel.style.setProperty('--moment-color',entry.source==='sampled'?'#667466':MOMENT_COLORS[entry.key]);
       panel.querySelector('.key-source').textContent=sourceLabel(entry.source);
       const success=has && paint(panel.querySelector('canvas'),index,entry);
       if(!has)panel.querySelector('canvas').hidden=true;
@@ -142,26 +146,37 @@ export function createKeyframeViews({slots,state,controlClip,seek,play,changed,p
   }
   function render(drawings='') {
     drawingSignature=drawings+document.getElementById('drawingVisibility').getAttribute('aria-pressed');const {mode,busy}=state();
-    const data=slots.map(s=>keyMomentEntries(s)),available=data.some((list,i)=>(i===0||mode==='compare')&&slots[i].ready&&list.some(e=>Number.isFinite(e.time)));
+    const data=slots.map(s=>keyMomentEntries(s)),available=slots.some((s,i)=>(i===0||mode==='compare')&&s.ready);
     strip.hidden=!available;document.getElementById('studio').classList.toggle('has-key-moments',available);document.getElementById('studio').classList.toggle('key-portrait',slots[0].video.videoHeight>slots[0].video.videoWidth);
     const mobile=matchMedia('(max-width: 900px)').matches;
     const parent=mobile?document.getElementById('studio'):document.querySelector('.video-editor');
     if(strip.parentElement!==parent)parent.append(strip);
-    const next=JSON.stringify([mode,busy,slots.map((s,i)=>[s.ready,s.url,s.fps,s.shotFps,data[i]])]);
+    const next=JSON.stringify([mode,busy,slots.map((s,i)=>[s.ready,s.url,s.fps,s.shotFps,s.card.classList.contains('selected'),data[i]])]);
     if(signature!==next){
       signature=next;strip.querySelector('.key-enlarge').disabled=busy;
-      const fallback=data.flat().some(e=>e.source==='sampled');
-      strip.querySelector('.key-strip-note').textContent=fallback?'Range previews shown where phases are uncertain. Enlarge to assign the correct moments.':'Estimates are editable. Check impact against the video.';
+      strip.querySelectorAll('[data-edit-slot]').forEach((b,i)=>{b.hidden=i===1&&mode!=='compare';b.disabled=busy||!slots[i].ready;});
+      const fallback=data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>e.source==='sampled'));
+      const detected=data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>e.source==='estimated'));
+      strip.classList.toggle('has-previews',data.some((list,i)=>(i===0||mode==='compare')&&list.some(e=>Number.isFinite(e.time))));
+      strip.querySelector('.key-strip-note').textContent=fallback?'Range previews shown where phases are uncertain. Set the correct moments from the player.':detected?'Auto estimates · Your marks override detection. Check impact against the video.':'Analyze to find the six moments automatically, or pause and use Set here.';
       cards.forEach(({card,title},p)=>{
         const entries=data.map(a=>a[p]).filter((e,i)=>i===0||mode==='compare');
         const allSampled=entries.some(e=>Number.isFinite(e.time)) && entries.filter(e=>Number.isFinite(e.time)).every(e=>e.source==='sampled');
-        title.textContent=allSampled?`Range frame ${p+1} ↗`:`${KEY_MOMENTS[p][1]} ↗`;title.disabled=busy;
+        card.style.setProperty('--moment-color',allSampled?'#667466':MOMENT_COLORS[KEY_MOMENTS[p][0]]);
+        title.textContent=allSampled?`Preview ${p+1} ↗`:`${p+1} ${KEY_MOMENTS[p][0]==='follow'?'Follow':MOMENT_NAMES[KEY_MOMENTS[p][0]]} ↗`;title.disabled=busy;
         card.classList.toggle('paired',mode==='compare');
       });
       cellViews.forEach(({button,position,index})=>{
-        const entry=data[index][position],has=Number.isFinite(entry.time);button.hidden=index===1&&mode!=='compare';button.disabled=!has||busy;
-        button.querySelector('.key-slot-badge').textContent=`${name(index)} · ${sourceLabel(entry.source)}`;
-        button.querySelector('.key-frame-time').textContent=has?frameStamp(entry.time,slots[index]):`Swing ${name(index)}`;
+        const entry=data[index][position],has=Number.isFinite(entry.time);
+        const cell=button.parentElement;cell.hidden=index===1&&mode!=='compare';cell.classList.toggle('is-active',slots[index].card.classList.contains('selected'));cell.dataset.source=entry.source;cell.dataset.empty=!has;cell.querySelector('.moment-mark').disabled=!slots[index].ready||busy;
+        const mark=cell.querySelector('.moment-mark');mark.textContent=`Set ${name(index)}`;
+        if(entry.source==='sampled')mark.innerHTML=`Set ${name(index)}<span class="moment-assignment">${entry.key==='follow'?'Follow':MOMENT_NAMES[entry.key]}</span>`;
+        button.hidden=false;button.disabled=!has||busy;
+        button.querySelector('.key-slot-badge').textContent=mode==='compare'?`${name(index)} · ${{marked:'Marked',estimated:'Auto',sampled:'Preview',empty:'Unset'}[entry.source]}`:`${name(index)} · ${sourceLabel(entry.source)}`;
+        button.title=has?`${entry.label} · ${sourceLabel(entry.source)} · ${frameStamp(entry.time,slots[index])}`:`Pause at ${KEY_MOMENTS[position][1]} and set it from the player`;
+        const stamp=button.querySelector('.key-frame-time');
+        stamp.textContent=has?frameStamp(entry.time,slots[index]):`${name(index)} · Not set`;
+        if(mode==='compare'&&has){const [time,frame]=frameStamp(entry.time,slots[index]).split(' · ');stamp.innerHTML=`<span>${time}</span> <span>${frame}</span>`;}
         button.setAttribute('aria-label',has?`Jump to ${entry.label} in swing ${name(index)}, ${frameStamp(entry.time,slots[index])}`:`No ${KEY_MOMENTS[position][1]} in swing ${name(index)}`);
       });
       slots.forEach((s,i)=>{if(!s.ready){caches[i].clear();failed[i].clear();}});

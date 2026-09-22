@@ -11,7 +11,7 @@ test('single mode loads local video, steps, marks tempo and exports', async ({ p
   await page.goto('/'); await expect(clip(page,1)).toBeHidden(); await load(page,0);
   await (await transport(page,'next')).click(); expect((await times(page))[0]).toBeCloseTo(1/30,3);
   await (await settings(page,0,'.fps')).selectOption('60'); await seek(page,0); await (await transport(page,'next')).click(); expect((await times(page))[0]).toBeCloseTo(1/60,3);
-  await seek(page,.2); await focusSection(page,'moments');await page.locator('#mark-address').click(); await seek(page,1.1); await page.locator('#mark-top').click(); await seek(page,1.4); await page.locator('#mark-impact').click(); await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
+  await seek(page,.2); await focusSection(page,'moments');await page.locator('.moment-cell.is-active[data-moment=address] .moment-mark').click(); await seek(page,1.1); await page.locator('.moment-cell.is-active[data-moment=top] .moment-mark').click(); await seek(page,1.4); await page.locator('.moment-cell.is-active[data-moment=impact] .moment-mark').click(); await expect(page.locator('#tempo')).toHaveText('3.00 : 1');
   const download = page.waitForEvent('download'); await focusSection(page,'moments');await page.locator('#export').click(); expect((await download).suggestedFilename()).toBe('swing-a-report.pdf');
   await page.screenshot({path:'/tmp/swing-single.png',fullPage:true});
   await clip(page,0).locator('.remove').click();await discardIfAsked(page); await expect((await transport(page,'play'))).toBeDisabled(); expect(errors).toEqual([]);
@@ -59,7 +59,7 @@ test('real MediaPipe model detects a pose locally',async({page})=>{
   expect(data.analyzedRange).toEqual([0.1, 0.4]);
   expect(data.measurements.length).toBeGreaterThan(0);
   expect(data.measurements.every(sample => sample.time >= 0.1 && sample.time < 0.4)).toBe(true);
-  await page.locator('#mark-impact').click();
+  await page.locator('.moment-cell.is-active[data-moment=impact] .moment-mark').click();
   const download=page.waitForEvent('download');await page.locator('#export').click();
   const result=await download;await result.saveAs('/tmp/swing-pose-report.pdf');
   const pdf=(await fs.readFile(await result.path())).toString('latin1');
@@ -81,7 +81,7 @@ test('independent videos can both play and replacement clears only its own marks
   await page.goto('/'); await load(page,0); await page.locator('#compareMode').click(); await load(page,1); await page.locator('#independent').click();
   await (await settings(page,0,'.clip-speed')).selectOption('0.25');
   await (await transport(page,'play',0)).click(); await (await transport(page,'play',1)).click(); expect(await page.locator('video').evaluateAll(v=>v.every(x=>!x.paused))).toBe(true);
-  await focusSection(page,'moments');await page.locator('#mark-address').click(); await expect(page.locator('#phase-address')).not.toHaveText('—'); await load(page,1); await expect(page.locator('#phase-address')).toHaveText('—');
+  await focusSection(page,'moments');await page.locator('.moment-cell.is-active[data-moment=address] .moment-mark').click(); await expect(page.locator('.moment-cell.is-active[data-moment=address] .key-frame-time')).not.toContainText('Not set'); await load(page,1); await expect(page.locator('.moment-cell.is-active[data-moment=address] .key-frame-time')).toContainText('Not set');
   expect(await clip(page,0).locator('video').evaluate(v=>v.paused)).toBe(false);
   await focusSection(page,'range');await page.locator('#rangeStart').fill('3'); await focusSection(page,'range');await page.locator('#rangeEnd').fill('1'); await expect(page.locator('#rangeError')).toContainText('End must be after start'); await expect(page.locator('#analyze')).toBeDisabled(); await expect((await transport(page,'play'))).toBeEnabled();
 });

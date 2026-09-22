@@ -22,6 +22,7 @@ for (const [width, height] of [[1440,900],[1280,720],[2560,1440],[390,844],[320,
         await expect(slot(page,i).locator('.zoom-controls .zoom-fit')).toBeVisible();
         const zoom=await slot(page,i).locator('.zoom-controls').evaluate(e=>({w:e.clientWidth,sw:e.scrollWidth}));
         expect(zoom.sw).toBeLessThanOrEqual(zoom.w+1);
+        if(width>900)expect(zoom.w).toBeLessThanOrEqual(240);
       }
       const tools=await page.locator('.drawing-tools').boundingBox(), history=await page.locator('.drawing-history').boundingBox();
       expect(history.y-tools.y-tools.height).toBeGreaterThanOrEqual(0);
@@ -56,10 +57,10 @@ test('the nearby range target preserves per-clip ranges, independent playback an
   await expect(page.locator('.key-card')).toHaveCount(6);
   for(const [width,height,minStage] of [[1440,900,200],[1280,720,100],[2560,1440,500]]) {
     await page.setViewportSize({width,height}); await page.locator('#studio').evaluate(e=>e.scrollIntoView({block:'start'}));
+    await page.screenshot({path:`/tmp/range-reviewed-${width}.png`});
     await expect.poll(async()=>(await slot(page,0).locator('.stage').boundingBox()).height).toBeGreaterThan(minStage);
     await expect(page.locator('#analyze')).toBeInViewport(); await expect(page.locator('.key-card').last()).toBeInViewport();
     await expect(page.locator('#studioFooter a[href="privacy.html"]')).toBeInViewport();
     const footer=await page.locator('.screen-transport').boundingBox(); expect(footer.y+footer.height).toBeLessThanOrEqual(height+1);
-    await page.screenshot({path:`/tmp/range-reviewed-${width}.png`});
   }
 });
