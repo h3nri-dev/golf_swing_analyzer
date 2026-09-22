@@ -133,3 +133,8 @@
 @media(max-width:360px){
   .studio.persistent-sidebar.is-compare { grid-template-rows:auto max(640px,calc(100dvh - var(--review-chrome-height,300px))) auto auto; }
 }
+
+/* Keep the one-second pair together beside precise frame/play controls. */
+.time-jumps { display:inline-flex; flex:none; flex-wrap:nowrap; gap:4px; align-items:center; }
+.persistent-sidebar .common-player .play-buttons .time-jump,
+.persistent-sidebar .clip-frame-controls .time-jump { flex:none; min-width:40px; width:40px; padding:3px; font-size:14px; font-weight:650; white-space:nowrap; }

@@ -33,7 +33,7 @@ const slots = names.map((name, index) => {
     <div class="stage"><video muted playsinline preload="auto" hidden></video><canvas class="pose-canvas" hidden></canvas><button class="dropzone" aria-label="Add swing ${name} video"><span class="upload-icon">↥</span><strong>${index ? 'Reference swing' : 'Your swing'}</strong><span class="drop-description">${index ? 'Your earlier swing, or a swing to learn from.' : 'Drop your swing video here, or browse your files.'}</span><span class="upload-cta">Choose video <span aria-hidden="true">↗</span></span><span class="file-types">MP4 · MOV · WEBM / BROWSER-SUPPORTED VIDEO</span></button><span class="corner-label video-brand" hidden><img src="favicon.svg?v=golf" width="20" height="20" alt=""><span>FreeGolf<wbr>Swing<wbr>Analyzer.com</span><span class="clip-time" aria-hidden="true">0.00 s</span></span></div>
     <input class="file-input" type="file" accept="video/*,.mov,.mp4,.webm" hidden aria-label="Swing ${name} video file">
     <div class="video-bottom"><button class="clip-play" disabled aria-label="Play swing ${name}">▶ Play ${name}</button><button class="mirror" disabled aria-pressed="false">Mirror</button><label class="fps-label">FPS <select class="fps" aria-label="Swing ${name} file frame rate">${frameRates.map(n => `<option${n === 30 ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>
-    <div class="clip-transport" hidden aria-label="Independent swing ${name} controls"><div class="clip-timeline-row"><span>SWING ${name}</span><output class="clip-duration">0:00 / 0:00</output><button class="clip-restart" aria-label="Restart swing ${name}" title="Restart this video" disabled>↺</button></div><input class="clip-timeline" type="range" min="0" max="1" step="0.001" value="0" aria-label="Swing ${name} timeline" disabled><div class="clip-frame-controls"><button class="clip-previous" aria-label="Previous frame swing ${name}" title="Previous frame" disabled>Ⅰ‹</button><button class="clip-next" aria-label="Next frame swing ${name}" title="Next frame" disabled>›Ⅰ</button><label>Speed <select class="clip-speed" aria-label="Swing ${name} playback speed" disabled>${[0.1,0.25,0.5,1,1.5].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}×</option>`).join('')}</select></label></div></div>
+    <div class="clip-transport" hidden aria-label="Independent swing ${name} controls"><div class="clip-timeline-row"><span>SWING ${name}</span><output class="clip-duration">0:00 / 0:00</output><button class="clip-restart" aria-label="Restart swing ${name}" title="Restart this video" disabled>↺</button></div><input class="clip-timeline" type="range" min="0" max="1" step="0.001" value="0" aria-label="Swing ${name} timeline" disabled><div class="clip-frame-controls"><button class="clip-previous" aria-label="Previous frame swing ${name}" title="Previous frame" disabled>Ⅰ‹</button><button class="clip-next" aria-label="Next frame swing ${name}" title="Next frame" disabled>›Ⅰ</button><span class="time-jumps"><button class="clip-back-second time-jump" aria-label="Back 1 second swing ${name}" title="Back 1 real second" disabled>−1s</button><button class="clip-forward-second time-jump" aria-label="Forward 1 second swing ${name}" title="Forward 1 real second" disabled>+1s</button></span><label>Speed <select class="clip-speed" aria-label="Swing ${name} playback speed" disabled>${[0.1,0.25,0.5,1,1.5].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}×</option>`).join('')}</select></label></div></div>
     <div class="clip-timing" aria-label="Swing ${name} video timing"><label class="shot-fps-label" title="Camera recording rate. Leave Same for normal-speed files; choose the original recording FPS for a slow-motion export.">Shot FPS <select class="shot-fps" aria-label="Swing ${name} recording frame rate"><option value="same">Same</option>${frameRates.map(n => `<option value="${n}">${n}</option>`).join('')}</select></label></div>`;
   $('videoGrid').append(card);
   // Controls keep their identity when the screen layout moves them into a panel.
@@ -51,6 +51,8 @@ const slots = names.map((name, index) => {
   get('.clip-timeline').oninput = e => { const time = fileTime(Number(e.target.value),slot); controlClip(index, () => seekActive(time)); };
   get('.clip-previous').onclick = () => controlClip(index, () => step(-1));
   get('.clip-next').onclick = () => controlClip(index, () => step(1));
+  get('.clip-back-second').onclick = () => controlClip(index, () => jumpSecond(-1));
+  get('.clip-forward-second').onclick = () => controlClip(index, () => jumpSecond(1));
   get('.clip-restart').onclick = () => controlClip(index, () => seekActive(0));
   get('.clip-speed').onchange = e => { const speed = Number(e.target.value); controlClip(index, () => setSpeed(speed)); };
   get('.mirror').onclick = () => { const on = slot.stage.classList.toggle('mirrored'); get('.mirror').setAttribute('aria-pressed', on); render(); };
@@ -210,6 +212,7 @@ function setMode(next) {
       ['.shot-fps', `${prefix}recording frame rate`], ['.clip-timing', `${prefix}video timing`],
       ['.clip-transport', `${prefix}playback controls`], ['.clip-timeline', `${prefix}timeline`],
       ['.clip-restart', `Restart${suffix}`], ['.clip-previous', `Previous frame${suffix}`],
+      ['.clip-back-second', `Back 1 second${suffix}`], ['.clip-forward-second', `Forward 1 second${suffix}`],
       ['.clip-next', `Next frame${suffix}`], ['.clip-speed', `${prefix}playback speed`],
       ['.zoom-controls', `${prefix}zoom controls`], ['.zoom-slider', `${prefix}zoom`],
       ['.zoom-in', `Zoom in${suffix}`], ['.zoom-out', `Zoom out${suffix}`],
@@ -254,7 +257,7 @@ function update() {
   document.querySelectorAll('[data-select]').forEach(b => { b.disabled = busy; b.setAttribute('aria-pressed', Number(b.dataset.select) === active); });
   slots.forEach((slot, i) => {
     slot.card.classList.toggle('selected', i === active);
-    for (const selector of ['.clip-play','.mirror','.clip-timeline','.clip-previous','.clip-next','.clip-speed','.clip-restart']) slot.get(selector).disabled = !slot.ready || busy;
+    for (const selector of ['.clip-play','.mirror','.clip-timeline','.clip-previous','.clip-next','.clip-back-second','.clip-forward-second','.clip-speed','.clip-restart']) slot.get(selector).disabled = !slot.ready || busy;
     slot.get('.clip-transport').hidden = mode !== 'compare';
     slot.get('.clip-speed').value = String(slot.speed);
     slot.get('.fps').disabled = slot.get('.shot-fps').disabled = !slot.ready || busy;
@@ -263,13 +266,13 @@ function update() {
     slot.drop.disabled = busy; slot.get('.corner-label').hidden = !slot.ready;
   });
   const commonReady = mode === 'compare' ? slots.every(slot => slot.ready) : s.ready;
-  for (const id of ['play','previous','next','restart','timeline','speed']) $(id).disabled = !commonReady || busy;
+  for (const id of ['play','previous','next','backSecond','forwardSecond','restart','timeline','speed']) $(id).disabled = !commonReady || busy;
   $('export').disabled = busy || !s.ready;
   $('align').disabled = busy || !slots.every(x => x.ready);
   $('cancel').hidden = !busy; $('progress').hidden = !busy;
   $('hand').value = s.hand;
   $('status').textContent = s.status; $('activeLabel').textContent = mode === 'compare' ? 'BOTH' : 'VIDEO';
-  for (const [id, label] of [['previous','Previous frame'],['next','Next frame'],['restart','Restart'],['speed','Playback speed']]) $(id).setAttribute('aria-label', `${label}${mode === 'compare' ? ' both swings' : ''}`);
+  for (const [id, label] of [['previous','Previous frame'],['next','Next frame'],['backSecond','Back 1 second'],['forwardSecond','Forward 1 second'],['restart','Restart'],['speed','Playback speed']]) $(id).setAttribute('aria-label', `${label}${mode === 'compare' ? ' both swings' : ''}`);
   $('restart').title = $('restart').getAttribute('aria-label');
   $('restart').innerHTML = '<span aria-hidden="true">↺</span><span class="restart-word"> Restart</span>';
   $('linked').setAttribute('aria-pressed', linked); $('independent').setAttribute('aria-pressed', !linked);
@@ -345,6 +348,23 @@ function stepBoth(direction) {
     const targets = syncModel()?.step(slots.map(s => s.video.currentTime), direction);
     if (targets) slots.forEach((s, i) => s.video.currentTime = targets[i]);
   } else slots.forEach(s => { s.video.currentTime = frameTime(s.video.currentTime, direction, s.fps, 0, s.video.duration); });
+  updatePlayback(); render();
+}
+// Time jumps keep playing videos playing and paused videos paused. Local
+// buttons enter through controlClip, retaining independent controller scope.
+function jumpSecond(direction, both = false) {
+  if (job) return;
+  const targets = both && mode === 'compare' ? slots : [slots[active]];
+  if (!targets.every(s => s.ready)) return;
+  if (both && isLinked()) {
+    const model = syncModel();
+    if (!model) return toast('No shared playback range. Choose new sync frames.');
+    const times = model.mediaTimes(model.commonTime(slots[0].video.currentTime, 0) + direction);
+    slots.forEach((s, i) => { s.video.currentTime = times[i]; });
+  } else {
+    if (both && isIndependent()) commonTransport.following = true;
+    targets.forEach(s => { s.video.currentTime = clamp(s.video.currentTime + fileTime(direction, s), 0, s.video.duration); });
+  }
   updatePlayback(); render();
 }
 function restartBoth() {
@@ -545,6 +565,7 @@ function alignFrames(times=slots.map(s=>s.video.currentTime)) {
 }
 $('align').onclick=()=>alignFrames();
 $('timeline').oninput = e => seekBoth(Number(e.target.value) * commonState().rate); $('play').onclick = () => togglePlay(true);
+$('backSecond').onclick = () => jumpSecond(-1, true); $('forwardSecond').onclick = () => jumpSecond(1, true);
 $('previous').onclick = () => stepBoth(-1); $('next').onclick = () => stepBoth(1); $('restart').onclick = restartBoth;
 $('speed').onchange = e => setSpeed(Number(e.target.value), true);
 $('hand').onchange = e => { slots[active].hand = e.target.value; render(); };
