@@ -52,9 +52,10 @@ test('analysis replaces edited markers with seven new estimates and cancellation
  const model=await page.evaluate(async()=>(await import('/app.js')).reportData());expect(model.marks).toEqual({});
  expect(model.keyMoments.every(e=>e.source==='estimated')).toBe(true);expect(model.phaseTimes.impact).not.toBe(55/30);
  await expect(page.locator('.key-card[data-key=impact] .key-slot-badge').first()).toHaveText('Auto estimate');
- // Expanded timelines start at a fractional frame; select a valid slider step near frame 55.
- const timeline=page.locator('#timeline'),min=Number(await timeline.getAttribute('min'));
- await timeline.fill((min+Math.ceil((55/30-min)/.001)*.001).toFixed(6));await page.getByRole('button',{name:'Set Impact here',exact:true}).click();
+ // Retained bounds may have fractional binary rounding (e.g. 0.7 - 0.3).
+ // Let the native slider sanitize its value just as it does during dragging.
+ await page.locator('#timeline').evaluate(input=>{input.valueAsNumber=55.25/30;input.dispatchEvent(new Event('input',{bubbles:true}));});
+ await page.getByRole('button',{name:'Set Impact here',exact:true}).click();
  await page.locator('#analyze').click();await page.locator('#cancel').click();await expect(page.locator('#status')).toContainText('cancelled');
  await expect(page.locator('.key-card')).toHaveCount(7);expect((await page.evaluate(async()=>(await import('/app.js')).reportData())).marks.impact).toBe(55/30);
  await focusVideos(page);await page.screenshot({path:'/tmp/keyframes-single.png'});const download=page.waitForEvent('download');await page.locator('#export').click();const pdf=await download;await pdf.saveAs('/tmp/swing-key-moments-report.pdf');await expect(page.locator('#reportDialog')).toBeHidden();expect((await page.evaluate(async()=>(await import('/app.js')).reportData())).keyMoments.every(e=>!e.image)).toBe(true);expect(errors).toEqual([]);

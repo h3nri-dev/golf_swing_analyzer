@@ -32,6 +32,14 @@ test('analysis accepts sections anywhere in a long video, up to 20 seconds', () 
   assert.equal(analysisRangeError(0, 0.2, 0.2), '');
   assert.match(analysisRangeError(30, 50.01, 120), /20 seconds/);
 });
+test('reanalysis retains valid saved file bounds after FPS recalibration changes their real duration', () => {
+  assert.equal(analysisRangeError(5.6,33.6,60,8),'');
+  assert.match(analysisRangeError(5.6,33.6,60,1),/20 seconds/);
+  assert.equal(analysisRangeError(5.6,33.6,60,1,true),'');
+  for(const [start,end,duration] of [[NaN,2,4],[0,Infinity,4],[3,2,4],[1,1,4],[-1,2,4],[0,4.001,4]]){
+    assert.ok(analysisRangeError(start,end,duration,1,true));
+  }
+});
 test('analysis rejects missing, reversed, empty and out-of-bounds selections', () => {
   assert.match(analysisRangeError(NaN, 2, 4), /Load/);
   assert.match(analysisRangeError(0, Infinity, 4), /Load/);

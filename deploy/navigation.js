@@ -80,7 +80,7 @@ export function createMomentNavigation({slots,state,jump,jumpCommon,stepLocal,st
       controls.hidden=!bounds.available;wrapper.classList.toggle('has-review',bounds.available&&!compact);wrapper.classList.toggle('is-focused',bounds.focused&&!compact);host.classList.toggle('has-timeline-review',bounds.available);
       controls.querySelector('.timeline-scopes').setAttribute('aria-label',`${i===2&&mode==='compare'?'Both videos':mode==='compare'?`Swing ${index?'B':'A'}`:'Video'} timeline view`);
       controls.querySelector('.timeline-range').setAttribute('aria-pressed',bounds.focused);
-      controls.querySelector('.timeline-range').title='Play and loop only within the saved analyzed range.';
+      controls.querySelector('.timeline-range').title='Play, loop and reanalyze only within the saved range. Choose Full video to select a new analysis window.';
       controls.querySelector('.timeline-full').setAttribute('aria-pressed',!bounds.focused);
       controls.querySelectorAll('button').forEach(b=>b.disabled=busy);
       controls.querySelector('.timeline-bounds').textContent=`${seconds(toReal(bounds.start))}–${seconds(toReal(bounds.end))} s${bounds.focused?` · ${(s.video.duration/(bounds.end-bounds.start)).toFixed(1).replace('.0','')}×`:''}`;
@@ -131,7 +131,7 @@ export function createMomentNavigation({slots,state,jump,jumpCommon,stepLocal,st
       const entry=(direction>0?entries:entries.reverse()).find(e=>(e.time-s.video.currentTime)*direction>.5/s.fps);if(entry)jump(active,entry.time);
     }
   });
-  return {render,isFocused(index){return timelineBounds(slots[index],layers[2].focused&&state().controller.clock===index).focused;},
+  return {render,
     playbackRange(index,common=false){const bounds=timelineBounds(slots[index],common||state().mode==='single'?commonRangeActive():layers[index].focused);return bounds.focused?[bounds.start,bounds.end]:null;},
     focusAnalysis(index){layers[index].focused=true;layers[2].focused=true;},reset(index){layers[index].focused=false;}};
 }

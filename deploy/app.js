@@ -298,15 +298,23 @@ function updatePlayback() {
     s.get('.clip-play').setAttribute('aria-label', `${paused ? 'Play' : 'Pause'} ${both ? `swing ${names[i]}` : 'video'}`);
   });
 }
+function analysisSelection(index, common = true) {
+  const s=slots[index], saved=navigation?.playbackRange(index,common);
+  const [start,end]=saved??rangeSelector?.windowAt(s.video.currentTime,s.video.duration,timingRate(s))??[s.start,s.end];
+  return {start,end,reusing:!!saved};
+}
 function updateAnalysisControls() {
-  const s = slots[active];
-  const disabled = !s.ready || !!job || !!analysisRangeError(s.start, s.end, s.video.duration, timingRate(s));
-  $('analyze').disabled = disabled;
-  slots.forEach((slot,i)=>{const button=slot.get('.clip-analyze');if(button){button.disabled=!slot.ready||!!job;button.title=`Analyze${mode==='compare'?` swing ${names[i]}`:''}: ${rangeSelector?.description()} (real time). Replaces its markers when complete.`;}});
+  const s = slots[active], selection=analysisSelection(active);
+  const updateButton=(button,slot,range,label)=>{
+    const {start,end,reusing}=range;
+    button.disabled=!slot.ready||!!job||!!analysisRangeError(start,end,slot.video.duration,timingRate(slot),reusing);
+    const times=slot.ready?`${seconds(realTime(start,slot))}–${seconds(realTime(end,slot))} s`:'no video';
+    button.title=`${reusing?'Reanalyze':'Analyze'}${label} · ${times}.${reusing?' Keeps this range fixed; choose Full video to select a new range.':''} Replaces this video's markers when complete.`;
+  };
+  slots.forEach((slot,i)=>{const button=slot.get('.clip-analyze');if(button)updateButton(button,slot,analysisSelection(i,false),mode==='compare'?` swing ${names[i]}`:'');});
   const target = mode === 'compare' ? ` ${names[active]}` : '';
   $('analyze').textContent = `Analyze${target}`;
-  const range = s.ready ? Number.isFinite(s.start) && Number.isFinite(s.end) ? `${seconds(realTime(s.start,s))}–${seconds(realTime(s.end,s))} s` : 'set range' : 'no video';
-  $('analyze').title = `Analyze${target ? ` swing${target}` : ''} · ${range}. Replaces this video's markers when complete.`;
+  updateButton($('analyze'),s,selection,target?` swing${target}`:'');
   navigation?.render();
   if (s.ready && !s.analysisAttempted) $('status').textContent = analysisRangeError(s.start,s.end,s.video.duration,timingRate(s)) || 'Move to your swing, then Analyze the green window.';
 }
@@ -565,14 +573,16 @@ function modelOperation(promise, token, release = () => {}) {
     if (signal.aborted) abort();
   });
 }
-async function analyze() {
+async function analyze(common = true) {
   const s = slots[active]; if (!s.ready || job) return;
   // Freeze the playhead before selecting the automatic window so the restored
   // frame and analyzed interval have the same anchor, even during playback.
   pauseAll();
-  // Capture the playhead's window now, then freeze it throughout the scan.
+  // Use this controller's saved review bounds until it returns to Full video.
+  // Local and common views may differ, so the clicked Analyze button owns scope.
   rangeSelector.prepare();
-  const start = s.start, end = s.end, rangeError = analysisRangeError(start, end, s.video.duration, timingRate(s));
+  const {start,end,reusing}=analysisSelection(active,common);
+  const rangeError = analysisRangeError(start, end, s.video.duration, timingRate(s),reusing);
   if (rangeError) return toast(rangeError);
   s.start = start; s.end = Math.min(end, s.video.duration); s.analysisAttempted = true;
   const originalTime = s.video.currentTime; const token = { cancelled: false, controller: new AbortController() }; job = token;
@@ -654,7 +664,7 @@ $('previous').onclick = () => stepBoth(-1); $('next').onclick = () => stepBoth(1
 $('speed').onchange = e => setSpeed(Number(e.target.value), true);
 $('hand').onchange = e => { slots[active].hand = e.target.value; render(); };
 
-$('analyze').onclick = analyze; $('cancel').onclick = () => { if (job) { job.cancelled = true; job.controller.abort(); $('status').textContent = 'Cancelling… finishing the current model operation.'; } };
+$('analyze').onclick = () => analyze(true); $('cancel').onclick = () => { if (job) { job.cancelled = true; job.controller.abort(); $('status').textContent = 'Cancelling… finishing the current model operation.'; } };
 // Shared report model: timestamps remain in media seconds internally so
 // drawings and analyzed samples stay attached to their original frames.
 export function reportData(index = active) {
@@ -734,8 +744,8 @@ slots.forEach((slot, index) => {
   });
 });
 annotations = createAnnotations({ slots, state: () => ({ active, mode, busy: !!job }), selectSlot, pauseAll, pauseControlled, seekActive, toast, changed: updatePhases });
-studioScreen = createStudioScreen({ slots, state: () => ({ active, mode, linked, busy: !!job }), changed: () => { slots.forEach(s => s.viewport?.cancelGesture()); render(); } });
-rangeSelector = createRangeSelector({ slots, state: () => ({ active, mode, busy: !!job, reviewFocused:navigation?.isFocused(active) }), changed: updateAnalysisControls, notice:toast });
+studioScreen = createStudioScreen({ slots, state: () => ({ active, mode, linked, busy: !!job }), analyzeSlot:index=>{selectSlot(index);analyze(false);}, changed: () => { slots.forEach(s => s.viewport?.cancelGesture()); render(); } });
+rangeSelector = createRangeSelector({ slots, state: () => ({ active, mode, busy: !!job, reviewFocused:!!navigation?.playbackRange(active,true) }), changed: updateAnalysisControls, notice:toast });
 moments = createMoments({slots, state:()=>({mode,busy:!!job}), controlClip, pause:pauseControlled, seek:seekActive, changed:updatePhases});
 keyframeViews = createKeyframeViews({slots, state:()=>({mode,busy:!!job}), controlClip, seek:seekActive, play:togglePlay, changed:updatePhases, paintDrawings:annotations.paintFrame, focusVideo:()=>studioScreen.focus(),markMoment:(i,key)=>moments.set(i,key),editMoments:i=>moments.open(i),alignMoment:key=>{const times=slots.map(s=>phaseTimes(s)[key]);if(times.every(Number.isFinite))alignFrames(times);}});
 reviewTools=createReviewTools({slots,state:()=>({active,mode,busy:!!job}),changed:()=>{render();updatePhases();},cropChanged});
@@ -746,6 +756,7 @@ navigation=createMomentNavigation({slots,state:()=>({active,mode,busy:!!job,cont
     if(index!==null)releaseCommon();
     targets.forEach(s=>{s.playbackScope=index===null?'common':'local';s.loop=null;});
     loopPlayback();
+    updateAnalysisControls();
   },loop:()=>{
   if(job||!slots[active].ready)return;const s=slots[active];rangeSelector.prepare();s.loop=s.loop?null:[s.start,s.end];update();
 }});

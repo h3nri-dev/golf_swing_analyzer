@@ -19,12 +19,14 @@ export function analysisWindow(center, duration, settings = DEFAULT_WINDOW, rate
   const at = clamp(center, 0, duration);
   return [Math.max(0, at-settings.before*rate),Math.min(duration,at+settings.after*rate)];
 }
-export function analysisRangeError(start, end, duration, rate = 1) {
+export function analysisRangeError(start, end, duration, rate = 1, reuseSavedRange = false) {
   if (![start, end, duration].every(Number.isFinite) || duration <= 0) return 'Load a video to analyze a window.';
   // Allow millisecond-rounded final timestamps.
   if (start < 0 || start >= duration || end > duration + 0.0005 * rate) return `Keep the range within the video (0–${(duration / rate).toFixed(3)} s).`;
   if (end <= start) return 'End must be after start.';
-  if ((end - start) / rate > MAX_ANALYSIS_SECONDS + 0.000001) return 'Select up to 20 seconds per analysis. Move the playhead to choose a new window.';
+  // Retiming can make a previously analyzed interval exceed 20 real seconds.
+  // Reuse its file bounds; the scanner still enforces its sample-count limits.
+  if (!reuseSavedRange && (end - start) / rate > MAX_ANALYSIS_SECONDS + 0.000001) return 'Select up to 20 seconds per analysis. Move the playhead to choose a new window.';
   return '';
 }
 
@@ -37,7 +39,7 @@ export function createRangeSelector({ slots, state, changed, notice }) {
   const hint=document.getElementById('analysisWindowHint');
   hint.classList.add('analysis-window-settings');
   hint.innerHTML='<span>Analyze</span><label title="Real seconds before the current frame">−<input id="analysisBefore" type="number" min="0" max="20" step="0.1" aria-label="Analysis seconds before current frame"></label><label title="Real seconds after the current frame">+<input id="analysisAfter" type="number" min="0" max="20" step="0.1" aria-label="Analysis seconds after current frame"></label><span>s</span>';
-  hint.title='Adjust real seconds before and after the playhead for the next analysis. Completed analyzed ranges stay fixed. Saved in this browser for both videos. Maximum total: 20 seconds.';
+  hint.title='These offsets select a new window in Full video. In Analyzed range, Analyze repeats the saved range regardless of the playhead or these settings. Saved in this browser for both videos. Maximum total: 20 seconds.';
   const inputs=[hint.querySelector('#analysisBefore'),hint.querySelector('#analysisAfter')];
   const fill=()=>inputs.forEach((input,i)=>{input.value=settings[i?'after':'before'];});fill();
   const apply=()=>{

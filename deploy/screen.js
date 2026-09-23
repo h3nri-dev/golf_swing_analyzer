@@ -1,6 +1,6 @@
 // Persistent sections reuse the original controls and handlers.
 // Moving focus or resizing never reloads media or collapses a section.
-export function createStudioScreen({ slots, state, changed }) {
+export function createStudioScreen({ slots, state, changed, analyzeSlot }) {
   const $ = id => document.getElementById(id);
   const studio = $('studio'), inspector = $('analysisPanel');
   let scheduled = false;
@@ -87,7 +87,7 @@ export function createStudioScreen({ slots, state, changed }) {
     s.get('.clip-playback-buttons').insertBefore(s.get('.clip-play'),s.get('.clip-next'));
     const analyze=document.createElement('button');analyze.className='clip-analyze';
     analyze.textContent=`Analyze ${i?'B':'A'}`;
-    analyze.onclick=()=>{review.click();$('analyze').click();};
+    analyze.onclick=()=>analyzeSlot(i);
     s.get('.clip-speed').closest('label').after(analyze);
     s.get('.clip-frame-controls').append(s.get('.clip-restart'));
   });
